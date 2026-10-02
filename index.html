@@ -243,20 +243,20 @@ function nextCarColor(){ return CAR_COLORS[cars.length % CAR_COLORS.length]; }
 function submitAddCar(name, desc, ownerMode, ownerId, newOwnerName, newOwnerPhone, year, body, vin, dropoff){
   name = (name||'').trim();
   if(!name){ alert('Enter the car\'s name.'); return; }
+  // Owner is optional at add-time — can be set later from the car's own Edit screen.
   let oid = '';
   if(ownerMode==='new'){
     const oName = (newOwnerName||'').trim();
-    if(!oName){ alert('Enter the new owner\'s name, or switch to picking an existing owner.'); return; }
-    oid = 'owner'+Date.now()+Math.random().toString(36).slice(2,6);
-    owners.push({id:oid, name:oName, phone:(newOwnerPhone||'').trim(), cars:[]});
+    if(oName){
+      oid = 'owner'+Date.now()+Math.random().toString(36).slice(2,6);
+      owners.push({id:oid, name:oName, phone:(newOwnerPhone||'').trim(), cars:[]});
+    }
   } else {
     oid = ownerId || '';
-    if(!oid){ alert('Pick an owner, or choose "Add a new owner".'); return; }
   }
   const cid = 'car'+Date.now()+Math.random().toString(36).slice(2,6);
   insertSortedOrPush(cars, {id:cid, name, desc:(desc||'').trim(), owner:oid, employees:[], color:nextCarColor(), year:(year||'').trim(), body:(body||'').trim(), vin:(vin||'').trim(), dropoff:(dropoff||'').trim(), photos:[], notes:[], docs:[], includeInEmployeeUpdate:true}, 'cars', c=>c.name);
-  const o = owners.find(x=>x.id===oid);
-  if(o && !o.cars.includes(cid)) o.cars.push(cid);
+  if(oid){ const o = owners.find(x=>x.id===oid); if(o && !o.cars.includes(cid)) o.cars.push(cid); }
   persist();
   navReplace({type:'car', id:cid});
 }
@@ -267,12 +267,12 @@ function toggleCarIncludeInUpdate(carId){
   persist();
   render();
 }
-function submitAddEmployee(name, phone){
+function submitAddEmployee(name, phone, email, address, startDate){
   name = (name||'').trim();
   if(!name){ alert('Enter the employee\'s name.'); return; }
   if(employees.some(e=>e.name.toLowerCase()===name.toLowerCase())){ alert('An employee named "'+name+'" already exists.'); return; }
   const eid = 'emp'+Date.now()+Math.random().toString(36).slice(2,6);
-  insertSortedOrPush(employees, {id:eid, name, phone:(phone||'').trim(), cars:[]}, 'employees', e=>e.name);
+  insertSortedOrPush(employees, {id:eid, name, phone:(phone||'').trim(), email:(email||'').trim(), address:(address||'').trim(), startDate:(startDate||'').trim(), cars:[]}, 'employees', e=>e.name);
   persist();
   navReplace({type:'employee', id:eid});
 }
@@ -663,7 +663,8 @@ window.addEventListener('popstate', function(){
 });
 armBackTrap();
 function goHome(){
-  if(stack[stack.length-1].type==='assembly') return; // sealed — must use the Exit button
+  // Sealed while inside Assembly Room or any of its sub-screens (like Parts Receipts) — must use the Exit button.
+  if(stack[stack.length-1].type==='assembly' || stack[stack.length-1].type==='receipts') return;
   fltReset(); stack = ['home']; render();
 }
 function exitAssembly(){ stack = ['home']; render(); }
@@ -2542,7 +2543,7 @@ const renderers = {
             </div>
             <div class="tap-reveal" onclick="toggleEl('outgoing-add-note-${e.id}')" style="margin-top:10px;color:var(--accent);font-size:13.5px;font-weight:600">+ Add a note for ${e.name} (not tied to a car)</div>
             <div id="outgoing-add-note-${e.id}" style="display:none;margin-top:10px">
-              <input class="search-input" id="newNoteText-${e.id}" placeholder="e.g. Remember to grab your new badge from the office">
+              <textarea class="search-input" id="newNoteText-${e.id}" rows="4" style="resize:vertical;min-height:84px;padding-top:10px" placeholder="Write as much as you need — e.g. a full explanation of something for this employee"></textarea>
               <button class="btn-ghost" style="margin-top:8px" onclick="addOutgoingNote(document.getElementById('newNoteText-${e.id}').value, '${e.id}')">Add note</button>
             </div>
           </div>`:''}
@@ -2760,7 +2761,13 @@ const renderers = {
     <input class="search-input" id="newEmpName" placeholder="e.g. Jordan">
     <p class="list-sub" style="margin:14px 0 6px">Phone</p>
     <input class="search-input" id="newEmpPhone" placeholder="optional">
-    <button class="btn-primary" style="width:100%;margin-top:18px" onclick="submitAddEmployee(document.getElementById('newEmpName').value, document.getElementById('newEmpPhone').value)">Save employee</button>
+    <p class="list-sub" style="margin:14px 0 6px">Email</p>
+    <input class="search-input" id="newEmpEmail" placeholder="optional">
+    <p class="list-sub" style="margin:14px 0 6px">Address</p>
+    <input class="search-input" id="newEmpAddress" placeholder="optional">
+    <p class="list-sub" style="margin:14px 0 6px">Start date</p>
+    <input class="search-input" type="date" id="newEmpStartDate">
+    <button class="btn-primary" style="width:100%;margin-top:18px" onclick="submitAddEmployee(document.getElementById('newEmpName').value, document.getElementById('newEmpPhone').value, document.getElementById('newEmpEmail').value, document.getElementById('newEmpAddress').value, document.getElementById('newEmpStartDate').value)">Save employee</button>
     <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="goBack()">Cancel</button>`,
 
   car: (v)=>{
@@ -2815,7 +2822,7 @@ const renderers = {
       <section class="block infoblock open" id="car-info">
         <p class="block-title">Info <span class="static-tag">static — rarely changes</span> <span class="edit-link" onclick="nav({type:'editCar', id:'${c.id}'})">Edit</span></p>
         <div class="specs">
-          <div><span class="spec-k">Owner</span><span class="spec-v"><span class="chip" onclick='nav({type:"owner",id:"${owner.id}"})'>${owner.name}</span></span></div>
+          <div><span class="spec-k">Owner</span><span class="spec-v">${owner?`<span class="chip" onclick='nav({type:"owner",id:"${owner.id}"})'>${owner.name}</span>`:`<span class="edit-link" onclick="nav({type:'editCar', id:'${c.id}'})">No owner set yet — tap to add one</span>`}</span></div>
           <div><span class="spec-k">Year</span><span class="spec-v">${c.year}</span></div>
           <div><span class="spec-k">Body style</span><span class="spec-v">${c.body}</span></div>
           <div><span class="spec-k">Description</span><span class="spec-v">${c.desc}</span></div>
@@ -2969,6 +2976,7 @@ const renderers = {
         <button class="btn-ghost chip-btn" onclick="requestDeleteReceipt('${r.id}')">✕</button>
       </div>`;
     return `
+    <div class="assembly-banner"><span>🔒 ASSEMBLY ROOM — editing mode</span><button class="exit-btn" onclick="exitAssembly()">Exit ✕</button></div>
     <div class="detail-head">
       <p class="kicker">Incoming</p>
       <h1 class="detail-title">Parts receipts</h1>
