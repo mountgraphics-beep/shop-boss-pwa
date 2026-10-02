@@ -214,20 +214,6 @@
   }
   @media print{ .no-print{display:none !important} .print-only{display:block !important;margin-bottom:12px;color:#000} .flag-btn, .exit-btn{display:none !important} .reveal-panel{display:none !important} .print-head{font-size:11px;color:#555 !important;margin-bottom:10px} }
 </style>
-<script>
-if('serviceWorker' in navigator){
-  // The service worker takes over as soon as a new version is ready (see sw.js).
-  // When that happens, reload once automatically so the update is visible right
-  // away — no manual "open it twice" step.
-  var sbReloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if(sbReloaded) return;
-    sbReloaded = true;
-    window.location.reload();
-  });
-  navigator.serviceWorker.register('sw.js').catch(function(){});
-}
-</script>
 </head>
 <body>
 <header>
@@ -1591,7 +1577,7 @@ function goToHistoryAlert(){
 function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
-const SB_STORE_KEY = 'sb-shop-data-v1';
+const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
   try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, consumables, workTypes, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized})); }catch(e){}
 }
