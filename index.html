@@ -214,7 +214,20 @@
   }
   @media print{ .no-print{display:none !important} .print-only{display:block !important;margin-bottom:12px;color:#000} .flag-btn, .exit-btn{display:none !important} .reveal-panel{display:none !important} .print-head{font-size:11px;color:#555 !important;margin-bottom:10px} }
 </style>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}</script>
+<script>
+if('serviceWorker' in navigator){
+  // The service worker takes over as soon as a new version is ready (see sw.js).
+  // When that happens, reload once automatically so the update is visible right
+  // away — no manual "open it twice" step.
+  var sbReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(sbReloaded) return;
+    sbReloaded = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
 </head>
 <body>
 <header>
