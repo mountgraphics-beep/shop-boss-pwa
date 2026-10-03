@@ -803,6 +803,23 @@ async function sbCheckIncomingFolder(){
   else alert('Checked '+found+' file'+(found===1?'':'s')+' — imported '+imported+'.');
   render();
 }
+// Real, standard browser file download — works in any real browser tab or installed PWA,
+// unlike claude.use('downloads') which only exists inside the claude.ai preview sandbox.
+// This is the fallback that actually saves the file once Shop Boss is running for real.
+function sbDownloadBlob(filename, blob){
+  try{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      try{ document.body.removeChild(a); }catch(e){}
+      try{ URL.revokeObjectURL(url); }catch(e){}
+    }, 1000);
+    return true;
+  }catch(e){ return false; }
+}
 function dataUrlToBlob(dataUrl){
   const m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl||'');
   if(!m) return null;
@@ -835,15 +852,23 @@ async function shareOrSaveAccountantBundle(csvFname, csvText, receiptList){
     // otherwise fall through and save each file individually instead
   }
   try{
-    if(typeof claude==='undefined' || !claude.use) throw {code:'unavailable'};
-    const downloads = await claude.use('downloads');
-    if(!downloads) throw {code:'unavailable'};
-    let savedCount = 0;
-    for(const f of files){
-      const buf = await f.arrayBuffer();
-      await downloads.save({filename:f.name, data: f.type==='text/csv' ? csvText : buf});
-      savedCount++;
+    // claude.use('downloads') only exists inside the claude.ai preview sandbox — use it there,
+    // but fall back to a real browser download everywhere else (the real, installed app included).
+    if(typeof claude!=='undefined' && claude.use){
+      const downloads = await claude.use('downloads');
+      if(downloads){
+        let savedCount = 0;
+        for(const f of files){
+          const buf = await f.arrayBuffer();
+          await downloads.save({filename:f.name, data: f.type==='text/csv' ? csvText : buf});
+          savedCount++;
+        }
+        return {result:'saved', savedCount};
+      }
     }
+    let savedCount = 0;
+    for(const f of files){ if(sbDownloadBlob(f.name, f)) savedCount++; }
+    if(!savedCount) throw {code:'unavailable'};
     return {result:'saved', savedCount};
   }catch(err){
     if(err && err.code==='declined') return {result:'declined', savedCount:0};
@@ -864,11 +889,16 @@ async function shareOrSaveFile(fname, jsonText, shareTitle, shareText){
     // otherwise fall through and try saving a plain file instead
   }
   try{
-    if(typeof claude==='undefined' || !claude.use) throw {code:'unavailable'};
-    const downloads = await claude.use('downloads');
-    if(!downloads) throw {code:'unavailable'};
-    await downloads.save({filename: fname, data: jsonText});
-    return 'saved';
+    if(typeof claude!=='undefined' && claude.use){
+      const downloads = await claude.use('downloads');
+      if(downloads){
+        await downloads.save({filename: fname, data: jsonText});
+        return 'saved';
+      }
+    }
+    const blob = new Blob([jsonText], {type:'application/json'});
+    if(sbDownloadBlob(fname, blob)) return 'saved';
+    throw {code:'unavailable'};
   }catch(err){
     if(err && err.code==='declined') return 'declined';
     return 'unavailable';
@@ -934,7 +964,7 @@ async function outgoingSend(){
   const result = await shareOrSaveFile(fname, JSON.stringify(payload,null,2), 'Shop Boss update', 'This week\'s update for WorkClock');
   if(result==='declined') return;
   if(result==='unavailable'){
-    alert('Saving a file isn\'t available in this preview window — this works once Shop Boss is running as your real, downloaded app.');
+    alert('Couldn\'t save that file on this device. Try again — if it keeps happening, check that your browser allows downloads.');
     return;
   }
   outgoingForms = [];
@@ -1649,7 +1679,7 @@ async function downloadBackup(){
   const wroteCopy = backupDirHandle ? await sbWriteFileToHandle(backupDirHandle, fname, json) : false;
   if(result==='declined' && !wroteCopy) return;
   if(result==='unavailable' && !wroteCopy){
-    alert('Saving a file isn\'t available in this preview window — this works once Shop Boss is running as your real, downloaded app.');
+    alert('Couldn\'t save that file on this device. Try again — if it keeps happening, check that your browser allows downloads.');
     return;
   }
   try{ localStorage.setItem('sb-last-backup', JSON.stringify({when: stamp.toISOString(), cars: cars.length, entries: entries.length})); }catch(e){}
@@ -1780,7 +1810,7 @@ async function asmSendToAccountant(){
     }
   }
   if(result==='declined' && !wroteCopy) return;
-  if(result==='unavailable' && !wroteCopy){ alert('Saving a file isn\'t available in this preview window — this works once Shop Boss is running as your real, downloaded app.'); return; }
+  if(result==='unavailable' && !wroteCopy){ alert('Couldn\'t save that file on this device. Try again — if it keeps happening, check that your browser allows downloads.'); return; }
   asm.sentToAccountant = true;
   unsentReceipts.forEach(r=>{ r.sentToAccountant = true; });
   persist();
