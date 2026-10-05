@@ -87,7 +87,17 @@
   .spec-k{color:var(--muted);font-size:13.5px}
   .spec-v{font-size:14.5px;font-weight:500}
   .muted-v{color:var(--muted);font-weight:400;font-size:13px}
-  .assembly-row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .assembly-row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:6px}
+  /* Compact car+date header and inline hours row for the Incoming review list, where one employee
+     can have 20-30 entries in a week — kept deliberately tighter than the roomier .hours-box pair
+     used elsewhere (car/employee pages, history) so a long week still fits on a phone screen. */
+  .assembly-row-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .assembly-row-car{font-weight:600;font-size:14.5px}
+  .assembly-row-date{color:var(--muted);font-size:12px;font-weight:500;margin-left:6px}
+  .assembly-row-desc{color:var(--muted);font-size:13px;margin-top:2px}
+  .assembly-row-hours{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--muted)}
+  .assembly-row-hours b{color:var(--text);font-weight:600}
+  .hours-input-inline{width:52px;background:var(--surface-2);border:1px solid var(--accent-dim);color:var(--accent);border-radius:6px;padding:3px 5px;font-family:var(--display);font-size:13px;text-align:center}
   .assembly-actions{display:flex;gap:10px;margin-top:20px}
   .btn-primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px 18px;font-family:var(--sans);font-weight:600;font-size:14.5px;cursor:pointer;flex:1}
   .btn-ghost{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:12px 18px;font-family:var(--sans);font-size:14.5px;cursor:pointer}
@@ -1608,7 +1618,7 @@ function applyWorkClockSubmission(payload){
       who: whoName,
       date: isoToShopBossDate(pe.date),
       hours: String(pe.hours!=null?pe.hours:''),
-      billable: String(pe.hours!=null?pe.hours:''), // starts equal to logged hours — adjust in the Incoming review, same as any other entry
+      billable: '', // comes in blank on purpose — the book's billable-hour standard often doesn't match how long the job actually took, so Darrell types the real number in himself instead of starting from a guess
       desc: [pe.task, pe.desc].filter(Boolean).join(' — ') || '(no description)',
       flag: flagParts.length ? flagParts.join(' · ') : null, flagDone:false,
       consumables: pe.consumables||null, photos:0, docs:[],
@@ -2020,9 +2030,9 @@ function buildAccountantHoursCSV(){
 }
 // FILE 2 — what she actually bills from: billable hours per car with a plain-English explanation
 // of what that work was, plus a dedicated column for any parts/consumables an employee logged —
-// flagged so she knows NOT to bill those until Daryl has put a real price on them.
+// flagged so she knows NOT to bill those until Darrell has put a real price on them.
 function buildAccountantBillingCSV(){
-  const rows = [['Car','Date','Employee','Billable Hours','What the billable hours were for','Parts/consumables used — needs Daryl\'s pricing before billing']];
+  const rows = [['Car','Date','Employee','Billable Hours','What the billable hours were for','Parts/consumables used — needs Darrell\'s pricing before billing']];
   currentEntries().forEach(l=>{
     const carName = (cars.find(c=>c.id===l.car)||{name:l.car||''}).name;
     rows.push([carName, l.date, l.who, l.billable||'0', l.desc||'', l.consumables ? l.consumables : '']);
@@ -2983,7 +2993,10 @@ const renderers = {
             const editing = asmEditingEntryIdx === idx;
             return `
             <div class="assembly-row">
-              <div class="entry-top"><span class="entry-who">${carNameForEntry(l)}</span><span class="edit-link" onclick="event.stopPropagation();asmToggleEditEntry(${idx})">${editing?'Cancel':'Edit'}</span></div>
+              <div class="assembly-row-head">
+                <span><span class="assembly-row-car">${carNameForEntry(l)}</span><span class="assembly-row-date">${l.date}</span></span>
+                <span class="edit-link" onclick="event.stopPropagation();asmToggleEditEntry(${idx})">${editing?'Cancel':'Edit'}</span>
+              </div>
               ${editing ? `
               <div style="margin:8px 0 4px">
                 <label class="hours-k" style="display:block;margin-bottom:4px">Date</label>
@@ -2999,13 +3012,15 @@ const renderers = {
                 </div>
               </div>
               ` : `
-              <div class="entry-date-plain">${l.date}</div>
-              <div class="entry-desc">${l.desc}</div>
-              `}
-              <div class="hours-row">
-                <div class="hours-box"><span class="hours-k">Logged</span><span class="hours-v">${fmtHrsMin(l.hours)}</span></div>
-                <div class="hours-box billable"><span class="hours-k">Billable</span><input class="hours-input" type="number" step="0.25" value="${fmtHrs(l.billable)}" onchange="asmSetBillable(${idx},this.value)" onclick="event.stopPropagation()"> <span class="hours-unit">hr</span></div>
+              <div class="assembly-row-desc">${l.desc}</div>
+              <div class="assembly-row-hours">
+                <span>Logged <b>${fmtHrsMin(l.hours)}</b></span>
+                <span>·</span>
+                <span>Billable</span>
+                <input class="hours-input-inline" type="number" step="0.25" value="${fmtHrs(l.billable)}" onchange="asmSetBillable(${idx},this.value)" onclick="event.stopPropagation()">
+                <span>hr</span>
               </div>
+              `}
               ${entryExtras(l)}
               ${flagHTML(l)}
             </div>`;}).join('')}
