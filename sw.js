@@ -1,7 +1,7 @@
 // Shop Boss offline support.
 // Bump CACHE_NAME any time index.html/manifest.json change — that forces the tablet
 // to fetch and store the new version the next time it has any internet connection at all.
-const CACHE_NAME = 'shop-boss-v14';
+const CACHE_NAME = 'shop-boss-v15';
 const FILES_TO_CACHE = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
