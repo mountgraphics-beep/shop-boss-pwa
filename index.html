@@ -283,7 +283,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.19';
+const APP_VERSION = 'v0.20';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // Demo/sample data lives here, kept but never loaded into the live app by default — Shop Boss now
@@ -767,21 +767,22 @@ function resetListOrder(key, arr, nameFn){
   persist(); render();
 }
 // ---- Cars list: tap the small photo to see it big; drag the ⋮⋮ handle to reorder ----
-function openCarThumbPopup(carId){
-  const c = cars.find(x=>x.id===carId); if(!c) return;
+function openThumbPopup(kind, id){
+  const c = thumbTarget(kind,id); if(!c) return;
   const pop = document.createElement('div');
   pop.className = 'thumb-pop';
   pop.onclick = ()=>pop.remove();
+  if(!c.thumbDataUrl && kind==='emp') return;
   pop.innerHTML = c.thumbDataUrl ? '<img src="'+c.thumbDataUrl+'" alt="">' : '<div style="width:140px;height:140px;border-radius:16px;background:'+c.color+'"></div>';
   document.body.appendChild(pop);
 }
 let carDrag = null;
-function carHandleDown(ev, idx){
+function carHandleDown(ev, idx, kind){
   if(ev.button!==undefined && ev.button!==0) return;
   ev.preventDefault(); ev.stopPropagation();
   const handle = ev.currentTarget, rowEl = handle.closest('.car-row');
   const rows = [...document.querySelectorAll('.car-row')];
-  carDrag = {idx, handle, rowEl, rows, startY:ev.clientY, active:false, target:idx, h:rowEl.offsetHeight,
+  carDrag = {kind:kind||'cars', idx, handle, rowEl, rows, startY:ev.clientY, active:false, target:idx, h:rowEl.offsetHeight,
              mids: rows.map(r=>{ const b=r.getBoundingClientRect(); return b.top+window.scrollY+b.height/2; }), startScroll:window.scrollY};
   try{ handle.setPointerCapture(ev.pointerId); }catch(e){}
   carDrag.timer = setTimeout(()=>{ carDragActivate(); }, 180);
@@ -818,9 +819,10 @@ function carHandleUp(ev){
   try{ d.handle.releasePointerCapture(ev.pointerId); }catch(e){}
   d.rows.forEach(r=>{ r.style.transform=''; r.classList.remove('car-dragging','car-shift'); });
   if(d.active && d.target!==d.idx){
-    const it = cars.splice(d.idx,1)[0];
-    cars.splice(d.target,0,it);
-    listOrderCustomized.cars = true;
+    const arr = d.kind==='employees' ? employees : cars;
+    const it = arr.splice(d.idx,1)[0];
+    arr.splice(d.target,0,it);
+    listOrderCustomized[d.kind==='employees'?'employees':'cars'] = true;
     persist(); render();
   }
 }
@@ -1612,6 +1614,50 @@ function addOutgoingPhotoReq(note, employeeId, carId){
   persist(); render();
 }
 function removeOutgoingPhotoReq(id){ outgoingPhotoReqs = outgoingPhotoReqs.filter(p=>p.id!==id); persist(); render(); }
+let employeeAliases = {};  // {'steven': employeeId} - a name WorkClock sent that Daren matched to someone on his list
+function sbNameDistance(a,b){
+  a=String(a||'').toLowerCase().trim(); b=String(b||'').toLowerCase().trim();
+  const m=a.length, n=b.length; if(!m) return n; if(!n) return m;
+  let prev=[...Array(n+1).keys()];
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++){ cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+(a[i-1]===b[j-1]?0:1)); } prev=cur; }
+  return prev[n];
+}
+// When a submission arrives under a name that isn't on the list, ask Daren which employee it is (closest
+// spellings first), or whether to add a new one. A match is remembered so later weeks link by themselves.
+function resolveSubmissionEmployee(payload, proceed){
+  const typed = String(payload.employee||'').trim();
+  const byId = payload.employeeId && employees.find(e=>e.id===payload.employeeId);
+  const byName = typed && employees.find(e=>e.name.toLowerCase()===typed.toLowerCase());
+  const aliasId = typed && employeeAliases[typed.toLowerCase()];
+  const byAlias = aliasId && employees.find(e=>e.id===aliasId);
+  if(byId || byName || !typed){ proceed(); return; }
+  if(byAlias){ payload.employee = byAlias.name; proceed(); return; }
+  const ranked = employees.slice().sort((a,b)=>sbNameDistance(typed,a.name)-sbNameDistance(typed,b.name));
+  const close = ranked.filter(e=>sbNameDistance(typed,e.name) <= Math.max(2, Math.floor(typed.length/3)));
+  const pop = document.createElement('div');
+  pop.className = 'thumb-pop';
+  pop.style.alignItems = 'flex-start'; pop.style.overflowY = 'auto';
+  const esc = t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  pop.innerHTML = '<div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:420px;width:100%;margin:auto">'
+    + '<h3 style="margin:0 0 6px">Who is "'+esc(typed)+'"?</h3>'
+    + '<p class="list-sub" style="margin:0 0 12px">That name isn\'t on your employee list. If it\'s someone you already have, pick them and it will match automatically from now on.</p>'
+    + (employees.length ? ranked.map(e=>'<button class="btn-ghost" data-id="'+e.id+'" style="width:100%;margin:0 0 8px;'+(close.includes(e)?'border-color:var(--accent)':'')+'">'+esc(e.name)+(close.includes(e)?' — looks close':'')+'</button>').join('') : '')
+    + '<button class="btn-primary" data-new="1" style="width:100%;margin:8px 0">Add "'+esc(typed)+'" as a new employee</button>'
+    + '<button class="btn-ghost" data-skip="1" style="width:100%;margin:0">Cancel — don\'t import</button></div>';
+  pop.onclick = ev=>{
+    const t = ev.target.closest('button'); if(!t) return;
+    if(t.dataset.skip){ pop.remove(); return; }
+    if(t.dataset.new){
+      const emp = {id:'emp'+Date.now()+Math.random().toString(36).slice(2,6), name:typed, phone:'', cars:[]};
+      employees.push(emp); pop.remove(); persist(); proceed(); return;
+    }
+    if(t.dataset.id){
+      const emp = employees.find(e=>e.id===t.dataset.id); if(!emp) return;
+      employeeAliases[typed.toLowerCase()] = emp.id; payload.employee = emp.name; pop.remove(); persist(); proceed();
+    }
+  };
+  document.body.appendChild(pop);
+}
 let outgoingPhotos = [];  // {id, dataUrl, caption, employeeId|null, carId|null} - a photo going out in the next update
 let pendingOutPic = null;  // {key, caption, carId} while the camera / phone picker is open
 function sbShrinkDataUrl(dataUrl, maxDim, cb){
@@ -1673,31 +1719,64 @@ function addOutgoingNote(text, employeeId){
 function removeOutgoingNote(id){ outgoingNotes = outgoingNotes.filter(n=>n.id!==id); persist(); render(); }
 
 // ---- car thumbnail — a small reference photo shown next to the car's name in WorkClock's car list ----
-let pendingThumbCarId = null;
-function triggerCarThumbPicker(carId){ pendingThumbCarId = carId; const el = document.getElementById('carThumbFile'); if(el) el.click(); }
-function handleCarThumbFile(evt){
+// ---- small reference photo for a car or an employee: choose camera or this phone's photos ----
+let pendingThumb = null; // {kind:'car'|'emp', id}
+function thumbTarget(kind,id){ return kind==='car' ? cars.find(x=>x.id===id) : employees.find(x=>x.id===id); }
+function triggerCarThumbPicker(carId){ openPhotoChoice('car', carId); }
+function openPhotoChoice(kind, id){
+  const t = thumbTarget(kind,id); if(!t) return;
+  pendingThumb = {kind, id};
+  const pop = document.createElement('div');
+  pop.className = 'thumb-pop';
+  pop.innerHTML = '<div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:340px;width:100%">'
+    + '<h3 style="margin:0 0 12px">'+(t.thumbDataUrl?'Change photo':'Add a photo')+'</h3>'
+    + '<button class="btn-primary" data-act="cam" style="width:100%;margin:0 0 8px">📷 Take a photo</button>'
+    + '<button class="btn-ghost" data-act="gal" style="width:100%;margin:0 0 8px">🖼 Choose from this phone</button>'
+    + (t.thumbDataUrl?'<button class="btn-ghost" data-act="rm" style="width:100%;margin:0 0 8px;border-color:#7a2020;color:#e05a5a">Remove photo</button>':'')
+    + '<button class="btn-ghost" data-act="x" style="width:100%;margin:0">Cancel</button></div>';
+  pop.onclick = ev=>{
+    const b = ev.target.closest('button');
+    if(ev.target===pop || (b && b.dataset.act==='x')){ pop.remove(); return; }
+    if(!b) return;
+    const act = b.dataset.act; pop.remove();
+    if(act==='cam' || act==='gal'){
+      let inp = document.getElementById(act==='cam' ? 'thumbCam' : 'thumbGal');
+      if(!inp){
+        inp = document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+        inp.id = act==='cam' ? 'thumbCam' : 'thumbGal'; if(act==='cam') inp.setAttribute('capture','environment');
+        inp.onchange = handleThumbFile; document.body.appendChild(inp);
+      }
+      inp.click();
+    }
+    if(act==='rm') removeThumb(kind, id);
+  };
+  document.body.appendChild(pop);
+}
+function removeThumb(kind,id){
+  const t = thumbTarget(kind,id); if(!t || !t.thumbDataUrl) return;
+  if(!confirm('Remove this photo? You can always add a new one later.')) return;
+  t.thumbDataUrl = null; persist(); render();
+}
+function handleThumbFile(evt){
   const file = evt.target.files && evt.target.files[0];
-  const carId = pendingThumbCarId;
-  if(!file || !carId) return;
+  const tgt = pendingThumb;
+  evt.target.value = '';
+  if(!file || !tgt) return;
   const reader = new FileReader();
   reader.onload = ()=>{
     const img = new Image();
     img.onload = ()=>{
-      // keep it small — this only needs to be a recognizable thumbnail, not a full photo
-      const maxDim = 200;
+      const maxDim = 320; // small, but sharp enough to look right when tapped open
       const scale = Math.min(1, maxDim/Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width*scale);
-      canvas.height = Math.round(img.height*scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const c = cars.find(x=>x.id===carId);
-      if(c){ c.thumbDataUrl = canvas.toDataURL('image/jpeg', 0.8); persist(); render(); }
+      canvas.width = Math.round(img.width*scale); canvas.height = Math.round(img.height*scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const t = thumbTarget(tgt.kind, tgt.id);
+      if(t){ t.thumbDataUrl = canvas.toDataURL('image/jpeg', 0.8); persist(); render(); }
     };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
-  evt.target.value = '';
 }
 // ---- Receipts — photos of paper parts invoices, snapped in-app one page at a time ----
 function triggerReceiptPhoto(){ const el = document.getElementById('receiptFile'); if(el) el.click(); }
@@ -1781,13 +1860,6 @@ function requestDeleteReceipt(id){
   if(i>=0) receipts.splice(i,1);
   persist();
   render();
-}
-function requestDeleteCarThumb(carId){
-  const c = cars.find(x=>x.id===carId);
-  if(!c || !c.thumbDataUrl) return;
-  if(!confirm('Remove this car\'s photo? You can always take a new one later.')) return;
-  c.thumbDataUrl = null;
-  persist(); render();
 }
 function addCarNote(carId, text){
   text = (text||'').trim();
@@ -1894,6 +1966,10 @@ function sbStamp(d){
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());
 }
 function applyWorkClockSubmission(payload){
+  if(!payload || typeof payload!=='object' || !Array.isArray(payload.entries)){ alert('That file doesn\'t look like a WorkClock submission.'); return; }
+  resolveSubmissionEmployee(payload, ()=>applyWorkClockSubmissionCore(payload));
+}
+function applyWorkClockSubmissionCore(payload){
   if(!payload || typeof payload!=='object' || !Array.isArray(payload.entries)){ alert('That file doesn\'t look like a WorkClock submission.'); return; }
   // Darren should be able to import the same file as many times as he wants — on purpose, since
   // he may not remember whether he already got someone's hours. Every submission carries the exact
@@ -2151,7 +2227,7 @@ function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
 const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
-  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
+  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -2170,6 +2246,7 @@ function loadPersisted(){
     if(Array.isArray(d.outgoingHistoryRestore)) outgoingHistoryRestore = d.outgoingHistoryRestore;
     if(Array.isArray(d.outgoingNotes)) outgoingNotes = d.outgoingNotes;
     if(Array.isArray(d.outgoingPhotos)) outgoingPhotos = d.outgoingPhotos;
+    if(d.employeeAliases && typeof d.employeeAliases==='object') employeeAliases = d.employeeAliases;
     if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
     if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
     if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
@@ -3285,7 +3362,6 @@ const renderers = {
           ${employees.map(e=>personPanel(e.id, e.name, outgoingForms.filter(f=>f.employeeId===e.id), outgoingPhotoReqs.filter(p=>p.employeeId===e.id), outgoingNotes.filter(n=>n.employeeId===e.id), outgoingHistoryRestore.includes(e.id), false)).join('')}
         </div>`:''}
       </div>
-      <input type="file" id="carThumbFile" accept="image/*" capture="environment" style="display:none" onchange="handleCarThumbFile(event)">
       <input type="file" id="outgoingFormFile" style="display:none" onchange="handleOutgoingFormFile(event)">
       <input type="file" id="outPicCamera" accept="image/*" capture="environment" style="display:none" onchange="handleOutPicFile(event)">
       <input type="file" id="outPicFile" accept="image/*" style="display:none" onchange="handleOutPicFile(event)">
@@ -3400,7 +3476,7 @@ const renderers = {
       return `
       <div class="row car-row" onclick='nav({type:"car",id:"${c.id}"})'>
         ${!F?`<span class="drag-handle" title="Press and hold, then drag to move" onpointerdown="carHandleDown(event,${realIdx})" onpointermove="carHandleMove(event)" onpointerup="carHandleUp(event)" onpointercancel="carHandleUp(event)" onclick="event.stopPropagation()">⋮⋮</span>`:''}
-        <div class="thumb-car" style="background:${c.color}22;border-color:${c.color}66" onclick="event.stopPropagation();openCarThumbPopup('${c.id}')">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
+        <div class="thumb-car" style="background:${c.color}22;border-color:${c.color}66" onclick="event.stopPropagation();openThumbPopup('car','${c.id}')">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
         <div style="flex:1;min-width:84px"><div class="row-title">${c.name}</div><div class="row-meta">${c.desc}</div></div>
         <label title="Include in employees update" style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);flex:none" onclick="event.stopPropagation()">
           <input type="checkbox" ${c.includeInEmployeeUpdate!==false?'checked':''} onchange="toggleCarIncludeInUpdate('${c.id}')">In update
@@ -3467,7 +3543,7 @@ const renderers = {
     const all = rows.flatMap(r=>r.es);
     return `
     <h2 class="list-title">Employees</h2>
-    <p class="list-sub">${F?rows.length+' with work in this filter':employees.length+' on staff — alphabetical by default — use the arrows to pin your most-used ones to the top'}</p>
+    <p class="list-sub">${F?rows.length+' with work in this filter':employees.length+' on staff — alphabetical by default — press and hold the ⋮⋮ handle, then drag to pin your most-used ones to the top'}</p>
     ${filterBar(['dates','cars'])}
     ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} logged</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
     ${!F?reorderResetButtonHTML('resetEmployeeOrder','employees'):''}
@@ -3476,10 +3552,10 @@ const renderers = {
       const nCars = F ? new Set(es.map(l=>l.car)).size : carsWorkedOnByEmployee(e).length;
       const realIdx = employees.indexOf(e);
       return `
-      <div class="row" onclick='nav({type:"employee",id:"${e.id}"})'>
-        ${!F?reorderControlsHTML('moveEmployeeItem', realIdx, employees.length):''}
-        <div class="thumb">${e.name[0]}</div>
-        <div><div class="row-title">${e.name}</div><div class="row-meta">${nCars} car${nCars===1?'':'s'} worked on${e.phone?' · '+e.phone:''}</div></div>
+      <div class="row car-row" onclick='nav({type:"employee",id:"${e.id}"})'>
+        ${!F?`<span class="drag-handle" title="Press and hold, then drag to move" onpointerdown="carHandleDown(event,${realIdx},'employees')" onpointermove="carHandleMove(event)" onpointerup="carHandleUp(event)" onpointercancel="carHandleUp(event)" onclick="event.stopPropagation()">⋮⋮</span>`:''}
+        <div class="thumb-car" onclick="event.stopPropagation();openThumbPopup('emp','${e.id}')">${e.thumbDataUrl?`<img src="${e.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span style="font-weight:700;color:var(--muted)">${e.name[0]}</span>`}</div>
+        <div style="flex:1;min-width:84px"><div class="row-title">${e.name}</div><div class="row-meta">${nCars} car${nCars===1?'':'s'}${e.phone?' · '+e.phone:''}</div></div>
         <span class="badge">${fmtHrsMin(sumBy(es,'hours'))}</span>
         ${F?`<span class="badge">${fmtHrsMin(sumBy(es,'billable'))} billable</span>`:''}
         <div class="chev">${icon("chev")}</div>
@@ -3523,12 +3599,11 @@ const renderers = {
       <div class="detail-head">
         <p class="kicker">Car</p>
         <div style="display:flex;align-items:center;gap:14px">
-          <div class="carswatch" style="background:${c.color}22;border-color:${c.color}66">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
+          <div class="carswatch" style="background:${c.color}22;border-color:${c.color}66;cursor:pointer" onclick="openPhotoChoice('car','${c.id}')" title="Tap to add or change the photo">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
           <h1 class="detail-title" style="margin:0">${c.name}</h1>
           <button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px" onclick="triggerCarThumbPicker('${c.id}')">📷 ${c.thumbDataUrl?'Retake photo':'Add photo'}</button>
-          ${c.thumbDataUrl?`<button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px;border-color:#7a2020;color:#e05a5a" onclick="requestDeleteCarThumb('${c.id}')">Remove</button>`:''}
+          ${c.thumbDataUrl?`<button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px;border-color:#7a2020;color:#e05a5a" onclick="removeThumb('car','${c.id}')">Remove</button>`:''}
         </div>
-        <input type="file" id="carThumbFile" accept="image/*" capture="environment" style="display:none" onchange="handleCarThumbFile(event)">
       </div>
       ${filterBar(['dates','emps'])}
       <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged · ${totalPhotos} photo${totalPhotos===1?'':'s'} · ${allDocs.length} document${allDocs.length===1?'':'s'} (listed by name — attached separately)</p></div>
@@ -3656,9 +3731,8 @@ const renderers = {
     <div style="display:flex;align-items:center;gap:14px;margin:14px 0">
       <div class="carswatch" style="background:${c.color}22;border-color:${c.color}66;width:56px;height:56px">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
       <button class="btn-ghost" style="width:auto;margin:0" onclick="triggerCarThumbPicker('${c.id}')">📷 ${c.thumbDataUrl?'Retake photo':'Add photo'}</button>
-      ${c.thumbDataUrl?`<button class="btn-ghost" style="width:auto;margin:0;border-color:#7a2020;color:#e05a5a" onclick="requestDeleteCarThumb('${c.id}')">Remove</button>`:''}
+      ${c.thumbDataUrl?`<button class="btn-ghost" style="width:auto;margin:0;border-color:#7a2020;color:#e05a5a" onclick="removeThumb('car','${c.id}')">Remove</button>`:''}
     </div>
-    <input type="file" id="carThumbFile" accept="image/*" capture="environment" style="display:none" onchange="handleCarThumbFile(event)">
     <p class="list-sub" style="margin:14px 0 6px">Description</p>
     <input class="search-input" id="editCarDesc" value="${c.desc.replace(/"/g,'&quot;')}">
     <p class="list-sub" style="margin:14px 0 6px">Owner</p>
@@ -3828,7 +3902,12 @@ const renderers = {
     return `
       <div class="detail-head">
         <p class="kicker">Employee</p>
-        <h1 class="detail-title">${e.name}</h1>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div class="carswatch" style="cursor:pointer" onclick="openPhotoChoice('emp','${e.id}')" title="Tap to add or change the photo">${e.thumbDataUrl?`<img src="${e.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span style="font-size:26px;font-weight:700;color:var(--muted)">${e.name[0]}</span>`}</div>
+          <h1 class="detail-title" style="margin:0">${e.name}</h1>
+          <button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px" onclick="openPhotoChoice('emp','${e.id}')">📷 ${e.thumbDataUrl?'Change photo':'Add photo'}</button>
+          ${e.thumbDataUrl?`<button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px;border-color:#7a2020;color:#e05a5a" onclick="removeThumb('emp','${e.id}')">Remove</button>`:''}
+        </div>
         <p class="detail-meta">${e.phone?`<a href="tel:${e.phone}">${e.phone}</a>`:'No phone on file'}</p>
       </div>
       ${filterBar(['dates','cars'])}
