@@ -53,6 +53,17 @@
   /* Cars list only: sized to match the up/down reorder-arrow pair's real combined height (two
      44px touch targets plus the tight gap between them) — see .reorder-arrows below — so the row
      reads as one deliberate unit instead of a small swatch dwarfed by a tall stack of arrows. */
+  .car-row{gap:8px;padding:6px 2px;background:var(--bg)}
+  .car-row .thumb-car{width:40px;height:40px;border-radius:8px}
+  .car-row .thumb-car .swatch{width:16px;height:16px;border-radius:4px}
+  .car-row .row-title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .car-row .row-meta{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .car-row .badge{font-size:11px;padding:3px 7px;margin-left:2px}
+  .drag-handle{flex:none;width:22px;text-align:center;color:var(--muted);font-size:18px;letter-spacing:-3px;line-height:1;padding:10px 0;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+  .car-row.car-dragging{position:relative;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.5);border-radius:10px;opacity:.95}
+  .car-row.car-shift{transition:transform .12s}
+  .thumb-pop{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+  .thumb-pop img{max-width:92vw;max-height:80vh;border-radius:12px}
   .thumb-car{flex:none;width:92px;height:92px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
   .thumb-car .swatch{width:30px;height:30px;border-radius:8px}
   .reorder-arrows{display:flex;flex-direction:column;gap:2px;margin-right:6px}
@@ -248,6 +259,11 @@
     .flag{background:#fff3cd !important;color:#7a5b00 !important;border:1px solid #e0c14a !important}
     .pill, .badge{background:#f0f0f0 !important;color:#333 !important;border-color:#ccc !important}
     .chip{background:#f0f0f0 !important;color:#000 !important;border-color:#ccc !important;cursor:default !important}
+    #car-hours-panel, #car-media-panel{display:none !important}
+    .print-info{font-size:12px;line-height:1.5;color:#000 !important;border:1px solid #ccc;padding:5px 8px;margin:0 0 8px !important}
+    .block{padding:6px 8px !important;margin:6px 0 !important}
+    .entry{padding:4px 8px !important;margin:4px 0 !important}
+    .detail-head{margin-bottom:6px !important}
   }
   @media print{ .no-print{display:none !important} .print-only{display:block !important;margin-bottom:12px;color:#000} .flag-btn, .exit-btn{display:none !important} .reveal-panel{display:none !important} .print-head{font-size:11px;color:#555 !important;margin-bottom:10px} }
 </style>
@@ -267,7 +283,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.18';
+const APP_VERSION = 'v0.19';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // Demo/sample data lives here, kept but never loaded into the live app by default — Shop Boss now
@@ -453,7 +469,7 @@ function addConsumable(name){
 function removeConsumable(name){
   const i = consumables.findIndex(c=>c.name===name);
   if(i<0) return;
-  if(!confirm('Remove "'+name+'" from the consumables list?')) return;
+  if(!confirm('Remove "'+name+'" from the consumables and parts list?')) return;
   consumables.splice(i,1);
   persist();
   render();
@@ -521,7 +537,7 @@ const FB_MAX_PER_ROW = 3;
 // Where a dropdown / radio field's choices come from: typed in, pasted as a list, or one of Shop Boss's own
 // lists (resolved fresh every time an update is sent, so the form always has today's cars, consumables, etc.).
 function fbSourceChoices(){
-  return [['', 'Type the choices in'], ['paste', 'Paste a list'], ['cars', 'From: Cars going out'], ['employees', 'From: Employees'], ['tasks', 'From: Tasks'], ['notes', 'From: Notes Helper'], ['consumables', 'From: Consumables']]
+  return [['', 'Type the choices in'], ['paste', 'Paste a list'], ['cars', 'From: Cars going out'], ['employees', 'From: Employees'], ['tasks', 'From: Tasks'], ['notes', 'From: Notes Helper'], ['consumables', 'From: Consumables and parts']]
     .concat(customLists.map(l=>['list:'+l.id, 'From: '+l.name]));
 }
 function fbSourceOptions(source){
@@ -750,6 +766,64 @@ function resetListOrder(key, arr, nameFn){
   listOrderCustomized[key]=false;
   persist(); render();
 }
+// ---- Cars list: tap the small photo to see it big; drag the ⋮⋮ handle to reorder ----
+function openCarThumbPopup(carId){
+  const c = cars.find(x=>x.id===carId); if(!c) return;
+  const pop = document.createElement('div');
+  pop.className = 'thumb-pop';
+  pop.onclick = ()=>pop.remove();
+  pop.innerHTML = c.thumbDataUrl ? '<img src="'+c.thumbDataUrl+'" alt="">' : '<div style="width:140px;height:140px;border-radius:16px;background:'+c.color+'"></div>';
+  document.body.appendChild(pop);
+}
+let carDrag = null;
+function carHandleDown(ev, idx){
+  if(ev.button!==undefined && ev.button!==0) return;
+  ev.preventDefault(); ev.stopPropagation();
+  const handle = ev.currentTarget, rowEl = handle.closest('.car-row');
+  const rows = [...document.querySelectorAll('.car-row')];
+  carDrag = {idx, handle, rowEl, rows, startY:ev.clientY, active:false, target:idx, h:rowEl.offsetHeight,
+             mids: rows.map(r=>{ const b=r.getBoundingClientRect(); return b.top+window.scrollY+b.height/2; }), startScroll:window.scrollY};
+  try{ handle.setPointerCapture(ev.pointerId); }catch(e){}
+  carDrag.timer = setTimeout(()=>{ carDragActivate(); }, 180);
+}
+function carDragActivate(){
+  if(!carDrag || carDrag.active) return;
+  carDrag.active = true;
+  carDrag.rowEl.classList.add('car-dragging');
+  carDrag.rows.forEach(r=>{ if(r!==carDrag.rowEl) r.classList.add('car-shift'); });
+  try{ if(navigator.vibrate) navigator.vibrate(15); }catch(e){}
+}
+function carHandleMove(ev){
+  if(!carDrag) return;
+  if(!carDrag.active){ if(Math.abs(ev.clientY-carDrag.startY)>8) carDragActivate(); else return; }
+  if(ev.clientY > window.innerHeight-70) window.scrollBy(0,14); else if(ev.clientY < 70) window.scrollBy(0,-14);
+  const dy = (ev.clientY-carDrag.startY) + (window.scrollY-carDrag.startScroll);
+  carDrag.rowEl.style.transform = 'translateY('+dy+'px)';
+  const pageY = ev.clientY + window.scrollY;
+  let target = 0;
+  carDrag.mids.forEach((m,i)=>{ if(i!==carDrag.idx && m<pageY) target++; });
+  carDrag.target = target;
+  carDrag.rows.forEach((r,i)=>{
+    if(i===carDrag.idx) return;
+    let shift = 0;
+    if(target>carDrag.idx && i>carDrag.idx && i<=target) shift = -carDrag.h;
+    if(target<carDrag.idx && i>=target && i<carDrag.idx) shift = carDrag.h;
+    r.style.transform = shift ? 'translateY('+shift+'px)' : '';
+  });
+}
+function carHandleUp(ev){
+  if(!carDrag) return;
+  clearTimeout(carDrag.timer);
+  const d = carDrag; carDrag = null;
+  try{ d.handle.releasePointerCapture(ev.pointerId); }catch(e){}
+  d.rows.forEach(r=>{ r.style.transform=''; r.classList.remove('car-dragging','car-shift'); });
+  if(d.active && d.target!==d.idx){
+    const it = cars.splice(d.idx,1)[0];
+    cars.splice(d.target,0,it);
+    listOrderCustomized.cars = true;
+    persist(); render();
+  }
+}
 function moveCarItem(i,dir){ moveListItem('cars', cars, i, dir); }
 function resetCarOrder(){ resetListOrder('cars', cars, c=>c.name); }
 function moveEmployeeItem(i,dir){ moveListItem('employees', employees, i, dir); }
@@ -806,7 +880,7 @@ function employeesWhoWorkedOnCar(c){
   const names = new Set(entries.filter(l=>l.car===c.id).map(l=>l.who));
   return employees.filter(e=>names.has(e.name));
 }
-// Custom, arbitrary lists Daren can add beyond the built-in Work Types / Consumables.
+// Custom, arbitrary lists Daren can add beyond the built-in Work Types / Consumables and parts.
 const customLists = [];
 // The actual filled-in document files (photo/scan of a completed form) that came in from
 // WorkClock — kept separately from a car's plain doc-name list so there's a real file to open.
@@ -1173,18 +1247,21 @@ async function outgoingSend(){
   // Which cars go out is no longer picked here — it's whatever's checked "In update" on the Cars
   // page itself, so there's one place that controls it instead of a separate per-update selection.
   const selCars = cars.filter(c=>c.includeInEmployeeUpdate!==false);
-  if(!selCars.length && !outgoingForms.length && !outgoingPhotoReqs.length && !outgoingHistoryRestore.length && !outgoingNotes.length){ alert('Nothing to send yet — check "In update" on at least one car (Cars page), or add a form, photo request, or note below.'); return; }
+  if(!selCars.length && !outgoingForms.length && !outgoingPhotoReqs.length && !outgoingHistoryRestore.length && !outgoingNotes.length && !outgoingPhotos.length){ alert('Nothing to send yet — check "In update" on at least one car (Cars page), or add a form, photo request, or note below.'); return; }
   const proceed = confirm(
     'Send this update to WorkClock?\n\n'+
-    selCars.length+' car'+(selCars.length===1?'':'s')+', '+outgoingForms.length+' form'+(outgoingForms.length===1?'':'s')+', '+outgoingPhotoReqs.length+' photo request'+(outgoingPhotoReqs.length===1?'':'s')+(outgoingNotes.length?', '+outgoingNotes.length+' note'+(outgoingNotes.length===1?'':'s'):'')+
+    selCars.length+' car'+(selCars.length===1?'':'s')+', '+outgoingForms.length+' form'+(outgoingForms.length===1?'':'s')+', '+outgoingPhotoReqs.length+' photo request'+(outgoingPhotoReqs.length===1?'':'s')+(outgoingNotes.length?', '+outgoingNotes.length+' note'+(outgoingNotes.length===1?'':'s'):'')+(outgoingPhotos.length?', '+outgoingPhotos.length+' photo'+(outgoingPhotos.length===1?'':'s')+' for employees':'')+
     (outgoingHistoryRestore.length?', full history for '+outgoingHistoryRestore.length+' employee'+(outgoingHistoryRestore.length===1?'':'s'):'')+'.\n\n'+
     'Heads up: sending this will clear out any photos, completed documents, and blank forms that employees have already submitted or been given in WorkClock — make sure you\'ve got what you need from them before sending.'
   );
   if(!proceed) return;
   const weekStart = (function(){try{return localStorage.getItem('sb-week-start')||'Mon';}catch(e){return 'Mon';}})();
+  const wb = getWeekBoundary();
   const payload = {
     app:'ShopBoss', kind:'workclock-update', version:1, sentAt:new Date().toISOString(),
     weekStart,
+    // the whole work week, not just its first day - WorkClock only nudges about days inside it
+    weekEnd: wb.endDay, weekStartTime: wb.startTime, weekEndTime: wb.endTime,
     cars: selCars.map(c=>({id:c.id, name:c.name, thumbDataUrl:c.thumbDataUrl||null})),
     employees: employees.map(e=>({id:e.id, name:e.name})),
     // Whether each of these whole lists goes out at all, and whether it's required, is now set as
@@ -1194,7 +1271,7 @@ async function outgoingSend(){
     notesHelper: notesHelper.map(t=>t.name),
     // Darryl's own custom lists — only the ones currently marked "Included." WorkClock auto-renders
     // one dropdown per list here, so a brand-new list just works the next time this goes out.
-    pickLists: [].concat(consumablesIncluded ? [{id:'consumables', name:'Consumables', items:consumables.map(c=>c.name)}] : [], customLists.filter(l=>l.includeInUpdate).map(l=>({id:l.id, name:l.name, items:l.items}))),
+    pickLists: [].concat(consumablesIncluded ? [{id:'consumables', name:'Consumables and parts', items:consumables.map(c=>c.name)}] : [], customLists.filter(l=>l.includeInUpdate).map(l=>({id:l.id, name:l.name, items:l.items}))),
     documents: outgoingForms.map(f=>({
       name:f.name,
       employeeId:f.employeeId||null,
@@ -1219,6 +1296,14 @@ async function outgoingSend(){
       text:n.text,
       employeeId:n.employeeId,
       employeeName: (employees.find(e=>e.id===n.employeeId)||{}).name||null
+    })),
+    // Photos Daren picked for one employee or for everyone (optionally about one car), with a caption.
+    shopPhotos: outgoingPhotos.map(ph=>({
+      dataUrl: ph.dataUrl, caption: ph.caption||'',
+      employeeId: ph.employeeId||null,
+      employeeName: ph.employeeId ? ((employees.find(e=>e.id===ph.employeeId)||{}).name||null) : null,
+      carId: ph.carId||null,
+      carName: ph.carId ? ((cars.find(c=>c.id===ph.carId)||{}).name||null) : null
     })),
     // Full history for anyone checked off — restoring a lost/wiped phone. WorkClock applies these
     // as already-submitted, so nothing here gets sent back to Shop Boss again on the next submit.
@@ -1246,6 +1331,7 @@ async function outgoingSend(){
   outgoingPhotoReqs = [];
   outgoingHistoryRestore = [];
   outgoingNotes = [];
+  outgoingPhotos = [];
   persist();
   alert('Update sent — '+selCars.length+' car'+(selCars.length===1?'':'s')+' included. Get that file to WorkClock (email it, text it, or drop it in once the shop has its wireless set up).');
   render();
@@ -1526,6 +1612,56 @@ function addOutgoingPhotoReq(note, employeeId, carId){
   persist(); render();
 }
 function removeOutgoingPhotoReq(id){ outgoingPhotoReqs = outgoingPhotoReqs.filter(p=>p.id!==id); persist(); render(); }
+let outgoingPhotos = [];  // {id, dataUrl, caption, employeeId|null, carId|null} - a photo going out in the next update
+let pendingOutPic = null;  // {key, caption, carId} while the camera / phone picker is open
+function sbShrinkDataUrl(dataUrl, maxDim, cb){
+  const img = new Image();
+  img.onload = ()=>{
+    const scale = Math.min(1, maxDim/Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width*scale)); canvas.height = Math.max(1, Math.round(img.height*scale));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    cb(canvas.toDataURL('image/jpeg', 0.8));
+  };
+  img.onerror = ()=>cb(null);
+  img.src = dataUrl;
+}
+function outPicFields(key){
+  const cap = document.getElementById('newPicCap-'+key), car = document.getElementById('newPicCar-'+key);
+  return {key, caption: cap?cap.value.trim():'', carId: car&&car.value ? car.value : null};
+}
+function addOutgoingPhoto(dataUrl, caption, employeeId, carId){
+  if(!dataUrl){ alert('That photo could not be read.'); return; }
+  outgoingPhotos.push({id:'op'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl, caption:caption||'', employeeId:employeeId||null, carId:carId||null});
+  persist(); render();
+}
+function removeOutgoingPhoto(id){ outgoingPhotos = outgoingPhotos.filter(p=>p.id!==id); persist(); render(); }
+function triggerOutPic(key, kind){
+  pendingOutPic = outPicFields(key);
+  const el = document.getElementById(kind==='camera' ? 'outPicCamera' : 'outPicFile');
+  if(el) el.click();
+}
+function handleOutPicFile(evt){
+  const file = evt.target.files && evt.target.files[0];
+  const t = pendingOutPic;
+  evt.target.value = '';
+  if(!file || !t) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ sbShrinkDataUrl(reader.result, 1000, d=>addOutgoingPhoto(d, t.caption, t.key==='general'?null:t.key, t.carId)); };
+  reader.readAsDataURL(file);
+}
+function pickShopPhotoForOutgoing(carId, photoId, key){
+  const c = cars.find(x=>x.id===carId); const ph = c && safeArr(c.photos).find(x=>x.id===photoId);
+  if(!ph || !ph.dataUrl) return;
+  const f = outPicFields(key);
+  sbShrinkDataUrl(ph.dataUrl, 1000, d=>addOutgoingPhoto(d||ph.dataUrl, f.caption, key==='general'?null:key, f.carId || carId));
+}
+function outPicGalleryHTML(key){
+  const all = [];
+  cars.forEach(c=>safeArr(c.photos).forEach(p=>{ if(p.dataUrl) all.push({c,p}); }));
+  if(!all.length) return '<p class="list-sub" style="margin:8px 0 0">No photos in Shop Boss yet.</p>';
+  return '<div class="photo-grid" style="margin-top:8px">'+all.slice(-60).reverse().map(({c,p})=>`<div class="photo-thumb" onclick="pickShopPhotoForOutgoing('${c.id}','${p.id}','${key}')"><img src="${p.dataUrl}" style="width:100%;height:100%;object-fit:cover"><div class="photo-cap">${c.name}</div></div>`).join('')+'</div>';
+}
 let outgoingNotes = [];  // {id, text, employeeId} — a plain note for one employee only, not tied to any car or form
 function addOutgoingNote(text, employeeId){
   text = (text||'').trim();
@@ -2015,7 +2151,7 @@ function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
 const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
-  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
+  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -2033,6 +2169,7 @@ function loadPersisted(){
     if(Array.isArray(d.outgoingPhotoReqs)) outgoingPhotoReqs = d.outgoingPhotoReqs;
     if(Array.isArray(d.outgoingHistoryRestore)) outgoingHistoryRestore = d.outgoingHistoryRestore;
     if(Array.isArray(d.outgoingNotes)) outgoingNotes = d.outgoingNotes;
+    if(Array.isArray(d.outgoingPhotos)) outgoingPhotos = d.outgoingPhotos;
     if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
     if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
     if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
@@ -2554,14 +2691,14 @@ function descHTML(l){ return l.lists ? 'Tasks: '+l.desc : l.desc; }
 function entryExtras(l){
   let out = '';
   const hasConsAnswer = l.pickListAnswers && l.pickListAnswers.consumables;
-  if(l.consumables && !hasConsAnswer) out += `<div class="entry-extra">Consumables: ${l.consumables}</div>`;
+  if(l.consumables && !hasConsAnswer) out += `<div class="entry-extra">Consumables and parts: ${l.consumables}</div>`;
   if(l.lists && l.notes && l.flagDone) out += `<div class="entry-extra">Notes: ${l.notes}</div>`;
   // Answers from Darryl's own custom pick lists (Assembly Room → Outgoing → "Lists going out"),
   // resolved from the list id WorkClock sent back to that list's actual name here.
   if(l.pickListAnswers) Object.keys(l.pickListAnswers).forEach(listId=>{
     const val = l.pickListAnswers[listId];
     if(!val) return;
-    const list = listId==='consumables' ? {name:'Consumables'} : customLists.find(x=>x.id===listId);
+    const list = listId==='consumables' ? {name:'Consumables and parts'} : customLists.find(x=>x.id===listId);
     out += `<div class="entry-extra">${list?list.name:'List'}: ${val}</div>`;
   });
   if(l.photos) out += `<div class="entry-extra">📷 ${l.photos} photo${l.photos===1?'':'s'}</div>`;
@@ -2569,7 +2706,7 @@ function entryExtras(l){
   return out;
 }
 function shareBtn(){
-  return `<button class="btn-ghost share-btn" onclick="window.print()">🖶 Share / Print</button>`;
+  return `<button class="btn-ghost share-btn" onclick="window.print()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M7 14h10v6H7z"/></svg>Print / Save as PDF</button>`;
 }
 
 function icon(name){
@@ -2655,7 +2792,7 @@ const renderers = {
       </button>
       <button class="door" onclick='nav({type:"setup"})'>
         <div class="icon">${icon("setup")}</div>
-        <div><div class="label">Settings &amp; Lists</div><div class="desc">Tasks, consumables, forms</div></div>
+        <div><div class="label">Settings &amp; Lists</div><div class="desc">Tasks, consumables and parts, forms</div></div>
       </button>
       <button class="door" onclick='nav({type:"history"})'>
         <div class="icon">${icon("history")}</div>
@@ -2707,7 +2844,7 @@ const renderers = {
     <h2 class="list-title">Settings &amp; Lists</h2>
     <p class="list-sub">What you maintain here becomes what employees pick from on their end</p>
     <div class="row" onclick='nav({type:"lists"})'>
-      <div><div class="row-title">Task lists</div><div class="row-meta">Tasks, Notes Helper, consumables</div></div>
+      <div><div class="row-title">Task lists</div><div class="row-meta">Tasks, Notes Helper, consumables and parts</div></div>
       <div class="chev">${icon("chev")}</div>
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Forms"})'>
@@ -2833,7 +2970,7 @@ const renderers = {
       <div class="chev">${icon("chev")}</div>
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Consumables"})'>
-      <div><div class="row-title">Consumables</div><div class="row-meta">Glue, filler, paint — things used up on a job</div></div>
+      <div><div class="row-title">Consumables and parts</div><div class="row-meta">Glue, filler, paint — things used up on a job</div></div>
       <div class="chev">${icon("chev")}</div>
     </div>
     ${customLists.length ? `<p class="list-sub" style="margin-top:18px">Your own lists</p>` : ''}
@@ -2885,9 +3022,9 @@ const renderers = {
       return `
         <div class="detail-head">
           <p class="kicker">Settings</p>
-          <h1 class="detail-title">Consumables</h1>
+          <h1 class="detail-title">Consumables and parts</h1>
         </div>
-        <p class="list-sub">The items employees can pick from on WorkClock for Consumables. Whether this whole list goes out is set in Assembly Room → Outgoing → Lists going out — alphabetical by default; use the arrows to pin your most-used ones to the top.</p>
+        <p class="list-sub">The items employees can pick from on WorkClock for Consumables and parts. Whether this whole list goes out is set in Assembly Room → Outgoing → Lists going out — alphabetical by default; use the arrows to pin your most-used ones to the top.</p>
         ${reorderResetButtonHTML('resetConsumableOrder', 'consumables')}
         ${consumables.map((c,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML('moveConsumableItem', i, consumables.length)}<div style="flex:1"><div class="row-title">${c.name}</div></div><button class="btn-ghost chip-btn" onclick="removeConsumable(${jsStr(c.name)})">✕</button></div>`).join('')}
         <input class="search-input" id="newConsumableName" style="margin-top:14px" placeholder="e.g. Windshield washer fluid">
@@ -3041,6 +3178,11 @@ const renderers = {
           <div><div class="row-title">📝 ${n.text}</div></div>
           <button class="btn-ghost chip-btn" onclick="removeOutgoingNote('${n.id}')">✕</button>
         </div>`;
+      const picRow = ph=>`<div class="row" style="cursor:default">
+          <img src="${ph.dataUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin-right:10px">
+          <div style="flex:1"><div class="row-title">🖼 ${ph.caption||'Photo'}</div>${ph.carId?`<div class="row-meta">${(cars.find(c=>c.id===ph.carId)||{}).name||''}</div>`:''}</div>
+          <button class="btn-ghost chip-btn" onclick="removeOutgoingPhoto('${ph.id}')">✕</button>
+        </div>`;
       const listsGoingOut = 2+(consumablesIncluded?1:0)+customLists.filter(l=>l.includeInUpdate).length;
       const pillHead = (key, title, count, tip)=>`
         <div class="assembly-group-head pill-head" onclick='outNav(${pill===key?'null':`"${key}"`}, null)'>
@@ -3051,7 +3193,8 @@ const renderers = {
       // One person's (or "everyone"'s) panel: their forms, photo requests and, for people, notes + history.
       const personPanel = (key, name, fs, ps, ns, histChecked, isGeneral)=>{
         const open = openEmpOut===key;
-        const count = fs.length+ps.length+ns.length+(histChecked?1:0);
+        const pics = outgoingPhotos.filter(ph=> isGeneral ? !ph.employeeId : ph.employeeId===key);
+        const count = fs.length+ps.length+ns.length+pics.length+(histChecked?1:0);
         const eid = isGeneral ? '' : key;
         return `
         <div class="assembly-group" style="margin-bottom:8px">
@@ -3062,7 +3205,7 @@ const renderers = {
           </div>
           ${open?`
           <div style="padding-top:8px">
-            ${fs.length||ps.length||ns.length ? `${fs.map(formRow).join('')}${ps.map(photoRow).join('')}${ns.map(noteRow).join('')}` : `<p class="list-sub" style="margin:0 0 10px">Nothing assigned yet.</p>`}
+            ${fs.length||ps.length||ns.length||pics.length ? `${fs.map(formRow).join('')}${ps.map(photoRow).join('')}${ns.map(noteRow).join('')}${pics.map(picRow).join('')}` : `<p class="list-sub" style="margin:0 0 10px">Nothing assigned yet.</p>`}
             ${isGeneral?'':`<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13.5px;cursor:pointer" onclick="event.stopPropagation()">
               <input type="checkbox" ${histChecked?'checked':''} onchange="outgoingToggleHistoryRestore('${key}')">
               Send full history back ${infoTip('For a lost or wiped phone — sends this employee all of their past entries so they can restore them.')}
@@ -3080,6 +3223,15 @@ const renderers = {
               <select class="week-select" id="newPhotoCar-${key}" style="margin-top:8px">${carPickerOptions}</select>
               <button class="btn-ghost" style="margin-top:8px" onclick="addOutgoingPhotoReq(document.getElementById('newPhotoNote-${key}').value, '${eid}', document.getElementById('newPhotoCar-${key}').value)">Add photo request</button>
             </div>
+            <div class="tap-reveal" onclick="toggleEl('outgoing-add-pic-${key}')" style="margin-top:10px;color:var(--accent);font-size:13.5px;font-weight:600">+ Add a photo</div>
+            <div id="outgoing-add-pic-${key}" style="display:none;margin-top:10px">
+              <input class="search-input" id="newPicCap-${key}" placeholder="Caption, e.g. Rear bumper before repair">
+              <select class="week-select" id="newPicCar-${key}" style="margin-top:8px">${carPickerOptions}</select>
+              <button class="btn-ghost" style="margin-top:8px" onclick="toggleEl('outgoing-gallery-${key}')">From Shop Boss photos</button>
+              <div id="outgoing-gallery-${key}" style="display:none">${outPicGalleryHTML(key)}</div>
+              <button class="btn-ghost" style="margin-top:8px" onclick="triggerOutPic('${key}','camera')">Take a photo</button>
+              <button class="btn-ghost" style="margin-top:8px" onclick="triggerOutPic('${key}','file')">From this phone</button>
+            </div>
             ${isGeneral?'':`<div class="tap-reveal" onclick="toggleEl('outgoing-add-note-${key}')" style="margin-top:10px;color:var(--accent);font-size:13.5px;font-weight:600">+ Add a note</div>
             <div id="outgoing-add-note-${key}" style="display:none;margin-top:10px">
               <textarea class="search-input" id="newNoteText-${key}" rows="4" style="resize:vertical;min-height:84px;padding-top:10px" placeholder="Write as much as you need — a note for this employee only"></textarea>
@@ -3088,7 +3240,7 @@ const renderers = {
           </div>`:''}
         </div>`;
       };
-      const peopleCount = generalForms.length+generalPhotoReqs.length+outgoingForms.filter(f=>f.employeeId).length+outgoingPhotoReqs.filter(p=>p.employeeId).length+outgoingNotes.length+outgoingHistoryRestore.length;
+      const peopleCount = generalForms.length+generalPhotoReqs.length+outgoingForms.filter(f=>f.employeeId).length+outgoingPhotoReqs.filter(p=>p.employeeId).length+outgoingNotes.length+outgoingPhotos.length+outgoingHistoryRestore.length;
       return `
       <div class="assembly-mode" style="${asmStyle('outgoing')}">
       <div class="assembly-banner"><span>🔒 ASSEMBLY ROOM — editing mode</span><button class="exit-btn" onclick="exitAssembly()">Exit ✕</button></div>
@@ -3109,7 +3261,7 @@ const renderers = {
           <label style="width:60px;text-align:center"><input type="checkbox" checked disabled></label>
         </div>
         <div class="row" style="cursor:default">
-          <div style="flex:1"><div class="row-title">Consumables</div><div class="row-meta">${consumables.length} item${consumables.length===1?'':'s'}</div></div>
+          <div style="flex:1"><div class="row-title">Consumables and parts</div><div class="row-meta">${consumables.length} item${consumables.length===1?'':'s'}</div></div>
           <label style="width:60px;text-align:center"><input type="checkbox" ${consumablesIncluded?'checked':''} onchange="toggleConsumablesIncluded()"></label>
         </div>
         ${customLists.map(l=>`
@@ -3135,6 +3287,8 @@ const renderers = {
       </div>
       <input type="file" id="carThumbFile" accept="image/*" capture="environment" style="display:none" onchange="handleCarThumbFile(event)">
       <input type="file" id="outgoingFormFile" style="display:none" onchange="handleOutgoingFormFile(event)">
+      <input type="file" id="outPicCamera" accept="image/*" capture="environment" style="display:none" onchange="handleOutPicFile(event)">
+      <input type="file" id="outPicFile" accept="image/*" style="display:none" onchange="handleOutPicFile(event)">
       <div class="assembly-actions" style="align-items:center">
         <button class="btn-primary" onclick="outgoingSend()">Send update to employees →</button>${infoTip('Sending clears out any photos, completed documents, and blank forms employees have already submitted or been given in WorkClock — make sure you have what you need from them first.')}
       </div>
@@ -3235,7 +3389,7 @@ const renderers = {
     const all = rows.flatMap(r=>r.es);
     return `
     <h2 class="list-title">Cars</h2>
-    <p class="list-sub">${rows.length} ${F?'with work in this filter':'in the shop'}${!F?' · alphabetical by default — use the arrows to pin your most-used ones to the top':''} · "In update" controls whether a car goes out in the next employees update — uncheck a car that's gone quiet so it stops showing up there</p>
+    <p class="list-sub">${rows.length} ${F?'with work in this filter':'in the shop'}${!F?' · alphabetical by default — press and hold the ⋮⋮ handle, then drag a car to pin your most-used ones to the top':''} · "In update" controls whether a car goes out in the next employees update — uncheck a car that's gone quiet so it stops showing up there</p>
     ${filterBar(['dates','emps'])}
     ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} logged</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
     ${!F?reorderResetButtonHTML('resetCarOrder','cars'):''}
@@ -3244,18 +3398,16 @@ const renderers = {
       const docCount = safeArr(c.docs).length + entries.filter(l=>l.car===c.id).reduce((t,l)=>t+(l.docs?l.docs.length:0),0);
       const realIdx = cars.indexOf(c);
       return `
-      <div class="row" onclick='nav({type:"car",id:"${c.id}"})'>
-        ${!F?reorderControlsHTML('moveCarItem', realIdx, cars.length):''}
-        <div class="thumb-car" style="background:${c.color}22;border-color:${c.color}66">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
-        <div><div class="row-title">${c.name}</div><div class="row-meta">${c.desc}</div></div>
-        <label title="Include in employees update" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)" onclick="event.stopPropagation()">
+      <div class="row car-row" onclick='nav({type:"car",id:"${c.id}"})'>
+        ${!F?`<span class="drag-handle" title="Press and hold, then drag to move" onpointerdown="carHandleDown(event,${realIdx})" onpointermove="carHandleMove(event)" onpointerup="carHandleUp(event)" onpointercancel="carHandleUp(event)" onclick="event.stopPropagation()">⋮⋮</span>`:''}
+        <div class="thumb-car" style="background:${c.color}22;border-color:${c.color}66" onclick="event.stopPropagation();openCarThumbPopup('${c.id}')">${c.thumbDataUrl?`<img src="${c.thumbDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<span class="swatch" style="background:${c.color}"></span>`}</div>
+        <div style="flex:1;min-width:84px"><div class="row-title">${c.name}</div><div class="row-meta">${c.desc}</div></div>
+        <label title="Include in employees update" style="display:flex;align-items:center;gap:3px;font-size:10.5px;color:var(--muted);flex:none" onclick="event.stopPropagation()">
           <input type="checkbox" ${c.includeInEmployeeUpdate!==false?'checked':''} onchange="toggleCarIncludeInUpdate('${c.id}')">In update
         </label>
         <span class="badge">${es.length} entr${es.length===1?'y':'ies'}</span>
         ${F?`<span class="badge">${fmtHrsMin(sumBy(es,'hours'))}</span>`:''}
-        ${c.photos.length?`<span class="badge">📷 ${c.photos.length}</span>`:''}
-        ${docCount?`<span class="badge">📄 ${docCount}</span>`:''}
-        ${carHasAlert(c.id)?`<span class="row-warn">${warnIcon(20)}</span>`:''}
+        ${carHasAlert(c.id)?`<span class="row-warn">${warnIcon(18)}</span>`:''}
         <div class="chev">${icon("chev")}</div>
       </div>`;}).join('') : `<p class="list-sub">No cars have work matching this filter.</p>`}
     <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="nav({type:'addCar'})">+ Add car</button>
@@ -3380,7 +3532,7 @@ const renderers = {
       </div>
       ${filterBar(['dates','emps'])}
       <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged · ${totalPhotos} photo${totalPhotos===1?'':'s'} · ${allDocs.length} document${allDocs.length===1?'':'s'} (listed by name — attached separately)</p></div>
-      <div class="stat-pills">
+      <div class="stat-pills no-print">
         <span class="pill tap-reveal" onclick="focusWorklog(this)">${logs.length} entr${logs.length===1?'y':'ies'}</span>
         <span class="pill tap-reveal" onclick="togglePanel('car-hours-panel', this)">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged</span>
         ${(c.photos.length||allDocs.length||c.notes.length)?`<span class="pill tap-reveal" onclick="togglePanel('car-media-panel', this)">🗂 ${c.photos.length+allDocs.length+c.notes.length}</span>`:''}
@@ -3406,7 +3558,8 @@ const renderers = {
           <button class="btn-ghost" style="margin-top:8px" onclick="addCarNote('${c.id}', document.getElementById('newNoteText-${c.id}').value)">Add note</button>
         </div>
       </div>
-      <section class="block infoblock open" id="car-info">
+      <div class="print-only print-info"><b>${owner?owner.name:'No owner set'}</b> · ${c.year} · ${c.body} · ${c.desc}<br>VIN: ${c.vin} · Drop-off: ${c.dropoff}</div>
+      <section class="block infoblock open no-print" id="car-info">
         <p class="block-title">Info <span class="static-tag">static — rarely changes</span> <span class="edit-link" onclick="nav({type:'editCar', id:'${c.id}'})">Edit</span></p>
         <div class="specs">
           <div><span class="spec-k">Owner</span><span class="spec-v">${owner?`<span class="chip" onclick='nav({type:"owner",id:"${owner.id}"})'>${owner.name}</span>`:`<span class="edit-link" onclick="nav({type:'editCar', id:'${c.id}'})">No owner set yet — tap to add one</span>`}</span></div>
@@ -3424,7 +3577,8 @@ const renderers = {
         <div class="chips">${emps.map(e=>`<div class="chip" onclick='nav({type:"intersection",emp:"${e.id}",car:"${c.id}"})'><span class="dot"></span>${e.name}</div>`).join('')}</div>
       </section>
       <section class="block" id="worklog-section">
-        <p class="block-title">Work log <span class="static-tag">grows over time — one entry per day worked</span></p>
+        <p class="block-title">Work log <span class="static-tag">grows over time — every entry logged for this car</span></p>
+        <p class="list-sub no-print" style="margin:-2px 0 8px">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(sumBy(logs,'hours'))}</p>
         ${shareBtn()}
         ${logs.map(l=>`
           <div class="entry">
