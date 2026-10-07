@@ -283,7 +283,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.20';
+const APP_VERSION = 'v0.21';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // Demo/sample data lives here, kept but never loaded into the live app by default — Shop Boss now
@@ -314,7 +314,8 @@ function submitAddCar(name, desc, ownerMode, ownerId, newOwnerName, newOwnerPhon
     oid = ownerId || '';
   }
   const cid = 'car'+Date.now()+Math.random().toString(36).slice(2,6);
-  insertSortedOrPush(cars, {id:cid, name, desc:(desc||'').trim(), owner:oid, employees:[], color:nextCarColor(), year:(year||'').trim(), body:(body||'').trim(), vin:(vin||'').trim(), dropoff:(dropoff||'').trim(), photos:[], notes:[], docs:[], includeInEmployeeUpdate:true}, 'cars', c=>c.name);
+  insertSortedOrPush(cars, {id:cid, name, desc:(desc||'').trim(), owner:oid, employees:[], color:nextCarColor(), year:(year||'').trim(), body:(body||'').trim(), vin:(vin||'').trim(), dropoff:(dropoff||'').trim(), photos:[], notes:[], docs:[], includeInEmployeeUpdate:true, thumbDataUrl:newCarDraft.thumbDataUrl||null}, 'cars', c=>c.name);
+  newCarDraft.thumbDataUrl = null;
   if(oid){ const o = owners.find(x=>x.id===oid); if(o && !o.cars.includes(cid)) o.cars.push(cid); }
   persist();
   navReplace({type:'car', id:cid});
@@ -423,6 +424,7 @@ const workTypes = [];
 let consumablesIncluded = true;
 // Tasks (internally still "workTypes") and the Notes Helper are ALWAYS sent in every update and can't
 // be switched off or deleted as lists — only their items are editable. No list has a "Required" option.
+const billingParts = []; // [{name, price}] — Shop Boss only: parts Daren bills customers for, with the last price used
 const notesHelper = []; // [{name}] — quick words employees can pick to build up their Notes
 function addNotesHelperItem(name){
   name = (name||'').trim();
@@ -503,6 +505,7 @@ const FB_FIELD_TYPES = {
   yesno:     {icon:'◎',  label:'Yes / No',     hasOptions:false, allowAutoFill:false},
   dropdown:  {icon:'▾',  label:'Dropdown',     hasOptions:true,  allowAutoFill:false},
   radio:     {icon:'◉',  label:'Radio choice', hasOptions:true,  allowAutoFill:false},
+  heading:   {icon:'H',  label:'Section heading', hasOptions:false, allowAutoFill:false},
   blank:     {icon:'▭',  label:'Blank space',  hasOptions:false, allowAutoFill:false},
   photo:     {icon:'📷', label:'Photo',        hasOptions:false, allowAutoFill:false},
   signature: {icon:'✒',  label:'Signature',    hasOptions:false, allowAutoFill:false},
@@ -521,6 +524,7 @@ function deleteForm(id){
 // ---- Form builder: draft state for the form currently being created/edited ----
 let fbDraft = null; // {id: existing form's id or null for new, name, fields:[{id,type,label}]}
 function openFormBuilder(formId){
+  fbPasteOpen = false;
   if(formId){
     const f = forms.find(x=>x.id===formId);
     if(!f){ alert('That form could not be found — it may have been deleted.'); return; }
@@ -531,6 +535,20 @@ function openFormBuilder(formId){
   nav({type:'formBuilder'});
 }
 function fbSetName(name){ if(fbDraft) fbDraft.name = name; }
+let fbPasteOpen = false;
+function fbTogglePaste(){ fbPasteOpen = !fbPasteOpen; render(); }
+function fbAddPasted(){
+  if(!fbDraft) return;
+  const box = document.getElementById('fbPasteBox');
+  const lines = String(box ? box.value : '').split(/\r?\n/).map(x=>x.replace(/^\s*(?:[-*\u2022\u00b7\u25aa\u2610]+|\d+[.)])\s*/,'').trim()).filter(Boolean);
+  if(!lines.length){ alert('Nothing to add yet. Type or paste one item per line first.'); return; }
+  const titleEl = document.getElementById('fbTitleInput'); if(titleEl) fbDraft.name = titleEl.value;
+  const rows = fbRows(fbDraft.fields);
+  lines.forEach(label=>{ rows.push([{id:newFieldId(rows.reduce((a,r)=>a.concat(r),[])), type:'checkbox', label, autoFill:null}]); });
+  fbCommitRows(rows);
+  fbPasteOpen = false;
+  render();
+}
 // ---- Layout: fields sit in ROWS (1–3 fields side by side). Each field carries a `row` number; fields
 // with the same consecutive row number share a row. Old forms (no row numbers) are one field per row. ----
 const FB_MAX_PER_ROW = 3;
@@ -1540,6 +1558,15 @@ function trashRestore(id){
   } else if(t.snapshot && t.kind==='Form'){
     forms.push(t.snapshot);
     persist();
+  } else if(t.snapshot && t.kind==='EmployeeLog'){
+    const sn = t.snapshot;
+    sn.entries.forEach(l=>{ if(!entries.some(x=>x.id===l.id)) entries.push(l); });
+    sn.docs.forEach(d=>{ if(!completedDocs.some(x=>x.id===d.id)) completedDocs.push(d); });
+    sn.photos.forEach(x=>{ const c=cars.find(k=>k.id===x.carId); if(c){ if(!Array.isArray(c.photos)) c.photos=[]; if(!c.photos.some(q=>q.id===x.photo.id)) c.photos.push(x.photo); } });
+    sn.loose.forEach(ph=>{ if(!unmatchedPhotos.some(x=>x.id===ph.id)) unmatchedPhotos.push(ph); });
+    sn.subs.forEach(sub=>{ if(!importedSubmissionFingerprints.includes(sub)) importedSubmissionFingerprints.push(sub); });
+    if(!employees.some(e=>e.name===sn.empName)) alert(sn.empName+' is no longer on your employee list, so restore them from Recently Deleted too to see this log.');
+    persist();
   } else if(t.snapshot && t.kind==='List'){
     customLists.push(t.snapshot);
     persist();
@@ -1721,7 +1748,9 @@ function removeOutgoingNote(id){ outgoingNotes = outgoingNotes.filter(n=>n.id!==
 // ---- car thumbnail — a small reference photo shown next to the car's name in WorkClock's car list ----
 // ---- small reference photo for a car or an employee: choose camera or this phone's photos ----
 let pendingThumb = null; // {kind:'car'|'emp', id}
-function thumbTarget(kind,id){ return kind==='car' ? cars.find(x=>x.id===id) : employees.find(x=>x.id===id); }
+let newCarDraft = {thumbDataUrl:null}; // photo picked on the Add a car screen, before the car exists
+function newCarPrevHTML(){ return newCarDraft.thumbDataUrl ? '<img src="'+newCarDraft.thumbDataUrl+'" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" alt="">' : '📷'; }
+function thumbTarget(kind,id){ return kind==='newcar' ? newCarDraft : (kind==='car' ? cars.find(x=>x.id===id) : employees.find(x=>x.id===id)); }
 function triggerCarThumbPicker(carId){ openPhotoChoice('car', carId); }
 function openPhotoChoice(kind, id){
   const t = thumbTarget(kind,id); if(!t) return;
@@ -1755,7 +1784,9 @@ function openPhotoChoice(kind, id){
 function removeThumb(kind,id){
   const t = thumbTarget(kind,id); if(!t || !t.thumbDataUrl) return;
   if(!confirm('Remove this photo? You can always add a new one later.')) return;
-  t.thumbDataUrl = null; persist(); render();
+  t.thumbDataUrl = null; persist();
+  if(kind==='newcar'){ const el=document.getElementById('newCarThumbPrev'); if(el) el.innerHTML = newCarPrevHTML(); return; }
+  render();
 }
 function handleThumbFile(evt){
   const file = evt.target.files && evt.target.files[0];
@@ -1772,7 +1803,9 @@ function handleThumbFile(evt){
       canvas.width = Math.round(img.width*scale); canvas.height = Math.round(img.height*scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const t = thumbTarget(tgt.kind, tgt.id);
-      if(t){ t.thumbDataUrl = canvas.toDataURL('image/jpeg', 0.8); persist(); render(); }
+      if(t){ t.thumbDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        if(tgt.kind==='newcar'){ const el=document.getElementById('newCarThumbPrev'); if(el) el.innerHTML = newCarPrevHTML(); }
+        else { persist(); render(); } }
     };
     img.src = reader.result;
   };
@@ -2011,7 +2044,7 @@ function applyWorkClockSubmissionCore(payload){
     if(pe.flagNote) flagParts.push(pe.flagNote);
     const ans = pe.pickListAnswers && typeof pe.pickListAnswers==='object' ? pe.pickListAnswers : null;
     return {
-      id: newEntryId(),
+      id: newEntryId(), sub: importFingerprint,
       car: car ? car.id : (pe.car||''),
       carTyped: car ? null : (pe.car||null), // remembers the exact text that didn't match, for the "needs a car assigned" review
       who: whoName,
@@ -2033,7 +2066,7 @@ function applyWorkClockSubmissionCore(payload){
     if(!d.flagNote) return;
     const car = matchCarForImport(d.carId, d.car);
     flaggedAttachmentEntries.push({
-      id: newEntryId(),
+      id: newEntryId(), sub: importFingerprint,
       car: car ? car.id : (d.car||''), carTyped: car ? null : (d.car||null), who: whoName, date: isoToShopBossDate(d.date),
       hours:'0', billable:'0', desc:'📄 '+(d.name||'Document')+' needs attention',
       flag: d.flagNote, flagDone:false, consumables:null, photos:0, docs:[]
@@ -2043,7 +2076,7 @@ function applyWorkClockSubmissionCore(payload){
     if(!p.flagNote) return;
     const car = matchCarForImport(p.carId, p.car);
     flaggedAttachmentEntries.push({
-      id: newEntryId(),
+      id: newEntryId(), sub: importFingerprint,
       car: car ? car.id : (p.car||''), carTyped: car ? null : (p.car||null), who: whoName, date: isoToShopBossDate(p.date),
       hours:'0', billable:'0', desc:'📷 Photo needs attention',
       flag: p.flagNote, flagDone:false, consumables:null, photos:0, docs:[]
@@ -2084,7 +2117,7 @@ function applyWorkClockSubmissionCore(payload){
     // Keep the actual filled-in file (photo/scan of the form), not just its name, so it can
     // really be opened later — previously this content was received and then thrown away.
     completedDocs.push({
-      id:'doc-'+Date.now()+Math.random().toString(36).slice(2,6),
+      id:'doc-'+Date.now()+Math.random().toString(36).slice(2,6), sub: importFingerprint,
       carId: car?car.id:null, carTyped: car?null:(d.car||null), name: d.name||'Document',
       date: d.date?isoToShopBossDate(d.date):null, who: d.employee || whoName,
       whoId: d.employeeId || payload.employeeId || null,
@@ -2096,11 +2129,11 @@ function applyWorkClockSubmissionCore(payload){
     const car = matchCarForImport(p.carId, p.car);
     if(car){
       if(!Array.isArray(car.photos)) car.photos = []; // guards against an older backup file that still has it as a count
-      car.photos.push({id:'ph'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:p.dataUrl||null, date:p.date?isoToShopBossDate(p.date):null, empName:whoName, fileName:p.fileName||null});
+      car.photos.push({sub:importFingerprint, id:'ph'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:p.dataUrl||null, date:p.date?isoToShopBossDate(p.date):null, empName:whoName, fileName:p.fileName||null});
     } else {
       // No matching car — used to just throw the photo away. Now it's kept, visible under
       // "Needs a car assigned" in Incoming, so a misspelled/renamed car never costs a real photo.
-      unmatchedPhotos.push({id:'uph'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:p.dataUrl||null, date:p.date?isoToShopBossDate(p.date):null, empName:whoName, fileName:p.fileName||null, carTyped:p.car||''});
+      unmatchedPhotos.push({sub:importFingerprint, id:'uph'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:p.dataUrl||null, date:p.date?isoToShopBossDate(p.date):null, empName:whoName, fileName:p.fileName||null, carTyped:p.car||''});
     }
   });
   persist();
@@ -2171,6 +2204,99 @@ function requestDeleteCompletedDoc(docId){
   if(idx>=0) completedDocs.splice(idx,1);
   persist(); render();
 }
+// ---- Parts used (for billing the customer). Each work entry can hold several {name, price} rows.
+// Picking a saved part fills in its last price; changing a price remembers it for next time. ----
+function partNum(v){ const n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function fmtMoney(n){ return '$'+(Math.round(n*100)/100).toFixed(2); }
+function entryPartsTotal(l){ return safeArr(l.parts).reduce((t,p)=>t+partNum(p.price),0); }
+function asmAddPart(idx){ const l=entries[idx]; if(!l) return; if(!Array.isArray(l.parts)) l.parts=[]; l.parts.push({name:'', price:''}); persist(); render(); }
+function asmRemovePart(idx, pi){ const l=entries[idx]; if(!l||!Array.isArray(l.parts)) return; l.parts.splice(pi,1); persist(); render(); }
+function asmSetPartName(idx, pi, v){
+  const l=entries[idx]; if(!l||!Array.isArray(l.parts)||!l.parts[pi]) return;
+  const part = l.parts[pi];
+  if(v==='__other__'){ part.custom = true; part.name=''; persist(); render(); return; }
+  part.custom = false;
+  part.name = String(v||'').trim();
+  const saved = billingParts.find(b=>b.name.toLowerCase()===part.name.toLowerCase());
+  if(part.name && !saved){ billingParts.push({name:part.name, price:part.price||''}); billingParts.sort((a,b)=>a.name.localeCompare(b.name)); }
+  else if(saved && String(part.price||'')==='' && saved.price!=='' && saved.price!=null) part.price = saved.price;
+  persist(); render();
+}
+function asmSetPartPrice(idx, pi, v){
+  const l=entries[idx]; if(!l||!Array.isArray(l.parts)||!l.parts[pi]) return;
+  const part = l.parts[pi]; part.price = String(v||'').trim();
+  const saved = billingParts.find(b=>b.name.toLowerCase()===String(part.name||'').toLowerCase());
+  if(saved && part.price!=='') saved.price = part.price;
+  persist(); render();
+}
+function partsEditorHTML(l, idx){
+  const parts = safeArr(l.parts);
+  const opts = (cur)=>`<option value="">Pick a part…</option>${billingParts.map(b=>`<option value="${b.name.replace(/"/g,'&quot;')}" ${b.name.toLowerCase()===String(cur||'').toLowerCase()?'selected':''}>${b.name}</option>`).join('')}${cur && !billingParts.some(b=>b.name.toLowerCase()===cur.toLowerCase())?`<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>`:''}<option value="__other__">Other (type it in)</option>`;
+  return `
+  <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--line)" onclick="event.stopPropagation()">
+    <div class="hours-k" style="margin-bottom:4px">Parts used${parts.length?` · ${fmtMoney(entryPartsTotal(l))}`:''}</div>
+    ${parts.map((p,pi)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+      ${p.custom ? `<input class="search-input" style="flex:1;min-width:0;margin:0" placeholder="Part name" onchange="asmSetPartName(${idx},${pi},this.value)">` : `<select style="flex:1;min-width:0" onchange="asmSetPartName(${idx},${pi},this.value)">${opts(p.name)}</select>`}
+      <span>$</span><input class="hours-input-inline" style="width:76px" type="number" inputmode="decimal" step="0.01" min="0" value="${(p.price==null?'':String(p.price)).replace(/"/g,'')}" onchange="asmSetPartPrice(${idx},${pi},this.value)">
+      <button class="btn-ghost chip-btn" onclick="asmRemovePart(${idx},${pi})" title="Remove this part">✕</button></div>`).join('')}
+    <button class="btn-ghost" style="width:auto;padding:4px 12px;font-size:12.5px" onclick="asmAddPart(${idx})">+ Add part</button>
+  </div>`;
+}
+function setBillingPartPrice(i, v){ if(billingParts[i]){ billingParts[i].price = String(v||'').trim(); persist(); } }
+function addBillingPart(name){
+  name = String(name||'').trim(); if(!name) return;
+  if(billingParts.some(b=>b.name.toLowerCase()===name.toLowerCase())){ alert('"'+name+'" is already on the list.'); return; }
+  billingParts.push({name, price:''}); billingParts.sort((a,b)=>a.name.localeCompare(b.name)); persist(); render();
+}
+function removeBillingPart(i){
+  const b = billingParts[i]; if(!b) return;
+  if(!confirm('Remove "'+b.name+'" from the billing parts list? Entries that already use it keep it.')) return;
+  billingParts.splice(i,1); persist(); render();
+}
+// ---- Delete everything one employee turned in this week (hours, plus the forms and photos that came
+// in with the same submissions). Shop Boss forgets those submissions, so the same file imports as
+// new if it's brought in again. A copy goes to Recently Deleted for one-tap restore. ----
+function asmDeleteEmployeeLog(empId){
+  const e = employees.find(x=>x.id===empId); if(!e) return;
+  const es = currentEntries().filter(l=>l.who===e.name);
+  if(!es.length) return;
+  const subs = new Set(es.map(l=>l.sub).filter(Boolean));
+  const docs = completedDocs.filter(d=>d.sub && subs.has(d.sub));
+  const photos = [];
+  cars.forEach(c=>safeArr(c.photos).forEach(ph=>{ if(ph.sub && subs.has(ph.sub)) photos.push({carId:c.id, photo:ph}); }));
+  const loose = unmatchedPhotos.filter(ph=>ph.sub && subs.has(ph.sub));
+  const bits = [es.length+' entr'+(es.length===1?'y':'ies')];
+  if(docs.length) bits.push(docs.length+' form'+(docs.length===1?'':'s'));
+  if(photos.length+loose.length) bits.push((photos.length+loose.length)+' photo'+(photos.length+loose.length===1?'':'s'));
+  if(!confirm('Delete '+e.name+'\'s submitted log?\n\nThis removes '+bits.join(', ')+' from this week. Shop Boss forgets it ever received them, so the same WorkClock file can be imported again. A copy goes to Recently Deleted so you can restore it.')) return;
+  const snap = {empId, empName:e.name, entries:es.slice(), docs:docs.slice(), photos:photos.slice(), loose:loose.slice(), subs:[...subs]};
+  const eset = new Set(es);
+  for(let i=entries.length-1;i>=0;i--) if(eset.has(entries[i])) entries.splice(i,1);
+  docs.forEach(d=>{ const i=completedDocs.indexOf(d); if(i>=0) completedDocs.splice(i,1); });
+  photos.forEach(x=>{ const c=cars.find(k=>k.id===x.carId); if(c){ const i=c.photos.indexOf(x.photo); if(i>=0) c.photos.splice(i,1); } });
+  loose.forEach(ph=>{ const i=unmatchedPhotos.indexOf(ph); if(i>=0) unmatchedPhotos.splice(i,1); });
+  snap.subs.forEach(sub=>{ const i=importedSubmissionFingerprints.indexOf(sub); if(i>=0) importedSubmissionFingerprints.splice(i,1); });
+  delete asm.reviewed[empId]; delete asm.waived[empId];
+  trash.push({id:'trash-log-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'EmployeeLog', name:e.name+' — this week\'s log', deleted:'Just now', daysLeft:30, snapshot:snap});
+  persist(); render();
+}
+// Removes an employee card that has no work attached at all (test data, a name added by mistake).
+function asmDeleteEmptyEmployee(empId){
+  const e = employees.find(x=>x.id===empId); if(!e) return;
+  if(entries.some(l=>l.who===e.name)){ alert(e.name+' has work on file, so use the delete-log button instead.'); return; }
+  if(!confirm('Delete '+e.name+'? They have no work logged. A copy goes to Recently Deleted for 30 days.')) return;
+  const i = employees.indexOf(e); if(i>=0) employees.splice(i,1);
+  trash.push({id:'trash-emp-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'Employee', name:e.name, deleted:'Just now', daysLeft:30, snapshot:e});
+  persist(); render();
+}
+function emptyEmployees(){ return employees.filter(e=>!entries.some(l=>l.who===e.name)); }
+function removeEmptyEmployees(){
+  const list = emptyEmployees();
+  if(!list.length){ alert('Every employee has work on file.'); return; }
+  if(!confirm('Remove '+list.length+' employee'+(list.length===1?'':'s')+' with no work logged?\n\n'+list.map(e=>e.name).join(', ')+'\n\nThey go to Recently Deleted for 30 days.')) return;
+  list.forEach(e=>{ const i=employees.indexOf(e); if(i>=0) employees.splice(i,1); trash.push({id:'trash-emp-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'Employee', name:e.name, deleted:'Just now', daysLeft:30, snapshot:e}); });
+  persist(); render();
+}
 function requestDeleteEntry(entryId){
   const l = entries.find(x=>x.id===entryId);
   if(!l) return;
@@ -2227,7 +2353,7 @@ function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
 const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
-  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
+  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({billingParts, cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -2250,6 +2376,7 @@ function loadPersisted(){
     if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
     if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
     if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
+    if(Array.isArray(d.billingParts)){ billingParts.length=0; billingParts.push(...d.billingParts); }
     if(Array.isArray(d.notesHelper)){ notesHelper.length=0; notesHelper.push(...d.notesHelper); }
     if(Array.isArray(d.forms)){ forms.length=0; forms.push(...d.forms); }
     if(Array.isArray(d.customLists)){ customLists.length=0; customLists.push(...d.customLists); }
@@ -2283,7 +2410,7 @@ function buildBackupPayload(){
     app:'Shop Boss', version:1, savedAt: new Date().toISOString(),
     data: {
       cars, owners, employees, entries, trash, historyWeeks, asm, consumables, workTypes, forms, customLists, completedDocs, unmatchedPhotos, receipts, listOrderCustomized,
-      consumablesIncluded, notesHelper,
+      consumablesIncluded, notesHelper, billingParts,
       settings: {
         themeAccent: (function(){try{return localStorage.getItem('sb-theme-accent');}catch(e){return null;}})(),
         themeIncoming: (function(){try{return localStorage.getItem('sb-theme-incoming');}catch(e){return null;}})(),
@@ -2338,6 +2465,7 @@ function handleRestoreFile(evt){
     if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
     if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
     if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
+    if(Array.isArray(d.billingParts)){ billingParts.length=0; billingParts.push(...d.billingParts); }
     if(Array.isArray(d.notesHelper)){ notesHelper.length=0; notesHelper.push(...d.notesHelper); }
     if(Array.isArray(d.forms)){ forms.length=0; forms.push(...d.forms); }
     if(Array.isArray(d.customLists)){ customLists.length=0; customLists.push(...d.customLists); }
@@ -2431,10 +2559,22 @@ function buildAccountantHoursCSV(){
 // of what that work was, plus a dedicated column for any parts/consumables an employee logged —
 // flagged so she knows NOT to bill those until a real price has been put on them.
 function buildAccountantBillingCSV(){
-  const rows = [['Car','Date','Employee','Billable Hours','What the billable hours were for','Parts/consumables used — needs pricing before billing']];
+  const rows = [['Car','Date','Employee','Billable Hours','What the billable hours were for','Parts used','Parts cost']];
+  const byCar = {}; const order = [];
   currentEntries().forEach(l=>{
     const carName = (cars.find(c=>c.id===l.car)||{name:l.car||''}).name;
-    rows.push([carName, l.date, l.who, l.billable||'0', l.desc||'', l.consumables ? l.consumables : '']);
+    if(!byCar[carName]){ byCar[carName]=[]; order.push(carName); }
+    byCar[carName].push(l);
+  });
+  order.sort((a,b)=>a.localeCompare(b)).forEach(carName=>{
+    let hrs = 0, cost = 0, any = false;
+    byCar[carName].forEach(l=>{
+      const parts = safeArr(l.parts).filter(p=>(p.name||'').trim() || partNum(p.price));
+      const pc = parts.reduce((t,p)=>t+partNum(p.price),0);
+      hrs += parseFloat(l.billable)||0; cost += pc; if(parts.length) any = true;
+      rows.push([carName, l.date, l.who, l.billable||'0', l.desc||'', parts.map(p=>(p.name||'(unnamed)')+(p.price!==''&&p.price!=null?' '+fmtMoney(partNum(p.price)):'')).join('; '), parts.length ? (Math.round(pc*100)/100).toFixed(2) : '']);
+    });
+    rows.push([carName+' — TOTAL', '', '', Math.round(hrs*100)/100, '', '', any ? (Math.round(cost*100)/100).toFixed(2) : '']);
   });
   return csvRowsToText(rows);
 }
@@ -2479,7 +2619,7 @@ async function asmSendToAccountant(){
   // never implies the accountant already has it.
   const where = wroteCopy ? 'your Accountant exports folder ('+accountantFolderName+')' : 'your device\'s Downloads (or wherever you picked in the save/share screen)';
   const receiptNote = unsentReceipts.length ? ' Plus '+unsentReceipts.length+' receipt photo'+(unsentReceipts.length===1?'':'s')+', saved as separate image files right alongside them.' : '';
-  alert('Saved — two files for this week: an hours-per-employee summary and a billing sheet (billable hours per car, plus any parts/consumables flagged for your pricing). Both land in '+where+'.'+receiptNote+' Nothing was sent anywhere yet — email or text them to your accountant yourself once you\'re near a connection.');
+  alert('Saved — two files for this week: an hours-per-employee summary and a billing sheet (billable hours and the parts you entered, with a total for each car). Both land in '+where+'.'+receiptNote+' Nothing was sent anywhere yet — email or text them to your accountant yourself once you\'re near a connection.');
   render();
 }
 function asmReleaseToHistory(){
@@ -2924,6 +3064,11 @@ const renderers = {
       <div><div class="row-title">Task lists</div><div class="row-meta">Tasks, Notes Helper, consumables and parts</div></div>
       <div class="chev">${icon("chev")}</div>
     </div>
+    <div class="row" onclick='nav({type:"catalog",which:"Billing parts"})'>
+      <div><div class="row-title">Billing parts</div><div class="row-meta">Parts and prices for customer billing</div></div>
+      <span class="badge">${billingParts.length}</span>
+      <div class="chev">${icon("chev")}</div>
+    </div>
     <div class="row" onclick='nav({type:"catalog",which:"Forms"})'>
       <div><div class="row-title">Forms</div><div class="row-meta">Build blank forms, assign them, get filled ones back</div></div>
       <div class="chev">${icon("chev")}</div>
@@ -3107,6 +3252,17 @@ const renderers = {
         <input class="search-input" id="newConsumableName" style="margin-top:14px" placeholder="e.g. Windshield washer fluid">
         <button class="btn-primary" style="width:100%" onclick="addConsumable(document.getElementById('newConsumableName').value); document.getElementById('newConsumableName').value=''">+ Add new</button>`;
     }
+    if(v.which==='Billing parts'){
+      return `
+        <div class="detail-head">
+          <p class="kicker">Settings</p>
+          <h1 class="detail-title">Billing parts</h1>
+        </div>
+        <p class="list-sub">Parts you bill customers for. You pick these on a work entry in Incoming. The price is the last one you used, and it fills in by itself next time. This list stays in Shop Boss and is never sent to WorkClock.</p>
+        ${billingParts.length ? billingParts.map((b,i)=>`<div class="row" style="cursor:default;gap:8px"><div style="flex:1;min-width:0"><div class="row-title">${b.name}</div></div><span>$</span><input class="hours-input-inline" style="width:80px" type="number" inputmode="decimal" step="0.01" min="0" value="${String(b.price==null?'':b.price)}" onchange="setBillingPartPrice(${i},this.value)"><button class="btn-ghost chip-btn" onclick="removeBillingPart(${i})">✕</button></div>`).join('') : `<p class="list-sub">No parts yet. Add one below, or pick "Other (type it in)" on a work entry and it saves here.</p>`}
+        <input class="search-input" id="newBillingPart" style="margin-top:14px" placeholder="e.g. Brake pad set">
+        <button class="btn-primary" style="width:100%" onclick="addBillingPart(document.getElementById('newBillingPart').value)">+ Add new</button>`;
+    }
     if(v.which==='Notes Helper'){
       return `
         <div class="detail-head">
@@ -3168,7 +3324,7 @@ const renderers = {
         <div style="display:flex;align-items:center;gap:6px">
           <span class="fb-grip" title="Drag to move" onpointerdown="fbDragStart(event,'move','${f.id}')">⠿</span>
           <span style="flex:none" title="${meta.label}">${meta.icon}</span>
-          ${f.type==='blank' ? `<span class="fb-label" style="color:var(--muted);border-bottom:none">Blank space</span>` : `<input class="fb-label" value="${(f.label||'').replace(/"/g,'&quot;')}" oninput="fbSetFieldLabel('${f.id}', this.value)" placeholder="${meta.label}">`}
+          ${f.type==='blank' ? `<span class="fb-label" style="color:var(--muted);border-bottom:none">Blank space</span>` : `<input class="fb-label" ${f.type==='heading'?'style="font-weight:700;font-size:15.5px" ':''}value="${(f.label||'').replace(/"/g,'&quot;')}" oninput="fbSetFieldLabel('${f.id}', this.value)" placeholder="${meta.label}">`}
           ${hasMore?`<button class="btn-ghost chip-btn" onclick="fbToggleOpen('${f.id}')" title="More options">⚙</button>`:''}
           <button class="btn-ghost chip-btn" onclick="fbRemoveField('${f.id}')" title="Remove">✕</button>
         </div>${more}
@@ -3183,6 +3339,8 @@ const renderers = {
       <input class="fb-title-input" id="fbTitleInput" placeholder="Form title..." value="${(fbDraft.name||'').replace(/"/g,'&quot;')}" style="width:100%;background:none;border:none;color:var(--text);font-family:var(--display);font-size:19px;margin-bottom:10px" oninput="fbSetName(this.value)" />
       ${rows.length ? rows.map(r=>`${gap(r[0].id)}<div class="fb-row">${r.map(card).join('')}</div>`).join('') + gap('') : `<div class="fb-gap fb-gap-empty" data-gap="">Drag a field here</div>`}
     </section>
+    <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="fbTogglePaste()">📋 Paste a list of checkboxes</button>
+    ${fbPasteOpen ? `<div class="infoblock" style="margin-top:8px"><p class="list-sub" style="margin:0 0 6px">One item per line. Each line becomes a checkbox at the end of the form. Blank lines are skipped, and bullets or numbers in front are removed.</p><textarea id="fbPasteBox" rows="7" placeholder="Ease of starting&#10;Cold idle quality&#10;Gear selection quality" style="width:100%;font-size:14px;padding:8px"></textarea><button class="btn-primary" style="width:100%;margin-top:8px" onclick="fbAddPasted()">Add checkboxes</button></div>` : ''}
     <p class="list-sub" style="margin:14px 0 6px">Field types</p>
     <div class="fb-palette">
       ${Object.keys(FB_FIELD_TYPES).map(t=>`<div class="fb-chip" onpointerdown="fbDragStart(event,'new','${t}')">${FB_FIELD_TYPES[t].icon} ${FB_FIELD_TYPES[t].label}</div>`).join('')}
@@ -3200,6 +3358,7 @@ const renderers = {
       const opts = fbResolvedOptions(f);
       const lab = `<label style="display:block;margin-bottom:6px;color:var(--muted);font-size:13px">${label}${auto}</label>`;
       if(f.type==='blank') return `<div class="fb-field"></div>`;
+      if(f.type==='heading') return `<div class="fb-field"><div style="font-weight:700;font-size:16.5px;padding:10px 0 4px;border-bottom:1px solid var(--line)">${f.label||'(untitled heading)'}</div></div>`;
       if(f.type==='checkbox') return `<div class="fb-field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" style="width:20px;height:20px;flex:none"><span>${label}</span></div>`;
       if(f.type==='yesno') return `<div class="fb-field">${lab}<select style="width:100%"><option value="">—</option><option>Yes</option><option>No</option></select></div>`;
       if(f.type==='radio') return `<div class="fb-field">${lab}<div style="display:flex;flex-wrap:wrap;gap:8px 16px">${opts.length?opts.map(o=>`<label style="display:flex;align-items:center;gap:6px"><input type="radio" name="pv-${f.id}" style="width:20px;height:20px">${o}</label>`).join(''):'<span style="color:var(--muted)">(no choices added yet)</span>'}</div></div>`;
@@ -3439,6 +3598,7 @@ const renderers = {
                 <input class="hours-input-inline" type="number" step="0.25" value="${fmtHrs(l.billable)}" onchange="asmSetBillable(${idx},this.value)" onclick="event.stopPropagation()">
                 <span>hr</span>
               </div>
+              ${partsEditorHTML(l, idx)}
               `}
               ${entryExtras(l)}
               ${flagHTML(l)}
@@ -3448,6 +3608,7 @@ const renderers = {
             ${x.state==='ready'?`<button class="asm-btn" onclick="event.stopPropagation();asmToggleReviewed('${x.e.id}')">Mark reviewed</button>`:''}
             ${x.state==='done'?`<button class="asm-btn" onclick="event.stopPropagation();asmToggleReviewed('${x.e.id}')">Undo</button>`:''}
             ${x.state==='attention'&&x.canAccept?`<button class="asm-btn" onclick="event.stopPropagation();asmAccept('${x.e.id}')">Accept as is</button>`:''}
+            ${es.length?`<button class="asm-btn" style="border-color:#7a2020;color:#e05a5a" onclick="event.stopPropagation();asmDeleteEmployeeLog('${x.e.id}')">Delete ${x.e.name.replace(/'/g,'&#39;')}'s log</button>`:(!entries.some(l=>l.who===x.e.name)?`<button class="asm-btn" style="border-color:#7a2020;color:#e05a5a" onclick="event.stopPropagation();asmDeleteEmptyEmployee('${x.e.id}')">Delete this employee</button>`:'')}
           </div>
         </div>`:''}
       </div>`;}).join('')}
@@ -3486,7 +3647,7 @@ const renderers = {
         ${carHasAlert(c.id)?`<span class="row-warn">${warnIcon(18)}</span>`:''}
         <div class="chev">${icon("chev")}</div>
       </div>`;}).join('') : `<p class="list-sub">No cars have work matching this filter.</p>`}
-    <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="nav({type:'addCar'})">+ Add car</button>
+    <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="newCarDraft.thumbDataUrl=null;nav({type:'addCar'})">+ Add car</button>
     ${shareBtn()}
     </div>
     ${printBlock(rows.map(r=>({title:r.c.name, es:r.es, byCar:true})))}`;
@@ -3496,6 +3657,11 @@ const renderers = {
     <div class="detail-head">
       <p class="kicker">Cars</p>
       <h1 class="detail-title">Add a car</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px">
+      <div id="newCarThumbPrev" class="carswatch" style="width:56px;height:56px;cursor:pointer;font-size:22px" onclick="openPhotoChoice('newcar','new')">${newCarPrevHTML()}</div>
+      <button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px" onclick="openPhotoChoice('newcar','new')">📷 Add photo</button>
+      <button class="btn-ghost" style="width:auto;margin:0;padding:8px 12px;font-size:12.5px;border-color:#7a2020;color:#e05a5a" onclick="removeThumb('newcar','new')">Remove</button>
     </div>
     <p class="list-sub" style="margin:0 0 6px">Name</p>
     <input class="search-input" id="newCarName" placeholder="e.g. Riley">
@@ -3547,6 +3713,7 @@ const renderers = {
     ${filterBar(['dates','cars'])}
     ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} logged</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
     ${!F?reorderResetButtonHTML('resetEmployeeOrder','employees'):''}
+    ${!F && emptyEmployees().length ? `<button class="btn-ghost" style="width:100%;margin:8px 0;border-color:#7a2020;color:#e05a5a" onclick="removeEmptyEmployees()">Remove ${emptyEmployees().length} employee${emptyEmployees().length===1?'':'s'} with no work logged</button>`:''}
     <div class="no-print">
     ${rows.length ? rows.map(({e,es})=>{
       const nCars = F ? new Set(es.map(l=>l.car)).size : carsWorkedOnByEmployee(e).length;
@@ -3875,6 +4042,7 @@ const renderers = {
     <div class="infoblock" style="margin-bottom:16px">
       <div class="specs">
         ${Object.values(d.answers).filter(a=>a.type!=='blank').map(a=>{
+          if(a.type==='heading') return `<div style="grid-column:1/-1;font-weight:700;font-size:15.5px;padding:10px 0 2px;border-bottom:1px solid var(--line)">${a.label||''}</div>`;
           let shown;
           if(a.type==='checkbox') shown = a.value ? 'Yes' : 'No';
           else if(a.type==='photo') shown = a.value ? '📷 photo attached' : '— no photo taken';
