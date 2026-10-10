@@ -289,7 +289,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.23';
+const APP_VERSION = 'v0.24';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1323,9 +1323,10 @@ async function outgoingSend(){
   const selCars = cars.filter(c=>c.includeInEmployeeUpdate!==false);
   if(!selCars.length && !outgoingForms.length && !outgoingPhotoReqs.length && !outgoingHistoryRestore.length && !outgoingNotes.length && !outgoingPhotos.length){ alert('Nothing to send yet — check "In update" on at least one car (Cars page), or add a form, photo request, or note below.'); return; }
   const changeLines = outgoingChangesSinceSent();
-  if(!changeLines.length){ await sbChoiceMulti('No changes since the last update you sent.', ['OK']); return; }
   const shown = changeLines.slice(0,60);
-  const proceed = await sbChoice('Send this update to employees?\n\nChanges since the last update you sent ('+changeLines.length+'):\n\n'+shown.join('\n')+(changeLines.length>shown.length?'\n…and '+(changeLines.length-shown.length)+' more':''), 'Send', 'Cancel');
+  const proceed = !changeLines.length
+    ? await sbChoice('No changes since the last update you sent.', 'Send anyway', 'Cancel')
+    : await sbChoice('Send this update to employees?\n\nChanges since the last update you sent ('+changeLines.length+'):\n\n'+shown.join('\n')+(changeLines.length>shown.length?'\n…and '+(changeLines.length-shown.length)+' more':''), 'Send', 'Cancel');
   if(!proceed) return;
   const weekStart = (function(){try{return localStorage.getItem('sb-week-start')||'Mon';}catch(e){return 'Mon';}})();
   const wb = getWeekBoundary();
