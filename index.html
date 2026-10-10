@@ -289,19 +289,9 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.22';
+const APP_VERSION = 'v0.23';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
-// Demo/sample data lives here, kept but never loaded into the live app by default — Shop Boss now
-// starts genuinely empty for a real shop. __seedDemoDataForTesting() (below, after all the demo
-// consts are defined) can still pull this in, for testing or for building a sample restore file.
-const DEMO_SEED_CARS = [
-  {id:'riley', name:'Riley', desc:"'71 Super Beetle", owner:'owner1', employees:['larry','dana'], color:'#8A3B2E', year:'1971', body:'Sedan', vin:'11331482xxx', dropoff:'Aug 12, 2026', photos:[{id:'ph-r1',dataUrl:null,date:'Aug 12',empName:'Larry'},{id:'ph-r2',dataUrl:null,date:'Sep 3',empName:'Dana'},{id:'ph-r3',dataUrl:null,date:'Sep 24',empName:'Larry'}], notes:['Call Tom before paint.'], docs:['Pre-delivery checklist']},
-  {id:'messerschmitt', name:'Messerschmitt', desc:"'67 Beetle", owner:'owner2', employees:['larry'], color:'#2E4E8A', year:'1967', body:'Sedan', vin:'1173991xxx', dropoff:'Sep 2, 2026', photos:[{id:'ph-m1',dataUrl:null,date:'Sep 3',empName:'Larry'}], notes:[], docs:[]},
-  {id:'kowalski', name:'Kowalski', desc:"'73 Bus", owner:'owner3', employees:['dana'], color:'#B58A2E', year:'1973', body:'Bus', vin:'2132029xxx', dropoff:'Sep 20, 2026', photos:[], notes:['Customer wants the original hubcaps kept.'], docs:['Customer intake questionnaire','Paint color sign-off']},
-  {id:'thistle', name:'Thistle', desc:"'74 Type 3", owner:'owner4', employees:['larry'], color:'#4E8A5F', year:'1974', body:'Sedan', vin:'99881122xxx', dropoff:'Sep 26, 2026', photos:[], notes:[], docs:[]},
-  {id:'vance', name:'Vance', desc:"'69 Karmann Ghia", owner:'owner5', employees:['dana'], color:'#6B5B95', year:'1969', body:'Coupe', vin:'55221199xxx', dropoff:'Jun 1, 2026', photos:[{id:'ph-v1',dataUrl:null,date:'Sep 24',empName:'Dana'},{id:'ph-v2',dataUrl:null,date:'Sep 25',empName:'Dana'}], notes:[], docs:[]},
-];
 const cars = [];
 const CAR_COLORS = ['#8A3B2E','#2E4E8A','#B58A2E','#4E8A5F','#6B5B95','#2E8A80','#8A2E6B','#5F8A2E'];
 function nextCarColor(){ return CAR_COLORS[cars.length % CAR_COLORS.length]; }
@@ -400,28 +390,14 @@ function deleteOwner(ownerId){
   persist();
   navReplace({type:'ownerList'});
 }
-const DEMO_SEED_OWNERS = [
-  {id:'owner1', name:'Tom Riley', phone:'(555) 219-4471', cars:['riley']},
-  {id:'owner2', name:'Ana Vogel', phone:'(555) 305-8802', cars:['messerschmitt']},
-  {id:'owner3', name:'Ed Kowalski', phone:'(555) 118-6620', cars:['kowalski']},
-  {id:'owner4', name:'Pat Thistle', phone:'(555) 662-0093', cars:['thistle']},
-  {id:'owner5', name:'Ray Vance', phone:'(555) 774-2201', cars:['vance']},
-];
 const owners = [];
-const DEMO_SEED_EMPLOYEES = [
-  {id:'larry', name:'Larry', phone:'(555) 402-7731', cars:['riley','messerschmitt','thistle']},
-  {id:'dana', name:'Dana', phone:'(555) 588-1123', cars:['riley','kowalski','vance']},
-  {id:'ralph', name:'Ralph', phone:'(555) 731-0094', cars:[]},
-];
 const employees = [];
 // Sent along in every weekly update so WorkClock can offer these as a tap-to-pick list on the
 // "running low on" field, instead of employees having to type it out from scratch every time.
 // Each item has its own includeInUpdate flag — Darren can keep something on this master list
 // without necessarily pushing it out in every single update to employees.
-const DEMO_SEED_CONSUMABLES = ['Primer','Body filler','Clear coat','Brake fluid','Masking tape','Sandpaper','Touch-up paint','Gasket set'].map(name=>({name, includeInUpdate:true}));
 const consumables = [];
 // A simple named list for now — not yet linked to default consumables per type, just the list itself made real.
-const DEMO_SEED_WORKTYPES = ['Diagnosis','Oil change','Brake work','Bodywork / filler','Paint','Electrical','Engine work','Interior','Test drive'].map(name=>({name, includeInUpdate:true}));
 const workTypes = [];
 // Assembly Room → Outgoing restructure: whether a whole list goes out at all, and whether WorkClock
 // should require an answer from it, now lives as ONE pair of toggles per list (set in Assembly Room),
@@ -492,11 +468,6 @@ function normalizeListItems(arr){
   for(let i=0;i<arr.length;i++){ if(typeof arr[i]==='string') arr[i] = {name:arr[i], includeInUpdate:true}; }
 }
 // Blank forms Daren builds and assigns — sent out to WorkClock, filled ones come back attached to entries.
-const DEMO_SEED_FORMS = [
-  {id:'form-predelivery', name:'Pre-delivery checklist', fields:[{id:'f1',type:'checkbox',label:'Checked seatbelts'},{id:'f2',type:'checkbox',label:'Checked fluid levels'},{id:'f3',type:'text',label:'Notes'}]},
-  {id:'form-intake', name:'Customer intake questionnaire', fields:[{id:'f1',type:'text',label:'Customer concern'},{id:'f2',type:'text',label:'Mileage at intake'}]},
-  {id:'form-paintsignoff', name:'Paint color sign-off', fields:[{id:'f1',type:'text',label:'Color code'},{id:'f2',type:'checkbox',label:'Customer approved sample'}]},
-];
 const forms = [];
 function newFieldId(fields){ let n=1; while(fields.some(f=>f.id==='f'+n)) n++; return 'f'+n; }
 // Every field type the form builder supports, and what each one needs. Adding a new type later
@@ -978,23 +949,10 @@ function renameCustomList(id, name){
   persist();
   render();
 }
-const DEMO_SEED_ENTRIES = [
-  {car:'riley', who:'Larry', date:'Thu 9/24', hours:'2.25', billable:'2.25', desc:'Replaced rear brake cylinders.', flag:null, consumables:null, photos:0, docs:['Brake setting spec sheet']},
-  {car:'riley', who:'Dana', date:'Fri 9/25', hours:'1.0', billable:'1.0', desc:'Primed door panel before paint.', flag:'Low on primer — need more before Thursday.', consumables:'2 cans primer', photos:1, docs:[]},
-  {car:'messerschmitt', who:'Larry', date:'Thu 9/24', hours:'3.5', billable:'2.5', desc:'Oil change, valve adjustment.', flag:null, consumables:'1 gasket set', photos:0, docs:[]},
-  {car:'kowalski', who:'Dana', date:'Wed 9/23', hours:'4.0', billable:'4.0', desc:'Body filler on rocker panel.', flag:null, consumables:'1 tub body filler', photos:2, docs:[], incomplete:'Paint color sign-off form came back incomplete'},
-  {car:'thistle', who:'Larry', date:'Fri 9/26', hours:'1.5', billable:'1.5', desc:'Initial walk-around and intake photos.', flag:null, consumables:null, photos:0, docs:[]},
-  {car:'vance', who:'Dana', date:'Tue 6/2', hours:'3.0', billable:'3.0', desc:'Carb rebuild.', flag:null, consumables:'1 carb kit', photos:2, docs:[]},
-  {car:'kowalski', who:'Dana', date:'Mon 9/8', hours:'2.0', billable:'2.0', desc:'Clear coat pass on rear quarter panel.', flag:'Clear coat needs a second look.', flagDone:false, consumables:null, photos:1, docs:[], week:'w0918'},
-];
 const entries = [];
 
 let stack = ['home'];
 
-const DEMO_SEED_HISTORY_WEEKS = [
-  {id:'w0925', label:'Sep 15 – Sep 21', cars:['riley','messerschmitt'], totalLogged:9.75, totalBillable:8.0},
-  {id:'w0918', label:'Sep 8 – Sep 14', cars:['kowalski','riley'], totalLogged:14.5, totalBillable:13.0},
-];
 const historyWeeks = [];
 // A single-quoted, escaped JS string literal safe to embed inside a double-quoted onclick="..."
 // attribute — JSON.stringify is unsafe here because it double-quotes, colliding with the attribute.
@@ -1002,9 +960,10 @@ function safeArr(x){ return Array.isArray(x) ? x : []; }
 function jsStr(s){
   return "'" + String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n') + "'";
 }
+function isAsmSubView(t){ return t==='assembly' || t==='receipts' || t==='receiptsCar' || t==='shopExpenses'; }
 function nav(view){ fltReset(); stack.push(view); render(); }
 function navReplace(view){ stack[stack.length-1] = view; render(); }
-function goBack(){ fltReset(); if(stack.length>1) stack.pop(); render(); }
+function goBack(){ fltReset(); if(stack.length>1) stack.pop(); if(!isAsmSubView(stack[stack.length-1].type)) outSnap = null; render(); }
 // ---- Android/iOS hardware & gesture back button ----
 // A browser tab with no history behind it just exits on a back press — that's the bug being fixed
 // here. We keep one harmless "trap" history entry armed at all times; a back press consumes it and
@@ -1014,6 +973,7 @@ function goBack(){ fltReset(); if(stack.length>1) stack.pop(); render(); }
 // go through on purpose, so back-from-home still really exits.
 function armBackTrap(){ try{ history.pushState({__backTrap:true}, ''); }catch(e){} }
 window.addEventListener('popstate', function(){
+  if(stack.length>1 && stack[stack.length-1].type==='assembly' && outChangeCount()>0){ armBackTrap(); exitAssembly(); return; }
   if(stack.length>1){
     fltReset();
     stack.pop();
@@ -1024,10 +984,9 @@ window.addEventListener('popstate', function(){
 armBackTrap();
 function goHome(){
   // Sealed while inside Assembly Room or any of its sub-screens (like Parts Receipts) — must use the Exit button.
-  if(stack[stack.length-1].type==='assembly' || stack[stack.length-1].type==='receipts' || stack[stack.length-1].type==='receiptsCar') return;
+  if(isAsmSubView(stack[stack.length-1].type)) return;
   fltReset(); stack = ['home']; render();
 }
-function exitAssembly(){ stack = ['home']; render(); }
 // The weekly update file sent to WorkClock. Shape (documented here since WorkClock's own code
 // reads this same contract): { app:'ShopBoss', kind:'workclock-update', version:1, sentAt,
 //   weekStart, cars:[{id,name,thumbDataUrl}], employees:[{id,name}],
@@ -1140,6 +1099,8 @@ function sbClearFolder(kind){
 // Files already pulled in from the Incoming folder, so "Check incoming folder" doesn't re-import
 // the same submission twice — tracked by name+size, which is enough to tell files apart here.
 let incomingProcessedFiles = [];
+let shopExpenses = []; // {id, what, amount, note, date(iso), dataUrl|null, addedAt, sentToAccountant, pkgWeek}
+let clockRecs = []; // employee hours: {id, wcId, empId, who, date(iso), wk, inAt, outAt|null, ch, sub}
 let importedSubmissionFingerprints = []; // which WorkClock submissions (by employee+exact submitted time) have already been imported via the manual Import button — keeps re-imports a safe no-op
 async function sbCheckIncomingFolder(){
   if(!incomingDirHandle){ alert('Set up an Incoming weeks folder first, in Settings.'); return; }
@@ -1269,17 +1230,102 @@ async function shareOrSaveFile(fname, jsonText, shareTitle, shareText){
     return 'unavailable';
   }
 }
+// ---- What the next update contains, what the last sent one contained, and the difference between them ----
+let lastSentState = null; // snapshot of the last update that was sent (null until the first send)
+let outSnap = null;       // Outgoing tab as it was when it was opened, for the exit question
+function outgoingState(){
+  const empName = id=>(employees.find(e=>e.id===id)||{}).name||'';
+  const carName = id=>(cars.find(c=>c.id===id)||{}).name||'';
+  return {
+    cars: cars.filter(c=>c.includeInEmployeeUpdate!==false).map(c=>[c.id,c.name]),
+    employees: employees.map(e=>[e.id,e.name]),
+    forms: outgoingForms.map(f=>[f.id, f.name, empName(f.employeeId), carName(f.carId)]),
+    reqs: outgoingPhotoReqs.map(q=>[q.id, q.note, empName(q.employeeId), carName(q.carId)]),
+    notes: outgoingNotes.map(n=>[n.id, n.text, empName(n.employeeId)]),
+    pics: outgoingPhotos.map(q=>[q.id, q.caption||'Photo', empName(q.employeeId), carName(q.carId)]),
+    hist: outgoingHistoryRestore.map(id=>empName(id)),
+    tasks: workTypes.map(t=>t.name),
+    helper: notesHelper.map(t=>t.name),
+    cons: consumablesIncluded ? consumables.map(c=>c.name) : null,
+    lists: customLists.filter(l=>l.includeInUpdate).map(l=>[l.id,l.name,(l.items||[]).slice()]),
+    week: JSON.stringify(getWeekBoundary())
+  };
+}
+function diffOutgoing(prev, cur){
+  prev = prev || {cars:[],employees:[],forms:[],reqs:[],notes:[],pics:[],hist:[],tasks:[],helper:[],cons:null,lists:[],week:null};
+  const out = [];
+  const byId = a=>{ const m = {}; a.forEach(r=>m[r[0]]=r); return m; };
+  const pc = byId(prev.cars), cc = byId(cur.cars);
+  cur.cars.forEach(r=>{ if(!pc[r[0]]) out.push('Car added: '+r[1]); else if(pc[r[0]][1]!==r[1]) out.push('Car renamed: '+pc[r[0]][1]+' to '+r[1]); });
+  prev.cars.forEach(r=>{ if(!cc[r[0]]){ const c = cars.find(x=>x.id===r[0]); out.push(c ? 'Car check mark turned off: '+r[1] : 'Car deleted: '+r[1]); } });
+  const pe = byId(prev.employees), ce = byId(cur.employees);
+  cur.employees.forEach(r=>{ if(!pe[r[0]]) out.push('Employee added: '+r[1]); else if(pe[r[0]][1]!==r[1]) out.push('Employee renamed: '+pe[r[0]][1]+' to '+r[1]); });
+  prev.employees.forEach(r=>{ if(!ce[r[0]]) out.push('Employee removed: '+r[1]); });
+  const grp = (label, a, b, text)=>{
+    const ma = byId(a), mb = byId(b);
+    b.forEach(r=>{ if(!ma[r[0]]) out.push(label+' added: '+text(r)); });
+    a.forEach(r=>{ if(!mb[r[0]]) out.push(label+' removed: '+text(r)); });
+  };
+  const forWho = r=>(r[2]?' (for '+r[2]+')':' (for everyone)')+(r[3]?' (car: '+r[3]+')':'');
+  grp('Form', prev.forms, cur.forms, r=>r[1]+forWho(r));
+  grp('Photo request', prev.reqs, cur.reqs, r=>r[1]+forWho(r));
+  grp('Note', prev.notes, cur.notes, r=>(r[1].length>40?r[1].slice(0,40)+'…':r[1])+(r[2]?' (for '+r[2]+')':''));
+  grp('Photo', prev.pics, cur.pics, r=>r[1]+forWho(r));
+  cur.hist.forEach(n=>{ if(!prev.hist.includes(n)) out.push('Full history will be sent to: '+n); });
+  const setDiff = (label, a, b)=>{
+    b.forEach(x=>{ if(!a.includes(x)) out.push(label+' added: '+x); });
+    a.forEach(x=>{ if(!b.includes(x)) out.push(label+' removed: '+x); });
+  };
+  setDiff('Task', prev.tasks, cur.tasks);
+  setDiff('Notes Helper item', prev.helper, cur.helper);
+  if(cur.cons && !prev.cons) out.push('Consumables and parts list: now sent');
+  else if(!cur.cons && prev.cons) out.push('Consumables and parts list: no longer sent');
+  if(cur.cons && prev.cons) setDiff('Consumables and parts item', prev.cons, cur.cons);
+  const pl = byId(prev.lists), cl = byId(cur.lists);
+  cur.lists.forEach(r=>{ if(!pl[r[0]]) out.push('List now sent: '+r[1]); else setDiff(r[1]+' item', pl[r[0]][2], r[2]); });
+  prev.lists.forEach(r=>{ if(!cl[r[0]]) out.push('List no longer sent: '+r[1]); });
+  if(prev.week!==null && prev.week!==cur.week) out.push('Work week days or times changed');
+  return out;
+}
+function outgoingChangesSinceSent(){ return diffOutgoing(lastSentState, outgoingState()); }
+// The Outgoing tab as it is right now, so leaving can ask whether to keep what changed there. Cars-page changes are not part of it.
+function outSnapTake(){
+  outSnap = {forms:outgoingForms.slice(), reqs:outgoingPhotoReqs.slice(), notes:outgoingNotes.slice(), pics:outgoingPhotos.slice(), hist:outgoingHistoryRestore.slice(),
+    cons:consumablesIncluded, lists:customLists.map(l=>[l.id,!!l.includeInUpdate])};
+}
+function outChangeCount(){
+  if(!outSnap) return 0;
+  const idsDiff = (a,b)=>{ const ia = new Set(a.map(x=>x.id||x)), ib = new Set(b.map(x=>x.id||x)); let n = 0; ib.forEach(i=>{ if(!ia.has(i)) n++; }); ia.forEach(i=>{ if(!ib.has(i)) n++; }); return n; };
+  let n = idsDiff(outSnap.forms,outgoingForms)+idsDiff(outSnap.reqs,outgoingPhotoReqs)+idsDiff(outSnap.notes,outgoingNotes)+idsDiff(outSnap.pics,outgoingPhotos)+idsDiff(outSnap.hist,outgoingHistoryRestore);
+  if(outSnap.cons!==consumablesIncluded) n++;
+  outSnap.lists.forEach(([id,inc])=>{ const l = customLists.find(x=>x.id===id); if(l && !!l.includeInUpdate!==inc) n++; });
+  return n;
+}
+function outDiscardChanges(){
+  if(!outSnap) return;
+  outgoingForms = outSnap.forms.slice(); outgoingPhotoReqs = outSnap.reqs.slice(); outgoingNotes = outSnap.notes.slice(); outgoingPhotos = outSnap.pics.slice(); outgoingHistoryRestore = outSnap.hist.slice();
+  consumablesIncluded = outSnap.cons;
+  outSnap.lists.forEach(([id,inc])=>{ const l = customLists.find(x=>x.id===id); if(l) l.includeInUpdate = inc; });
+  persist();
+}
+async function exitAssembly(){
+  const n = outChangeCount();
+  if(n>0){
+    const keep = await sbChoice('You made '+n+' change'+(n===1?'':'s')+' in Outgoing since you opened it.\n\nKeep them?', 'Yes', 'No');
+    if(!keep) outDiscardChanges();
+  }
+  outSnap = null;
+  stack = ['home']; render();
+}
 async function outgoingSend(){
   // Which cars go out is no longer picked here — it's whatever's checked "In update" on the Cars
   // page itself, so there's one place that controls it instead of a separate per-update selection.
   const selCars = cars.filter(c=>c.includeInEmployeeUpdate!==false);
   if(!selCars.length && !outgoingForms.length && !outgoingPhotoReqs.length && !outgoingHistoryRestore.length && !outgoingNotes.length && !outgoingPhotos.length){ alert('Nothing to send yet — check "In update" on at least one car (Cars page), or add a form, photo request, or note below.'); return; }
-  const proceed = confirm(
-    'Send this update to WorkClock?\n\n'+
-    selCars.length+' car'+(selCars.length===1?'':'s')+', '+outgoingForms.length+' form'+(outgoingForms.length===1?'':'s')+', '+outgoingPhotoReqs.length+' photo request'+(outgoingPhotoReqs.length===1?'':'s')+(outgoingNotes.length?', '+outgoingNotes.length+' note'+(outgoingNotes.length===1?'':'s'):'')+(outgoingPhotos.length?', '+outgoingPhotos.length+' photo'+(outgoingPhotos.length===1?'':'s')+' for employees':'')+
-    (outgoingHistoryRestore.length?', full history for '+outgoingHistoryRestore.length+' employee'+(outgoingHistoryRestore.length===1?'':'s'):'')+'.\n\n'+
-    'Heads up: sending this will clear out any photos, completed documents, and blank forms that employees have already submitted or been given in WorkClock — make sure you\'ve got what you need from them before sending.'
-  );
+  const changeLines = outgoingChangesSinceSent();
+  if(!changeLines.length){ await sbChoiceMulti('No changes since the last update you sent.', ['OK']); return; }
+  const shown = changeLines.slice(0,60);
+  const proceed = await sbChoice('Send this update to employees?\n\nChanges since the last update you sent ('+changeLines.length+'):\n\n'+shown.join('\n')+(changeLines.length>shown.length?'\n…and '+(changeLines.length-shown.length)+' more':''), 'Send', 'Cancel');
   if(!proceed) return;
   const weekStart = (function(){try{return localStorage.getItem('sb-week-start')||'Mon';}catch(e){return 'Mon';}})();
   const wb = getWeekBoundary();
@@ -1353,11 +1399,10 @@ async function outgoingSend(){
     alert('Couldn\'t save that file on this device. Try again — if it keeps happening, check that your browser allows downloads.');
     return;
   }
-  outgoingForms = [];
-  outgoingPhotoReqs = [];
+  // The Outgoing setup stays as it was sent; only the one-time "send full history" ticks are used up.
   outgoingHistoryRestore = [];
-  outgoingNotes = [];
-  outgoingPhotos = [];
+  lastSentState = outgoingState();
+  if(outSnap) outSnapTake();
   persist();
   alert('Update sent — '+selCars.length+' car'+(selCars.length===1?'':'s')+' included. Get that file to WorkClock (email it, text it, or drop it in once the shop has its wireless set up).');
   render();
@@ -1517,32 +1562,10 @@ function focusWorklog(pill){
   sec.scrollIntoView({behavior:'smooth'});
 }
 const PHOTO_DATES = ['Aug 12','Sep 3','Sep 24','Sep 25'];
-const DEMO_SEED_TRASH = [
-  {id:'t1', kind:'Form', name:'Old intake checklist', deleted:'Sep 21', daysLeft:24},
-  {id:'t2', kind:'Car', name:'Henderson (duplicate entry)', deleted:'Sep 10', daysLeft:13},
-];
 let trash = [];
 // Pulls all the demo/sample content above into the live arrays — used only for testing, and for
 // building the one-time sample restore file. Never called from any button in the real app, so a
 // real shop's data is never at risk of being overwritten by this.
-function __seedDemoDataForTesting(){
-  cars.push(...DEMO_SEED_CARS);
-  owners.push(...DEMO_SEED_OWNERS);
-  employees.push(...DEMO_SEED_EMPLOYEES);
-  entries.push(...DEMO_SEED_ENTRIES);
-  consumables.push(...DEMO_SEED_CONSUMABLES);
-  workTypes.push(...DEMO_SEED_WORKTYPES);
-  forms.push(...DEMO_SEED_FORMS);
-  historyWeeks.push(...DEMO_SEED_HISTORY_WEEKS);
-  trash.push(...DEMO_SEED_TRASH);
-  // Mirrors the real startup normalization below (which already ran, against empty arrays, before
-  // this function was ever called) so seeded test/demo data starts alphabetical just like a real
-  // first run would.
-  sortArrayAlphaInPlace(cars, c=>c.name);
-  sortArrayAlphaInPlace(employees, e=>e.name);
-  sortArrayAlphaInPlace(consumables, c=>c.name);
-  sortArrayAlphaInPlace(workTypes, t=>t.name);
-}
 function trashRestore(id){
   const t = trash.find(x=>x.id===id);
   if(!t) return;
@@ -1558,8 +1581,11 @@ function trashRestore(id){
   } else if(t.snapshot && t.kind==='Owner'){
     owners.push(t.snapshot);
     persist();
-  } else if(t.snapshot && t.kind==='HistoryWeek'){
+  } else if(t.snapshot && t.kind==='HistoryWeek' && !t.snapshot.entries){
     historyWeeks.unshift(t.snapshot); // the entries themselves were never touched — only this summary record was removed
+    persist();
+  } else if(t.snapshot && (t.kind==='WorkDay' || t.kind==='WorkEntry' || (t.kind==='HistoryWeek' && t.snapshot.entries))){
+    wrRestore(t.snapshot);
     persist();
   } else if(t.snapshot && t.kind==='Form'){
     forms.push(t.snapshot);
@@ -1570,6 +1596,7 @@ function trashRestore(id){
     sn.docs.forEach(d=>{ if(!completedDocs.some(x=>x.id===d.id)) completedDocs.push(d); });
     sn.photos.forEach(x=>{ const c=cars.find(k=>k.id===x.carId); if(c){ if(!Array.isArray(c.photos)) c.photos=[]; if(!c.photos.some(q=>q.id===x.photo.id)) c.photos.push(x.photo); } });
     sn.loose.forEach(ph=>{ if(!unmatchedPhotos.some(x=>x.id===ph.id)) unmatchedPhotos.push(ph); });
+    safeArr(sn.clocks).forEach(c=>{ if(!clockRecs.some(x=>x.id===c.id)) clockRecs.push(c); });
     sn.subs.forEach(sub=>{ if(!importedSubmissionFingerprints.includes(sub)) importedSubmissionFingerprints.push(sub); });
     if(!employees.some(e=>e.name===sn.empName)) alert(sn.empName+' is no longer on your employee list, so restore them from Recently Deleted too to see this log.');
     persist();
@@ -1664,7 +1691,7 @@ function sbNameDistance(a,b){
 }
 // When a submission arrives under a name that isn't on the list, ask Daren which employee it is (closest
 // spellings first), or whether to add a new one. A match is remembered so later weeks link by themselves.
-function resolveSubmissionEmployee(payload, proceed){
+function resolveSubmissionEmployee(payload, proceed, onSkip){
   const typed = String(payload.employee||'').trim();
   const byId = payload.employeeId && employees.find(e=>e.id===payload.employeeId);
   const byName = typed && employees.find(e=>e.name.toLowerCase()===typed.toLowerCase());
@@ -1686,7 +1713,7 @@ function resolveSubmissionEmployee(payload, proceed){
     + '<button class="btn-ghost" data-skip="1" style="width:100%;margin:0">Cancel — don\'t import</button></div>';
   pop.onclick = ev=>{
     const t = ev.target.closest('button'); if(!t) return;
-    if(t.dataset.skip){ pop.remove(); return; }
+    if(t.dataset.skip){ pop.remove(); if(onSkip) onSkip(); return; }
     if(t.dataset.new){
       const emp = {id:'emp'+Date.now()+Math.random().toString(36).slice(2,6), name:typed, phone:'', cars:[]};
       employees.push(emp); pop.remove(); persist(); proceed(); return;
@@ -1825,6 +1852,59 @@ function handleThumbFile(evt){
   reader.readAsDataURL(file);
 }
 // ---- Receipts — photos of paper parts invoices, snapped in-app one page at a time ----
+// ---- Shop Expenses: costs that are not for one customer car ----
+let expensePhotoTarget = null;
+function receiptTabsHTML(active){
+  return `<div class="assembly-tabs">
+    <button class="assembly-tab ${active==='parts'?'active':''}" onclick="${active==='parts'?'':`navReplace({type:'receipts'})`}">Parts receipts</button>
+    <button class="assembly-tab ${active==='expenses'?'active':''}" onclick="${active==='expenses'?'':`navReplace({type:'shopExpenses'})`}">Shop Expenses</button>
+  </div>`;
+}
+function addShopExpenseManual(){
+  const g = id=>{ const el = document.getElementById(id); return el ? el.value : ''; };
+  const what = g('seWhat').trim(), amt = parseFloat(g('seAmount'));
+  if(!what){ alert('Enter what it was for first.'); return; }
+  if(!(amt>=0)){ alert('Enter a valid amount.'); return; }
+  const d = g('seDate');
+  shopExpenses.push({id:'sx'+Date.now()+Math.random().toString(36).slice(2,6), what, amount:amt, note:g('seNote').trim(), date:/^\d{4}-\d{2}-\d{2}$/.test(d)?d:isoOfDate(sbToday()), dataUrl:null, addedAt:Date.now(), sentToAccountant:false});
+  persist(); render();
+}
+function seSet(id, field, v){
+  const x = shopExpenses.find(q=>q.id===id); if(!x) return;
+  if(field==='amount'){ const a = parseFloat(v); x.amount = (a>=0) ? a : ''; }
+  else if(field==='date'){ if(/^\d{4}-\d{2}-\d{2}$/.test(v||'')) x.date = v; }
+  else x[field] = String(v||'').trim();
+  persist(); render();
+}
+function seRemovePhoto(id){ const x = shopExpenses.find(q=>q.id===id); if(x){ x.dataUrl = null; persist(); render(); } }
+function seDelete(id){
+  const x = shopExpenses.find(q=>q.id===id); if(!x) return;
+  if(!confirm('Delete this shop expense'+(x.what?' ("'+x.what+'")':'')+'? This can\'t be undone.')) return;
+  shopExpenses.splice(shopExpenses.indexOf(x),1); persist(); render();
+}
+function triggerExpensePhoto(target){ expensePhotoTarget = target; const el = document.getElementById('expenseFile'); if(el) el.click(); }
+function handleExpensePhotoFile(evt){
+  const file = evt.target.files && evt.target.files[0];
+  const target = expensePhotoTarget;
+  evt.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const scale = Math.min(1, 1600/Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width*scale); canvas.height = Math.round(img.height*scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const url = canvas.toDataURL('image/jpeg', 0.85);
+      if(target && target!=='new'){ const x = shopExpenses.find(q=>q.id===target); if(x) x.dataUrl = url; }
+      else shopExpenses.push({id:'sx'+Date.now()+Math.random().toString(36).slice(2,6), what:'', amount:'', note:'', date:isoOfDate(sbToday()), dataUrl:url, addedAt:Date.now(), sentToAccountant:false});
+      persist(); render();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
 function triggerReceiptPhoto(){ const el = document.getElementById('receiptFile'); if(el) el.click(); }
 function handleReceiptPhotoFile(evt){
   const file = evt.target.files && evt.target.files[0];
@@ -1856,12 +1936,12 @@ function handleReceiptPhotoFile(evt){
 // A manual line-item entry — just a part name and a price, no photo — for the suppliers who only
 // give a verbal total or a receipt not worth photographing. Assigned to a car (or shop supplies)
 // just like the photo receipts, and the car's running total adds these up automatically.
-function addManualReceipt(carId, partName, price){
+function addManualReceipt(carId, partName, price, dateIso){
   partName = (partName||'').trim();
   const amt = parseFloat(price);
   if(!partName){ alert('Enter the part name first.'); return; }
   if(!(amt>=0)){ alert('Enter a valid price.'); return; }
-  receipts.push({id:'rcpt'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:null, carId: carId||null, note:'', addedAt:Date.now(), sentToAccountant:false, kind:'manual', partName, price:amt});
+  receipts.push({id:'rcpt'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:null, carId: carId||null, note:'', addedAt:Date.now(), sentToAccountant:false, kind:'manual', partName, price:amt, date:(/^\d{4}-\d{2}-\d{2}$/.test(dateIso||'') ? dateIso : isoOfDate(sbToday()))});
   persist();
   render();
 }
@@ -1877,6 +1957,7 @@ function setReceiptPrice(id, price){
   persist();
   render();
 }
+function setReceiptDate(id, v){ const r = receipts.find(x=>x.id===id); if(r && /^\d{4}-\d{2}-\d{2}$/.test(v||'')){ r.date = v; persist(); render(); } }
 function setReceiptNote(id, note){
   const r = receipts.find(x=>x.id===id);
   if(r){ r.note = (note||'').trim(); persist(); }
@@ -1890,7 +1971,8 @@ function addManualReceiptFromInputs(carId){
   const priceEl = document.getElementById('manualPriceInput');
   const name = nameEl ? nameEl.value : '';
   const price = priceEl ? priceEl.value : '';
-  addManualReceipt(carId||null, name, price);
+  const dEl = document.getElementById('manualDateInput');
+  addManualReceipt(carId||null, name, price, dEl ? dEl.value : '');
 }
 function carManualTotal(carId){
   return receipts.filter(r=>r.kind==='manual' && (r.carId||null)===(carId||null)).reduce((s,r)=>s+(parseFloat(r.price)||0),0);
@@ -1991,18 +2073,25 @@ function isoToShopBossDate(iso){
 }
 function triggerImportSubmissionPicker(){ const el = document.getElementById('importSubmissionFile'); if(el) el.click(); }
 function handleImportSubmissionFile(evt){
-  const file = evt.target.files && evt.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    let payload;
-    try{ payload = JSON.parse(reader.result); }
-    catch(e){ alert('That file doesn\'t look like a WorkClock submission.'); return; }
-    applyWorkClockSubmission(payload);
-  };
-  reader.onerror = ()=>{ alert('Couldn\'t read that file.'); };
-  reader.readAsText(file);
+  const files = Array.from((evt.target.files)||[]);
   evt.target.value = '';
+  if(!files.length) return;
+  const readOne = f=>new Promise(res=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{ try{ res({name:f.name, payload:JSON.parse(reader.result)}); }catch(e){ res({name:f.name, bad:true}); } };
+    reader.onerror = ()=>res({name:f.name, bad:true});
+    reader.readAsText(f);
+  });
+  Promise.all(files.map(readOne)).then(list=>{
+    // Oldest first, so a resent week lands after the one it replaces.
+    list.sort((a,b)=>String((a.payload&&a.payload.submittedAt)||'').localeCompare(String((b.payload&&b.payload.submittedAt)||'')));
+    const next = ()=>{
+      const it = list.shift(); if(!it) return;
+      if(it.bad){ alert('"'+it.name+'" doesn\'t look like a WorkClock submission.'); next(); return; }
+      applyWorkClockSubmission(it.payload, next);
+    };
+    next();
+  });
 }
 // Local date + time (to the minute) for file names, e.g. 2026-10-05_1042 — exports made twice in one
 // day (a midday correction, say) each get their own name instead of overwriting or clashing.
@@ -2038,7 +2127,12 @@ function submissionHash(payload){
   const ents = payload.entries.map(e=>JSON.stringify([e.id||'',e.date||'',e.hours,e.task||'',e.desc||'',e.notes||'',e.car||'',e.consumables||'',e.lowSupply||'',e.flagNote||'',e.pickListAnswers||null])).sort();
   const docs = (payload.completedDocuments||[]).map(d=>JSON.stringify([d.id||'',d.name||'',d.date||'',d.car||'',d.fileName||'',d.flagNote||'',d.answers||null,(d.dataUrl||'').length])).sort();
   const phs = (payload.photos||[]).map(p=>JSON.stringify([p.id||'',p.date||'',p.car||'',p.fileName||'',p.flagNote||'',(p.dataUrl||'').length])).sort();
-  return cyrb53(JSON.stringify([String(payload.employeeId||payload.employee||'').toLowerCase().trim(), ents, docs, phs]));
+  const base = [String(payload.employeeId||payload.employee||'').toLowerCase().trim(), ents, docs, phs];
+  // Employee hours and task start/end times only change the fingerprint when they are present, so older files keep the same fingerprint.
+  if(Array.isArray(payload.clocks) && payload.clocks.length) base.push(payload.clocks.map(c=>JSON.stringify([c.id||'',c.date||'',c.clockedInAt||null,c.clockedOutAt==null?null:c.clockedOutAt])).sort());
+  const tm = payload.entries.filter(e=>e.startedAt||e.endedAt).map(e=>JSON.stringify([e.id||'',e.startedAt||null,e.endedAt||null])).sort();
+  if(tm.length) base.push(tm);
+  return cyrb53(JSON.stringify(base));
 }
 // What the employee sent for an entry, kept untouched so a later resend is compared to the original and not to Daren's edited copy.
 function entryOrig(l){ return {date:l.date, hours:String(l.hours), desc:l.desc||'', notes:l.notes||'', consumables:l.consumables||'', car:l.car||l.carTyped||''}; }
@@ -2080,9 +2174,9 @@ function changeLine(l, c){
   else text = show(bits.before)+' changed to '+show(bits.after);
   return when+', '+l.who+', '+label+': '+text+'.';
 }
-function applyWorkClockSubmission(payload){
-  if(!payload || typeof payload!=='object' || !Array.isArray(payload.entries)){ alert('That file doesn\'t look like a WorkClock submission.'); return; }
-  resolveSubmissionEmployee(payload, ()=>applyWorkClockSubmissionCore(payload));
+function applyWorkClockSubmission(payload, done){
+  if(!payload || typeof payload!=='object' || !Array.isArray(payload.entries)){ alert('That file doesn\'t look like a WorkClock submission.'); if(done) done(); return; }
+  resolveSubmissionEmployee(payload, ()=>{ applyWorkClockSubmissionCore(payload); if(done) done(); }, done);
 }
 function applyWorkClockSubmissionCore(payload){
   if(!payload || typeof payload!=='object' || !Array.isArray(payload.entries)){ alert('That file doesn\'t look like a WorkClock submission.'); return; }
@@ -2091,7 +2185,7 @@ function applyWorkClockSubmissionCore(payload){
   // moment it was sent, which (paired with who sent it) makes a reliable fingerprint: if we've
   // already imported this exact submission before, skip it instead of adding everything twice.
   const importHash = submissionHash(payload);
-  if(entries.some(l=>l.ch===importHash) || completedDocs.some(d=>d.ch===importHash)){
+  if(entries.some(l=>l.ch===importHash) || completedDocs.some(d=>d.ch===importHash) || clockRecs.some(c=>c.ch===importHash)){
     alert('Shop Boss already has this work week exactly as it was sent. Nothing was changed.');
     return;
   }
@@ -2115,6 +2209,14 @@ function applyWorkClockSubmissionCore(payload){
     }
   }
   const whoName = emp ? emp.name : (payload.employee || 'Unknown');
+  // Employee hours (clock-in to clock-out), one record per clock-in. A resent week replaces what Shop Boss had for that employee and week.
+  const incomingClocks = Array.isArray(payload.clocks) ? payload.clocks.filter(c=>c && c.date && c.clockedInAt).map(c=>({
+    id:'ck'+Date.now()+Math.random().toString(36).slice(2,7), wcId:c.id||null, empId:emp?emp.id:null, who:whoName, date:c.date,
+    wk:wkForIso(c.date, payload.weekOf), inAt:Number(c.clockedInAt), outAt:c.clockedOutAt==null?null:Number(c.clockedOutAt), ch:importHash, sub:importFingerprint})) : [];
+  const clockWks = new Set(incomingClocks.map(c=>c.wk)); if(Array.isArray(payload.clocks) && payload.weekOf) clockWks.add(payload.weekOf);
+  const clockSigOf = list=>JSON.stringify(list.map(c=>[c.wcId||'',c.date,c.inAt,c.outAt]).sort());
+  const oldClocks = clockRecs.filter(c=>c.who===whoName && clockWks.has(c.wk));
+  const clocksChanged = Array.isArray(payload.clocks) && clockSigOf(oldClocks)!==clockSigOf(incomingClocks);
   let unmatchedCars = 0;
   const newEntries = payload.entries.map(pe=>{
     const car = matchCarForImport(pe.carId, pe.car);
@@ -2132,7 +2234,7 @@ function applyWorkClockSubmissionCore(payload){
     const ans = pe.pickListAnswers && typeof pe.pickListAnswers==='object' ? pe.pickListAnswers : null;
     const ne = {
       id: newEntryId(), sub: importFingerprint, ch: importHash, wcId: pe.id||null,
-      iso: pe.date||null, wk: wkForIso(pe.date, payload.weekOf), empId: emp?emp.id:null,
+      iso: pe.date||null, wk: wkForIso(pe.date, payload.weekOf), empId: emp?emp.id:null, startedAt: pe.startedAt||null, endedAt: pe.endedAt||null,
       car: car ? car.id : (pe.car||''),
       carTyped: car ? null : (pe.car||null), // remembers the exact text that didn't match, for the "needs a car assigned" review
       who: whoName,
@@ -2182,7 +2284,7 @@ function applyWorkClockSubmissionCore(payload){
     const old = ne.wcId ? entries.find(x=>x.wcId===ne.wcId && x.who===whoName) : null;
     if(!old){ if(ne.wk && historyWeeks.some(h=>h.wk===ne.wk)) ne.late = true; keptNew.push(ne); return; }
     const diffs = mergeOntoOld(ne, old);
-    if(!diffs.length){ sameCount++; return; }
+    if(!diffs.length){ sameCount++; old.startedAt = ne.startedAt; old.endedAt = ne.endedAt; return; }
     ne.replaces = old.id; ne.chg = diffs;
     if(old.historyWeekId){ ne.fromHistory = true; keptNew.push(ne); }
     else currentReplacements.push({ne, old});
@@ -2190,7 +2292,7 @@ function applyWorkClockSubmissionCore(payload){
   newEntries.length = 0; newEntries.push(...keptNew);
   const docsIn = (Array.isArray(payload.completedDocuments) ? payload.completedDocuments : []).filter(d=>!(d.id && completedDocs.some(x=>x.wcId===d.id)));
   const photosIn = (Array.isArray(payload.photos) ? payload.photos : []).filter(p=>!(p.id && (unmatchedPhotos.some(x=>x.wcId===p.id) || cars.some(c=>safeArr(c.photos).some(x=>x.wcId===p.id)))));
-  if(!newEntries.length && !currentReplacements.length && !flaggedAttachmentEntries.length && !docsIn.length && !photosIn.length){
+  if(!newEntries.length && !currentReplacements.length && !flaggedAttachmentEntries.length && !docsIn.length && !photosIn.length && !clocksChanged){
     alert('Shop Boss already has everything in this submission. Nothing was changed.');
     return;
   }
@@ -2202,6 +2304,7 @@ function applyWorkClockSubmissionCore(payload){
   const unmatchedTotal = unmatchedCars + unmatchedDocs + unmatchedPhotosCount;
   const entryTotalNew = newEntries.length + currentReplacements.length;
   const summary = entryTotalNew+' entr'+(entryTotalNew===1?'y':'ies')+
+    (incomingClocks.length?', '+incomingClocks.length+' clock-in/clock-out record'+(incomingClocks.length===1?'':'s'):'')+
     (docCount?', '+docCount+' completed document'+(docCount===1?'':'s'):'')+
     (photoCount?', '+photoCount+' photo'+(photoCount===1?'':'s'):'')+
     (flagCount?', '+flagCount+' flag'+(flagCount===1?'':'s')+' needing attention':'')+
@@ -2229,6 +2332,7 @@ function applyWorkClockSubmissionCore(payload){
     }
   });
   if(payload.submittedAt) importedSubmissionFingerprints.push(importFingerprint);
+  if(clocksChanged){ clockRecs = clockRecs.filter(c=>!(c.who===whoName && clockWks.has(c.wk))); clockRecs.push(...incomingClocks); }
   entries.push(...newEntries, ...flaggedAttachmentEntries);
   // Log completed documents and photos against the matching car so they show up on its page,
   // same as work logged directly in Shop Boss.
@@ -2248,7 +2352,7 @@ function applyWorkClockSubmissionCore(payload){
   });
   photosIn.forEach(p=>{
     const car = matchCarForImport(p.carId, p.car);
-    const pMeta = {ch: importHash, wcId: p.id||null, iso: p.date||null, wk: wkForIso(p.date, payload.weekOf)};
+    const pMeta = {ch: importHash, wcId: p.id||null, iso: p.date||null, wk: wkForIso(p.date, payload.weekOf), label: p.label||null};
     if(car){
       if(!Array.isArray(car.photos)) car.photos = []; // guards against an older backup file that still has it as a count
       car.photos.push({...pMeta, sub:importFingerprint, id:'ph'+Date.now()+Math.random().toString(36).slice(2,6), dataUrl:p.dataUrl||null, date:p.date?isoToShopBossDate(p.date):null, empName:whoName, fileName:p.fileName||null});
@@ -2328,6 +2432,48 @@ function requestDeleteCompletedDoc(docId){
 }
 // ---- Parts used (for billing the customer). Each work entry can hold several {name, price} rows.
 // Picking a saved part fills in its last price; changing a price remembers it for next time. ----
+// ---- Employee hours (clock-in to clock-out), kept apart from task hours ----
+function fmtClockTime(ms){ return new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+function clocksFor(who, wk){ return clockRecs.filter(c=>c.who===who && (wk==null || (c.wk||'')===(wk||''))); }
+// One row per day: first clock-in, last clock-out, employee hours. A day with a clock-in that never got a clock-out is flagged and counted as nothing.
+function clockDays(who, wk){
+  const byDate = {};
+  clocksFor(who, wk).forEach(c=>{ (byDate[c.date] = byDate[c.date] || []).push(c); });
+  return Object.keys(byDate).sort().map(date=>{
+    const cs = byDate[date].slice().sort((a,b)=>a.inAt-b.inAt);
+    const missing = cs.some(c=>c.outAt==null);
+    const hours = cs.reduce((t,c)=>t+(c.outAt==null?0:(c.outAt-c.inAt)/3600000),0);
+    const outs = cs.filter(c=>c.outAt!=null);
+    return {date, inAt:cs[0].inAt, outAt: missing ? null : (outs.length?outs[outs.length-1].outAt:null), hours: Math.round(hours*100)/100, missing, count:cs.length};
+  });
+}
+function empHoursTotal(who, wk){ return Math.round(clockDays(who, wk).reduce((t,d)=>t+d.hours,0)*100)/100; }
+function empHoursMissingCount(who, wk){ return clockDays(who, wk).filter(d=>d.missing).length; }
+function clockDayLineText(d){
+  const outTxt = d.missing ? 'no clock-out' : fmtClockTime(d.outAt);
+  return fmtClockTime(d.inAt)+' to '+outTxt+(d.missing?' — not counted':' — '+fmtHrsMin(d.hours));
+}
+function empHoursBlockHTML(who, wk, es){
+  const days = clockDays(who, wk);
+  if(!days.length) return '';
+  const taskBy = {};
+  safeArr(es).forEach(l=>{ if(l.iso) taskBy[l.iso] = (taskBy[l.iso]||0) + (parseFloat(l.hours)||0); });
+  const miss = days.filter(d=>d.missing).length;
+  return `<div class="block" style="margin:8px 0">
+    <p class="block-title" style="margin:0 0 6px">Employee hours by day</p>
+    ${days.map(d=>`<div class="assembly-row-hours" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+      ${d.missing?warnIcon(14):''}<b>${escH(isoToShopBossDate(d.date))}</b><span>${escH(clockDayLineText(d))}</span>
+      ${taskBy[d.date]!=null?`<span>· Task hours ${fmtHrsMin(taskBy[d.date])}</span>`:''}</div>`).join('')}
+    <div class="assembly-row-hours" style="margin-top:6px"><b>Employee hours for the week: ${fmtHrsMin(empHoursTotal(who, wk))}</b>${miss?` · ${miss} day${miss===1?'':'s'} with no clock-out`:''}</div>
+  </div>`;
+}
+function hwUnfinished(hw){ return entries.filter(l=>l.historyWeekId===hw.id && !entryFinished(l)); }
+// Employee hours for a saved week, from the clock records that belong to the same work week.
+function hwEmpHours(hw){
+  if(!hw.wk) return {total:0, whos:[], missing:0};
+  const whos = [...new Set(clockRecs.filter(c=>c.wk===hw.wk).map(c=>c.who))].sort();
+  return {total: Math.round(whos.reduce((t,w)=>t+empHoursTotal(w,hw.wk),0)*100)/100, whos, missing: whos.reduce((t,w)=>t+empHoursMissingCount(w,hw.wk),0)};
+}
 function partNum(v){ const n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
 function fmtMoney(n){ return '$'+(Math.round(n*100)/100).toFixed(2); }
 function entryPartsTotal(l){ return safeArr(l.parts).reduce((t,p)=>t+partNum(p.price),0); }
@@ -2385,6 +2531,11 @@ function asmListings(){
     [...new Set(es.map(l=>l.wk||''))].sort().reverse().forEach(wk=>{
       out.push({e, wk, key:listingKey(e.id,wk), es:es.filter(l=>(l.wk||'')===wk)});
     });
+    // A week that has employee hours but no task entries yet still gets a listing, so those hours are never hidden.
+    [...new Set(clockRecs.filter(c=>c.who===e.name && c.wk).map(c=>c.wk))].sort().reverse().forEach(wk=>{
+      if(es.some(l=>(l.wk||'')===wk) || historyWeeks.some(h=>h.wk===wk)) return;
+      out.push({e, wk, key:listingKey(e.id,wk), es:[]});
+    });
   });
   return out;
 }
@@ -2425,16 +2576,19 @@ function asmDeleteListing(key){
   const photos = [];
   cars.forEach(c=>safeArr(c.photos).forEach(ph=>{ if(mine(ph)) photos.push({carId:c.id, photo:ph}); }));
   const loose = unmatchedPhotos.filter(mine);
+  const clk = wk ? clockRecs.filter(c=>c.who===e.name && c.wk===wk) : [];
   const bits = [es.length+' entr'+(es.length===1?'y':'ies')];
+  if(clk.length) bits.push(clk.length+' clock-in/clock-out record'+(clk.length===1?'':'s'));
   if(docs.length) bits.push(docs.length+' form'+(docs.length===1?'':'s'));
   if(photos.length+loose.length) bits.push((photos.length+loose.length)+' photo'+(photos.length+loose.length===1?'':'s'));
   if(!confirm('Delete '+e.name+'\'s listing for '+listingTitle(wk).toLowerCase()+'?\n\nThis removes '+bits.join(', ')+'. '+e.name+' stays on your employee list. Shop Boss forgets it received this listing, so the same WorkClock file can be imported again. A copy goes to Recently Deleted so you can restore it.')) return;
-  const snap = {key, empId:e.id, empName:e.name, wk, entries:es.slice(), docs:docs.slice(), photos:photos.slice(), loose:loose.slice(), subs:[...subs]};
+  const snap = {key, empId:e.id, empName:e.name, wk, entries:es.slice(), docs:docs.slice(), photos:photos.slice(), loose:loose.slice(), clocks:clk.slice(), subs:[...subs]};
   const eset = new Set(es);
   for(let i=entries.length-1;i>=0;i--) if(eset.has(entries[i])) entries.splice(i,1);
   docs.forEach(d=>{ const i=completedDocs.indexOf(d); if(i>=0) completedDocs.splice(i,1); });
   photos.forEach(x=>{ const c=cars.find(k=>k.id===x.carId); if(c){ const i=c.photos.indexOf(x.photo); if(i>=0) c.photos.splice(i,1); } });
   loose.forEach(ph=>{ const i=unmatchedPhotos.indexOf(ph); if(i>=0) unmatchedPhotos.splice(i,1); });
+  clockRecs = clockRecs.filter(c=>!clk.includes(c));
   snap.subs.forEach(sub=>{ if(!entries.some(l=>l.sub===sub)){ const i=importedSubmissionFingerprints.indexOf(sub); if(i>=0) importedSubmissionFingerprints.splice(i,1); } });
   delete asm.reviewed[key]; delete asm.waived[key];
   trash.push({id:'trash-log-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'EmployeeLog', name:e.name+' — '+listingTitle(wk).toLowerCase(), deleted:'Just now', daysLeft:30, snapshot:snap});
@@ -2448,14 +2602,7 @@ function removeEmptyEmployees(){
   list.forEach(e=>{ const i=employees.indexOf(e); if(i>=0) employees.splice(i,1); trash.push({id:'trash-emp-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'Employee', name:e.name, deleted:'Just now', daysLeft:30, snapshot:e}); });
   persist(); render();
 }
-function requestDeleteEntry(entryId){
-  const l = entries.find(x=>x.id===entryId);
-  if(!l) return;
-  if(!confirm('Delete this work log entry ('+l.who+', '+l.date+', '+fmtHrsMin(l.hours)+')? This can\'t be undone, and it will no longer count toward hours or billing.')) return;
-  const idx = entries.indexOf(l);
-  if(idx>=0) entries.splice(idx,1);
-  persist(); render();
-}
+function requestDeleteEntry(entryId){ deleteWorkEntry(entryId); }
 function warnIcon(px){
   px = px || 22;
   return `<svg viewBox="0 0 24 24" width="${px}" height="${px}" aria-hidden="true"><path d="M12 2.6 L22.4 20.6 H1.6 Z" fill="#E0A03A" stroke="#E0A03A" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.2v5.4" stroke="#1a1305" stroke-width="2.3" stroke-linecap="round"/><circle cx="12" cy="17.7" r="1.35" fill="#1a1305"/></svg>`;
@@ -2483,7 +2630,7 @@ function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
 const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
-  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({billingParts, cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded})); }catch(e){}
+  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({billingParts, cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded, clockRecs, lastSentState, shopExpenses})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -2513,6 +2660,9 @@ function loadPersisted(){
     if(Array.isArray(d.completedDocs)){ completedDocs.length=0; completedDocs.push(...d.completedDocs); }
     if(Array.isArray(d.unmatchedPhotos)){ unmatchedPhotos.length=0; unmatchedPhotos.push(...d.unmatchedPhotos); }
     if(Array.isArray(d.receipts)){ receipts.length=0; receipts.push(...d.receipts); }
+    if(Array.isArray(d.clockRecs)) clockRecs = d.clockRecs;
+    if(Array.isArray(d.shopExpenses)) shopExpenses = d.shopExpenses;
+    if(d.lastSentState && typeof d.lastSentState==='object') lastSentState = d.lastSentState;
     if(d.listOrderCustomized) listOrderCustomized = Object.assign({cars:false, employees:false, consumables:false, workTypes:false, customLists:{}}, d.listOrderCustomized);
     if(Array.isArray(d.incomingProcessedFiles)){ incomingProcessedFiles.length=0; incomingProcessedFiles.push(...d.incomingProcessedFiles); }
     if(Array.isArray(d.importedSubmissionFingerprints)){ importedSubmissionFingerprints.length=0; importedSubmissionFingerprints.push(...d.importedSubmissionFingerprints); }
@@ -2539,7 +2689,7 @@ function buildBackupPayload(){
   return {
     app:'Shop Boss', version:1, savedAt: new Date().toISOString(),
     data: {
-      cars, owners, employees, entries, trash, historyWeeks, asm, consumables, workTypes, forms, customLists, completedDocs, unmatchedPhotos, receipts, listOrderCustomized,
+      cars, owners, employees, entries, trash, historyWeeks, asm, consumables, workTypes, forms, customLists, completedDocs, unmatchedPhotos, receipts, listOrderCustomized, clockRecs, lastSentState, shopExpenses,
       consumablesIncluded, notesHelper, billingParts,
       settings: {
         themeAccent: (function(){try{return localStorage.getItem('sb-theme-accent');}catch(e){return null;}})(),
@@ -2603,6 +2753,9 @@ function handleRestoreFile(evt){
     if(Array.isArray(d.completedDocs)){ completedDocs.length=0; completedDocs.push(...d.completedDocs); }
     if(Array.isArray(d.unmatchedPhotos)){ unmatchedPhotos.length=0; unmatchedPhotos.push(...d.unmatchedPhotos); }
     if(Array.isArray(d.receipts)){ receipts.length=0; receipts.push(...d.receipts); }
+    clockRecs = Array.isArray(d.clockRecs) ? d.clockRecs : [];
+    lastSentState = (d.lastSentState && typeof d.lastSentState==='object') ? d.lastSentState : null;
+    shopExpenses = Array.isArray(d.shopExpenses) ? d.shopExpenses : [];
     if(d.listOrderCustomized) listOrderCustomized = Object.assign({cars:false, employees:false, consumables:false, workTypes:false, customLists:{}}, d.listOrderCustomized);
     asm = d.asm || {reviewed:{}, waived:{}};
     if(d.settings){
@@ -2656,7 +2809,7 @@ function asmSaveEntryEdit(i){
   const dateEl = document.getElementById('asmEditDate-'+i);
   const hoursEl = document.getElementById('asmEditHours-'+i);
   const descEl = document.getElementById('asmEditDesc-'+i);
-  if(dateEl) e.date = dateEl.value;
+  if(dateEl && /^\d{4}-\d{2}-\d{2}$/.test(dateEl.value)){ e.iso = dateEl.value; e.date = isoToShopBossDate(dateEl.value); }
   if(hoursEl) e.hours = hoursEl.value;
   if(descEl) e.desc = descEl.value;
   asmEditingEntryIdx = null;
@@ -2675,40 +2828,198 @@ function csvRowsToText(rows){
 }
 // ---- The accountant package: one zip per work week ----
 function csvCarName(id, typed){ const c = cars.find(x=>x.id===id); return c ? c.name : (typed ? typed+' (unmatched)' : (id||'No car')); }
-function buildAccountantHoursCSV(list){
-  list = list || currentEntries();
-  const rows = [['Employee','Total Hours This Week']];
-  const totals = {};
-  list.forEach(l=>{ totals[l.who] = (totals[l.who]||0) + (parseFloat(l.hours)||0); });
-  Object.keys(totals).sort((a,b)=>a.localeCompare(b)).forEach(who=>{ rows.push([who, Math.round(totals[who]*100)/100]); });
+function fmtDateLong(iso){ return /^\d{4}-\d{2}-\d{2}$/.test(iso||'') ? new Date(iso+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : (iso||''); }
+function entryDateLong(l){ const iso = entryIso(l); return iso ? fmtDateLong(iso) : (l.date||''); }
+function rcptDateIso(r){ return r.date || ymdFromMs(r.addedAt); }
+function pkgClockWho(pkg){
+  const w = pkg.wk ? clockRecs.filter(c=>c.wk===pkg.wk).map(c=>c.who) : [];
+  return [...new Set([...pkg.entries.map(l=>l.who), ...w])].sort((a,b)=>a.localeCompare(b));
+}
+// Employee hours by day and week: clock-in, clock-out, hours. Task hours are deliberately not in here.
+function buildAccountantHoursCSV(pkg){
+  if(!pkg) pkg = currentEntries();
+  if(Array.isArray(pkg)) pkg = {entries:pkg, wk:'', title:''};
+  const wkTxt = pkg.wk ? wkLabelYear(pkg.wk) : (pkg.title||'');
+  const rows = [['Work week', wkTxt], [], ['Work week','Employee','Date','Clock-in','Clock-out','Employee hours']];
+  let anyMissing = false;
+  pkgClockWho(pkg).forEach(who=>{
+    const days = pkg.wk ? clockDays(who, pkg.wk) : [];
+    if(!days.length){ rows.push([wkTxt, who, '(no clock-in or clock-out received)', '', '', '']); return; }
+    days.forEach(d=>{
+      if(d.missing) anyMissing = true;
+      rows.push([wkTxt, who, fmtDateLong(d.date), fmtClockTime(d.inAt), d.missing ? 'NO CLOCK-OUT' : fmtClockTime(d.outAt), d.missing ? '' : d.hours.toFixed(2)]);
+    });
+    rows.push([wkTxt, who+' — WEEK TOTAL', '', '', '', empHoursTotal(who, pkg.wk).toFixed(2)]);
+  });
+  if(anyMissing) rows.push([], ['Days marked NO CLOCK-OUT are not counted in the totals.']);
   return csvRowsToText(rows);
 }
 function ymdFromMs(ms){ const d = new Date(ms); return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()); }
 // Billable hours per car with a plain-English explanation, the parts and prices Daren entered, and the typed receipts
-// (parts typed in on the Parts receipts screen), with a total for each car.
-function buildAccountantBillingCSV(list, recs){
+// (parts typed in on the Parts receipts screen), with a total for each car and a grand total.
+function buildAccountantBillingCSV(list, recs, wkTxt){
   list = list || currentEntries();
   recs = recs || receipts.filter(r=>!r.pkgWeek);
-  const rows = [['Car','Date','Employee','Billable Hours','What the billable hours were for','Parts used','Parts cost']];
+  wkTxt = wkTxt || '';
+  const rows = [['Work week','Car','Date','Employee','Billable Hours','What the billable hours were for','Parts used','Parts cost']];
   const byCar = {}; const typed = {}; const order = [];
   const touch = n=>{ if(!byCar[n]){ byCar[n]=[]; typed[n]=[]; order.push(n); } };
   list.forEach(l=>{ const n = (cars.find(c=>c.id===l.car)||{name:l.car||''}).name; touch(n); byCar[n].push(l); });
   recs.filter(r=>r.kind==='manual').forEach(r=>{ const n = r.carId ? ((cars.find(c=>c.id===r.carId)||{}).name||'(deleted car)') : 'Shop supplies'; touch(n); typed[n].push(r); });
+  let gHrs = 0, gCost = 0, gAny = false;
   order.sort((a,b)=>a.localeCompare(b)).forEach(carName=>{
     let hrs = 0, cost = 0, any = false;
     byCar[carName].forEach(l=>{
       const parts = safeArr(l.parts).filter(p=>(p.name||'').trim() || partNum(p.price));
       const pc = parts.reduce((t,p)=>t+partNum(p.price),0);
+      const set = String(l.billable==null?'':l.billable).trim()!=='';
       hrs += parseFloat(l.billable)||0; cost += pc; if(parts.length) any = true;
-      rows.push([carName, l.date, l.who, l.billable||'0', l.desc||'', parts.map(p=>(p.name||'(unnamed)')+(p.price!==''&&p.price!=null?' '+fmtMoney(partNum(p.price)):'')).join('; '), parts.length ? (Math.round(pc*100)/100).toFixed(2) : '']);
+      rows.push([wkTxt, carName, entryDateLong(l), l.who, set ? l.billable : 'not set', l.desc||'', parts.map(p=>(p.name||'(unnamed)')+(p.price!==''&&p.price!=null?' '+fmtMoney(partNum(p.price)):'')).join('; '), parts.length ? (Math.round(pc*100)/100).toFixed(2) : '']);
     });
     typed[carName].forEach(r=>{
       cost += partNum(r.price); any = true;
-      rows.push([carName, ymdFromMs(r.addedAt), '', '', 'Typed receipt', r.partName||'(unnamed)', (Math.round(partNum(r.price)*100)/100).toFixed(2)]);
+      rows.push([wkTxt, carName, fmtDateLong(rcptDateIso(r)), '', '', 'Typed receipt', r.partName||'(unnamed)', (Math.round(partNum(r.price)*100)/100).toFixed(2)]);
     });
-    rows.push([carName+' — TOTAL', '', '', Math.round(hrs*100)/100, '', '', any ? (Math.round(cost*100)/100).toFixed(2) : '']);
+    gHrs += hrs; gCost += cost; if(any) gAny = true;
+    rows.push([wkTxt, carName+' — TOTAL', '', '', Math.round(hrs*100)/100, '', '', any ? (Math.round(cost*100)/100).toFixed(2) : '']);
   });
+  rows.push([wkTxt, 'ALL CARS — GRAND TOTAL', '', '', Math.round(gHrs*100)/100, '', '', gAny ? (Math.round(gCost*100)/100).toFixed(2) : '']);
   return csvRowsToText(rows);
+}
+function buildShopExpensesCSV(list){
+  const rows = [['Date','What','Amount','Note','Receipt photo']];
+  let tot = 0;
+  list.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).forEach((x,i)=>{
+    tot += partNum(x.amount);
+    rows.push([fmtDateLong(x.date||ymdFromMs(x.addedAt)), x.what||'(not filled in)', x.amount!==''&&x.amount!=null ? (Math.round(partNum(x.amount)*100)/100).toFixed(2) : 'not set', x.note||'', x.dataUrl ? 'yes (in the 5 Shop Expenses folder)' : 'none']);
+  });
+  rows.push(['TOTAL','',(Math.round(tot*100)/100).toFixed(2),'','']);
+  return csvRowsToText(rows);
+}
+// ---- A small PDF writer (text only, standard fonts) so the summary needs nothing installed ----
+function pdfClean(s){
+  return String(s==null?'':s).replace(/[—–]/g,'-').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,'...').replace(/ /g,' ')
+    .replace(/[^\x20-\x7e¡-ÿ]/g,'?').replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+}
+function pdfBuild(pages){
+  // pages: [[{t,x,y,size,bold}]] with y measured from the top of a 612 x 792 page.
+  const objs = [];
+  const n = pages.length;
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2] = '<< /Type /Pages /Kids ['+pages.map((_,i)=>(5+i*2)+' 0 R').join(' ')+'] /Count '+n+' >>';
+  objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  pages.forEach((items,i)=>{
+    const body = items.map(it=>'BT /'+(it.bold?'F2':'F1')+' '+it.size+' Tf '+it.x.toFixed(1)+' '+(792-it.y).toFixed(1)+' Td ('+pdfClean(it.t)+') Tj ET').join('\n');
+    objs[5+i*2] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+(6+i*2)+' 0 R >>';
+    objs[6+i*2] = '<< /Length '+body.length+' >>\nstream\n'+body+'\nendstream';
+  });
+  let out = '%PDF-1.4\n'; const offs = [];
+  for(let i=1;i<objs.length;i++){ offs[i] = out.length; out += i+' 0 obj\n'+objs[i]+'\nendobj\n'; }
+  const xref = out.length;
+  out += 'xref\n0 '+objs.length+'\n0000000000 65535 f \n'+offs.slice(1).map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+'trailer\n<< /Size '+objs.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n';
+  const u8 = new Uint8Array(out.length);
+  for(let i=0;i<out.length;i++) u8[i] = out.charCodeAt(i) & 255;
+  return u8;
+}
+// Lays text out line by line and starts a new page when one fills up.
+function pdfLayout(){
+  const pages = []; let cur = null, y = 0;
+  const newPage = ()=>{ cur = []; pages.push(cur); y = 54; };
+  newPage();
+  const api = {
+    space(h){ y += h; },
+    line(text, o){
+      o = o || {}; const size = o.size || 10, lh = size*1.45;
+      const x = o.x != null ? o.x : 54;
+      const maxChars = Math.max(10, Math.floor((612-54-x)/(size*0.5)));
+      const words = String(text==null?'':text).split(/\s+/); let ln = '';
+      const flush = s=>{ if(y+lh > 760) newPage(); cur.push({t:s, x, y, size, bold:!!o.bold}); y += lh; };
+      if(!words.join('')){ y += lh; return; }
+      words.forEach(w=>{
+        while(w.length > maxChars){ if(ln){ flush(ln); ln = ''; } flush(w.slice(0,maxChars)); w = w.slice(maxChars); }
+        if((ln+' '+w).trim().length > maxChars){ flush(ln); ln = w; } else ln = (ln+' '+w).trim();
+      });
+      if(ln) flush(ln);
+    },
+    row(cells, o){
+      o = o || {}; const size = o.size || 10, lh = size*1.45;
+      if(y+lh > 760) newPage();
+      cells.forEach(c=>{ cur.push({t:String(c[0]==null?'':c[0]).slice(0, c[2]||60), x:c[1], y, size, bold:!!o.bold}); });
+      y += lh;
+    },
+    newPage(){ newPage(); },
+    pages(){ return pages; }
+  };
+  return api;
+}
+function buildSummaryPDF(pkg){
+  const L = pdfLayout();
+  const prep = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  L.line('Shop Boss - work week of '+pkg.title+(pkg.correction?' (CORRECTION)':''), {size:16, bold:true});
+  L.line('Prepared on '+prep, {size:10});
+  L.space(8);
+  L.line('Employee hours', {size:13, bold:true});
+  L.line('Clock-in to clock-out, by day and week.', {size:9});
+  L.space(4);
+  let anyMissing = false, grand = 0;
+  pkgClockWho(pkg).forEach(who=>{
+    L.line(who, {size:11, bold:true});
+    const days = pkg.wk ? clockDays(who, pkg.wk) : [];
+    if(!days.length){ L.line('No clock-in or clock-out records received.', {size:10, x:70}); L.space(4); return; }
+    days.forEach(d=>{
+      if(d.missing) anyMissing = true;
+      L.row([[fmtDateLong(d.date),70,28],[fmtClockTime(d.inAt)+' to '+(d.missing?'NO CLOCK-OUT':fmtClockTime(d.outAt)),230,34],[d.missing?'not counted':d.hours.toFixed(2)+' hrs',430,20]]);
+    });
+    const tot = empHoursTotal(who, pkg.wk); grand += tot;
+    L.row([['Week total',70,20],['',230,1],[tot.toFixed(2)+' hrs',430,20]], {bold:true});
+    L.space(6);
+  });
+  if(grand) L.line('All employees: '+grand.toFixed(2)+' hrs', {size:10, bold:true});
+  if(anyMissing) L.line('Days marked NO CLOCK-OUT are not counted.', {size:9});
+  L.space(10);
+  // Billable hours, parts and prices per car
+  L.line('Billable hours and parts, by car', {size:13, bold:true});
+  const byCar = {};
+  pkg.entries.forEach(l=>{ const n = (cars.find(c=>c.id===l.car)||{name:l.car||'No car'}).name; (byCar[n] = byCar[n] || []).push(l); });
+  const typedBy = {};
+  pkg.receipts.filter(r=>r.kind==='manual').forEach(r=>{ const n = r.carId ? ((cars.find(c=>c.id===r.carId)||{}).name||'(deleted car)') : 'Shop supplies'; (typedBy[n] = typedBy[n] || []).push(r); });
+  const carNames = [...new Set([...Object.keys(byCar), ...Object.keys(typedBy)])].sort((a,b)=>a.localeCompare(b));
+  const sums = [];
+  carNames.forEach(cn=>{
+    L.space(4); L.line(cn, {size:11, bold:true});
+    let hrs = 0, cost = 0;
+    (byCar[cn]||[]).slice().sort((a,b)=>entryIso(a).localeCompare(entryIso(b))).forEach(l=>{
+      const set = String(l.billable==null?'':l.billable).trim()!=='';
+      hrs += parseFloat(l.billable)||0;
+      L.row([[entryDateLong(l),60,24],[l.who,200,14],[set ? fmtHrs(l.billable)+' billable hrs' : 'billable: not set',280,22],[(l.desc||'').slice(0,40),400,40]]);
+      const parts = safeArr(l.parts).filter(p=>(p.name||'').trim() || partNum(p.price));
+      parts.forEach(p=>{ cost += partNum(p.price); L.row([['Part: '+(p.name||'(unnamed)'),80,50],[p.price!==''&&p.price!=null ? fmtMoney(partNum(p.price)) : '',400,12]], {size:9}); });
+    });
+    (typedBy[cn]||[]).forEach(r=>{ cost += partNum(r.price); L.row([[fmtDateLong(rcptDateIso(r)),60,24],['Typed receipt: '+(r.partName||'(unnamed)'),200,40],[fmtMoney(partNum(r.price)),400,12]], {size:9}); });
+    L.row([['Total for '+cn,60,40],['',280,1],[(Math.round(hrs*100)/100)+' billable hrs',300,22],['Parts '+fmtMoney(cost),430,16]], {bold:true});
+    sums.push([cn, hrs, cost]);
+  });
+  L.space(10);
+  L.line('Cars at a glance', {size:13, bold:true});
+  let gh = 0, gc = 0;
+  sums.forEach(s=>{ gh += s[1]; gc += s[2]; L.row([[s[0],54,34],[(Math.round(s[1]*100)/100)+' billable hrs',300,24],['Parts '+fmtMoney(s[2]),430,16]]); });
+  L.row([['All cars',54,34],[(Math.round(gh*100)/100)+' billable hrs',300,24],['Parts '+fmtMoney(gc),430,16]], {bold:true});
+  // Shop Expenses page
+  L.newPage();
+  L.line('Shop Expenses', {size:16, bold:true});
+  L.line('Tools, software and other shop costs that are not for one customer car.', {size:9});
+  L.space(6);
+  const ex = (pkg.expenses||[]).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  if(!ex.length) L.line('No shop expenses were added for this package.', {size:10});
+  let et = 0;
+  ex.forEach(x=>{
+    et += partNum(x.amount);
+    L.row([[fmtDateLong(x.date||ymdFromMs(x.addedAt)),54,24],[x.what||'(not filled in)',200,34],[x.amount!==''&&x.amount!=null ? fmtMoney(partNum(x.amount)) : 'not set',420,12]]);
+    if(x.note) L.line('Note: '+x.note, {size:9, x:70});
+  });
+  if(ex.length) L.row([['Total',54,10],['',200,1],[fmtMoney(et),420,12]], {bold:true});
+  return pdfBuild(L.pages());
 }
 function pkgPhotos(pred){
   const out = [];
@@ -2719,7 +3030,7 @@ function pkgPhotos(pred){
 function pkgFromHistoryWeek(hw){
   return {wk:hw.wk||'', title: hw.wk ? wkLabelYear(hw.wk) : hw.label, correction:false, histId:hw.id,
     entries: entries.filter(l=>l.historyWeekId===hw.id), docs: completedDocs.filter(d=>d.pkgWeek===hw.id),
-    photos: pkgPhotos(x=>x.pkgWeek===hw.id), receipts: receipts.filter(r=>r.pkgWeek===hw.id)};
+    photos: pkgPhotos(x=>x.pkgWeek===hw.id), receipts: receipts.filter(r=>r.pkgWeek===hw.id), expenses: shopExpenses.filter(x=>x.pkgWeek===hw.id)};
 }
 // What is in Incoming right now, one package per work week. Loose receipts go with the newest week.
 function pkgCurrentGroups(){
@@ -2728,11 +3039,15 @@ function pkgCurrentGroups(){
     const grp = live.filter(l=>(l.wk||'')===wk);
     const subs = new Set(grp.map(l=>l.sub).filter(Boolean));
     const mine = x=>!x.pkgWeek && ((wk && x.wk===wk) || (!wk && !x.wk && x.sub && subs.has(x.sub)));
-    return {wk, title: wk ? wkLabelYear(wk) : 'Current entries', correction: !!(wk && historyWeeks.some(h=>h.wk===wk)), entries:grp, docs:completedDocs.filter(mine), photos:pkgPhotos(mine), receipts:[]};
+    return {wk, title: wk ? wkLabelYear(wk) : 'Current entries', correction: !!(wk && historyWeeks.some(h=>h.wk===wk)), entries:grp, docs:completedDocs.filter(mine), photos:pkgPhotos(mine), receipts:[], expenses:[]};
   });
+  // A week that only has employee hours so far still gets its package.
+  asmListings().filter(L=>!L.es.length && L.wk).forEach(L=>{ if(!groups.some(g=>g.wk===L.wk)) groups.push({wk:L.wk, title:wkLabelYear(L.wk), correction:false, entries:[], docs:[], photos:[], receipts:[], expenses:[]}); });
+  groups.sort((a,b)=>String(a.wk).localeCompare(String(b.wk)));
   const loose = receipts.filter(r=>!r.pkgWeek);
-  if(groups.length) groups[groups.length-1].receipts = loose;
-  else if(loose.length) groups.push({wk:'', title:'Current entries', correction:false, entries:[], docs:[], photos:[], receipts:loose});
+  const looseEx = shopExpenses.filter(x=>!x.pkgWeek);
+  if(groups.length){ groups[groups.length-1].receipts = loose; groups[groups.length-1].expenses = looseEx; }
+  else if(loose.length || looseEx.length) groups.push({wk:'', title:'Current entries', correction:false, entries:[], docs:[], photos:[], receipts:loose, expenses:looseEx});
   return groups;
 }
 function dataUrlToBytes(du){
@@ -2771,30 +3086,37 @@ function pkgZipName(pkg){ return pkg.wk ? 'Accountant - '+(pkg.correction?'CORRE
 function buildPackageFiles(pkg){
   const enc = new TextEncoder(), files = [], used = new Set();
   const add = (path, data)=>{ files.push({name:uniqueName(used, path), data: typeof data==='string' ? enc.encode(data) : data}); };
-  const hrs = fmtHrsMin(pkg.entries.reduce((s,l)=>s+(parseFloat(l.hours)||0),0));
+  pkg.expenses = pkg.expenses || [];
+  const prepared = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  let empTotal = 0; pkgClockWho(pkg).forEach(w=>{ if(pkg.wk) empTotal += empHoursTotal(w, pkg.wk); });
+  const wkTxt = pkg.wk ? wkLabelYear(pkg.wk) : pkg.title;
   add('START HERE.txt', [
     'Shop Boss — work week of '+pkg.title+(pkg.correction?' (CORRECTION: this week was already saved before; this package holds the corrected entries)':''),
+    'Prepared on: '+prepared,
     '',
-    'Total hours logged: '+hrs,
+    'Employee hours (clock-in to clock-out): '+fmtHrsMin(empTotal)+' ('+empTotal.toFixed(2)+' hours)',
     '',
     'What is in this folder:',
-    '  1 Spreadsheets      Hours by Employee, and Billing by Car (billable hours, parts and prices, typed receipts, and a total for each car). Open with Excel or any spreadsheet program.',
+    '  Summary.pdf         A printable summary: employee hours by day and week, billable hours and parts for each car, and the shop expenses.',
+    '  1 Spreadsheets      Hours by Employee (clock-in, clock-out and employee hours by day, with a total for each employee), and Billing by Car (billable hours, parts and prices, typed receipts, a total for each car and a grand total). Open with Excel or any spreadsheet program.',
     '  2 Receipts          Parts receipt photos, one folder per car, plus a folder for shop supplies.',
     '  3 Filled-Out Forms  Forms the employees filled out, one folder per car.',
     '  4 Car Photos        Photos the employees took, one folder per car.',
+    '  5 Shop Expenses     Tools, software and other shop costs that are not for one car, with a Shop Expenses spreadsheet and any receipt photos.',
     '',
     'A folder is missing when there was nothing for it this week.'
   ].join('\r\n'));
-  add('1 Spreadsheets/Hours by Employee.csv', buildAccountantHoursCSV(pkg.entries));
-  add('1 Spreadsheets/Billing by Car.csv', buildAccountantBillingCSV(pkg.entries, pkg.receipts));
+  try{ add('Summary.pdf', buildSummaryPDF(pkg)); }catch(e){ add('Summary problem.txt', 'The summary PDF could not be made this time: '+(e&&e.message||e)); }
+  add('1 Spreadsheets/Hours by Employee.csv', buildAccountantHoursCSV(pkg));
+  add('1 Spreadsheets/Billing by Car.csv', buildAccountantBillingCSV(pkg.entries, pkg.receipts, wkTxt));
   pkg.receipts.filter(r=>r.kind!=='manual' && r.dataUrl).forEach(r=>{
     const b = dataUrlToBytes(r.dataUrl); if(!b) return;
     const car = r.carId ? ((cars.find(c=>c.id===r.carId)||{}).name||'Deleted car') : 'Shop supplies';
-    add('2 Receipts/'+safeName(car)+'/'+ymdFromMs(r.addedAt)+' '+safeName(r.note||'receipt')+'.'+extFor(b.mime), b.bytes);
+    add('2 Receipts/'+safeName(car)+'/'+rcptDateIso(r)+' '+safeName(car)+' '+safeName(r.note||'receipt')+'.'+extFor(b.mime), b.bytes);
   });
   pkg.docs.forEach(d=>{
     const car = d.carId ? ((cars.find(c=>c.id===d.carId)||{}).name||'Deleted car') : (d.carTyped ? d.carTyped+' (unmatched)' : 'No car');
-    const stem = (d.iso||safeName(d.date||'undated'))+' '+safeName(d.name||'Form')+' '+safeName(d.who||'');
+    const stem = (d.iso||safeName(d.date||'undated'))+' '+safeName(car)+' '+safeName(d.name||'Form')+' '+safeName(d.who||'');
     const folder = '3 Filled-Out Forms/'+safeName(car)+'/';
     const b = d.dataUrl ? dataUrlToBytes(d.dataUrl) : null;
     if(b) add(folder+stem.trim()+'.'+extFor(b.mime, d.fileName), b.bytes);
@@ -2808,8 +3130,15 @@ function buildPackageFiles(pkg){
   pkg.photos.forEach(x=>{
     const b = x.photo.dataUrl ? dataUrlToBytes(x.photo.dataUrl) : null; if(!b) return;
     const car = x.carId ? ((cars.find(c=>c.id===x.carId)||{}).name||'Deleted car') : (x.carTyped ? x.carTyped+' (unmatched)' : 'No car');
-    add('4 Car Photos/'+safeName(car)+'/'+(x.photo.iso||safeName(x.photo.date||'undated'))+' '+safeName(x.photo.empName||'photo')+'.'+extFor(b.mime, x.photo.fileName), b.bytes);
+    add('4 Car Photos/'+safeName(car)+'/'+(x.photo.iso||safeName(x.photo.date||'undated'))+' '+safeName(car)+' '+safeName(x.photo.label||'photo')+' '+safeName(x.photo.empName||'')+'.'+extFor(b.mime, x.photo.fileName), b.bytes);
   });
+  if(pkg.expenses.length){
+    add('5 Shop Expenses/Shop Expenses.csv', buildShopExpensesCSV(pkg.expenses));
+    pkg.expenses.filter(x=>x.dataUrl).forEach(x=>{
+      const b = dataUrlToBytes(x.dataUrl); if(!b) return;
+      add('5 Shop Expenses/'+(x.date||ymdFromMs(x.addedAt))+' '+safeName(x.what||'expense')+(x.amount!==''&&x.amount!=null?' '+(Math.round(partNum(x.amount)*100)/100).toFixed(2):'')+'.'+extFor(b.mime), b.bytes);
+    });
+  }
   return files;
 }
 // ---- A plain store-only zip writer (no compression), so there is nothing to install and nothing to go wrong ----
@@ -2874,8 +3203,14 @@ async function deliverZips(zips){
   return {result:'saved', wroteCopy};
 }
 function savedWhere(wroteCopy){ return wroteCopy ? 'your Accountant exports folder ('+accountantFolderName+') and your device\'s Downloads' : 'your device\'s Downloads (or wherever you picked in the save/share screen)'; }
+async function warnUnfinishedBeforeSend(list){
+  const n = list.filter(l=>!entryFinished(l)).length;
+  if(!n) return true;
+  return await sbChoice('This week has '+n+' unfinished entr'+(n===1?'y':'ies')+' (billable hours missing). The accountant will see "not set" for '+(n===1?'it':'them')+'.', 'Send anyway', 'Cancel');
+}
 async function asmSendToAccountant(){
-  const left = asmStatus().filter(x=>x.state!=='done').length;
+  if(!(await warnUnfinishedBeforeSend(currentEntries()))) return;
+  const left = currentEntries().some(l=>!entryFinished(l)) ? 0 : asmStatus().filter(x=>x.state!=='done').length;
   if(left && !confirm(left+(left===1?' listing is':' listings are')+' not marked done yet. Save for the accountant anyway?')) return;
   const groups = pkgCurrentGroups();
   if(!groups.length){ alert('There is nothing in Incoming to save for the accountant.'); return; }
@@ -2884,7 +3219,7 @@ async function asmSendToAccountant(){
   if(result==='declined' && !wroteCopy) return;
   if(result==='unavailable'){ alert('Could not save that file on this device. Try again. If it keeps happening, check that your browser allows downloads.'); return; }
   asm.sentToAccountant = true;
-  groups.forEach(g=>g.receipts.forEach(r=>{ r.sentToAccountant = true; }));
+  groups.forEach(g=>{ g.receipts.forEach(r=>{ r.sentToAccountant = true; }); (g.expenses||[]).forEach(x=>{ x.sentToAccountant = true; }); });
   persist();
   alert('Saved '+zips.length+' zip file'+(zips.length===1?'':'s')+': '+zips.map(z=>z.fname).join('; ')+'.\n\nIn '+(result==='shared'?'the place you picked':savedWhere(wroteCopy))+'. Nothing was sent anywhere yet. Email or text the file to your accountant yourself once you are near a connection.');
   render();
@@ -2892,6 +3227,7 @@ async function asmSendToAccountant(){
 async function sendHistoryWeekToAccountant(wid){
   const hw = historyWeeks.find(x=>x.id===wid); if(!hw) return;
   const pkg = pkgFromHistoryWeek(hw);
+  if(!(await warnUnfinishedBeforeSend(pkg.entries))) return;
   const z = {fname:pkgZipName(pkg), blob:buildPackageZip(pkg)};
   const {result, wroteCopy} = await deliverZips([z]);
   if(result==='declined' && !wroteCopy) return;
@@ -2912,11 +3248,15 @@ function weekPrintHTML(pkg){
   });
   pkg.receipts.filter(r=>r.kind==='manual').forEach(r=>{ const cn = r.carId ? ((cars.find(c=>c.id===r.carId)||{}).name||'(deleted car)') : 'Shop supplies'; byCar[cn] = byCar[cn] || {logged:0, bill:0, parts:0}; byCar[cn].parts += partNum(r.price); });
   const totLogged = pkg.entries.reduce((s,l)=>s+(parseFloat(l.hours)||0),0), totBill = pkg.entries.reduce((s,l)=>s+(parseFloat(l.billable)||0),0);
+  pkgClockWho(pkg).forEach(w=>{ byWho[w] = byWho[w] || {logged:0, bill:0}; });
+  const empH = w=>pkg.wk ? empHoursTotal(w, pkg.wk) : 0;
+  const totEmp = Object.keys(byWho).reduce((t,w)=>t+empH(w),0);
   let h = `<div class="wp-page"><h1>Work week of ${E(pkg.title)}</h1>
-    <h2>Hours by employee</h2><table class="wp-t"><tr><th>Employee</th><th>Logged</th><th>Billable</th></tr>
-    ${Object.keys(byWho).sort().map(w=>`<tr><td>${E(w)}</td><td>${hrsN(byWho[w].logged)}</td><td>${hrsN(byWho[w].bill)}</td></tr>`).join('')}
-    <tr class="wp-tot"><td>Total</td><td>${hrsN(totLogged)}</td><td>${hrsN(totBill)}</td></tr></table>
-    <h2>Totals by car</h2><table class="wp-t"><tr><th>Car</th><th>Logged</th><th>Billable</th><th>Parts</th></tr>
+    <h2>Hours by employee</h2><table class="wp-t"><tr><th>Employee</th><th>Employee hours</th><th>Task hours</th><th>Billable</th></tr>
+    ${Object.keys(byWho).sort().map(w=>`<tr><td>${E(w)}</td><td>${hrsN(empH(w))}${pkg.wk&&empHoursMissingCount(w,pkg.wk)?' ⚠':''}</td><td>${hrsN(byWho[w].logged)}</td><td>${hrsN(byWho[w].bill)}</td></tr>`).join('')}
+    <tr class="wp-tot"><td>Total</td><td>${hrsN(totEmp)}</td><td>${hrsN(totLogged)}</td><td>${hrsN(totBill)}</td></tr></table>
+    ${pkg.wk && clockRecs.some(c=>c.wk===pkg.wk) ? `<h2>Employee hours by day</h2><table class="wp-t"><tr><th>Employee</th><th>Day</th><th>Clock-in to clock-out</th><th>Employee hours</th></tr>${pkgClockWho(pkg).map(w=>clockDays(w,pkg.wk).map(d=>`<tr><td>${E(w)}</td><td>${E(fmtDateLong(d.date))}</td><td>${E(d.missing?fmtClockTime(d.inAt)+' to NO CLOCK-OUT':fmtClockTime(d.inAt)+' to '+fmtClockTime(d.outAt))}</td><td>${d.missing?'⚠ not counted':hrsN(d.hours)}</td></tr>`).join('')).join('')}</table>`:''}
+    <h2>Totals by car</h2><table class="wp-t"><tr><th>Car</th><th>Task hours</th><th>Billable</th><th>Parts</th></tr>
     ${Object.keys(byCar).sort().map(c=>`<tr><td>${E(c)}</td><td>${hrsN(byCar[c].logged)}</td><td>${hrsN(byCar[c].bill)}</td><td>${byCar[c].parts?fmtMoney(byCar[c].parts):''}</td></tr>`).join('')}</table></div>`;
   const dayKey = l=>l.iso || l.date || '';
   const days = [...new Set(pkg.entries.map(dayKey))].sort();
@@ -2928,7 +3268,7 @@ function weekPrintHTML(pkg){
       h += `<div class="wp-car">${E(cn.replace(/^⚠ /,''))}</div>`;
       des.filter(l=>carNameForEntry(l)===cn).sort((a,b)=>a.who.localeCompare(b.who)).forEach(l=>{
         const parts = safeArr(l.parts).filter(p=>(p.name||'').trim() || partNum(p.price));
-        h += `<div class="wp-entry"><b>${E(l.who)}</b> — ${E(descHTML(l))}<br>Logged ${hrsN(l.hours)} · Billable ${hrsN(l.billable)}${parts.length?'<br>Parts: '+parts.map(p=>E(p.name||'(unnamed)')+(p.price!==''&&p.price!=null?' '+fmtMoney(partNum(p.price)):'')).join('; '):''}</div>`;
+        h += `<div class="wp-entry"><b>${E(l.who)}</b> — ${E(descHTML(l))}<br>Task hours ${hrsN(l.hours)} · Billable ${entryFinished(l)?hrsN(l.billable):'⚠ not set'}${parts.length?'<br>Parts: '+parts.map(p=>E(p.name||'(unnamed)')+(p.price!==''&&p.price!=null?' '+fmtMoney(partNum(p.price)):'')).join('; '):''}</div>`;
       });
     });
   });
@@ -2940,9 +3280,14 @@ function weekPrintHTML(pkg){
     [...new Set(recs.map(r=>r.carId||''))].forEach(cid=>{
       h += `<h3>${E(cid ? carBucket(cid) : 'Shop supplies')}</h3>`;
       recs.filter(r=>(r.carId||'')===cid).forEach(r=>{
-        h += r.kind==='manual' ? `<div class="wp-entry">${ymdFromMs(r.addedAt)} — ${E(r.partName||'(unnamed)')} ${fmtMoney(partNum(r.price))}</div>` : `<div class="wp-entry">${ymdFromMs(r.addedAt)} ${E(r.note||'')}<br>${r.dataUrl?`<img src="${r.dataUrl}">`:''}</div>`;
+        h += r.kind==='manual' ? `<div class="wp-entry">${rcptDateIso(r)} — ${E(r.partName||'(unnamed)')} ${fmtMoney(partNum(r.price))}</div>` : `<div class="wp-entry">${ymdFromMs(r.addedAt)} ${E(r.note||'')}<br>${r.dataUrl?`<img src="${r.dataUrl}">`:''}</div>`;
       });
     });
+    h += `</div>`;
+  }
+  if((pkg.expenses||[]).length){
+    h += `<div class="wp-page"><h2>Shop Expenses</h2>`;
+    pkg.expenses.forEach(x=>{ h += `<div class="wp-entry">${E(fmtDateLong(x.date||ymdFromMs(x.addedAt)))} — ${E(x.what||'(not filled in)')} ${x.amount!==''&&x.amount!=null?fmtMoney(partNum(x.amount)):'not set'}${x.note?'<br>'+E(x.note):''}${x.dataUrl?`<br><img src="${x.dataUrl}">`:''}</div>`; });
     h += `</div>`;
   }
   if(pkg.docs.length){
@@ -2964,6 +3309,21 @@ function weekPrintHTML(pkg){
     h += `</div>`;
   }
   return h;
+}
+// Every alert that is still unsolved, one page, through the print dialog (which can also save it as a PDF).
+function printAlerts(){
+  const list = entries.filter(l=>l.flag && !l.flagDone).sort((a,b)=>entryIso(a).localeCompare(entryIso(b)));
+  if(!list.length){ alert('There are no unsolved alerts to print.'); return; }
+  const E = escH;
+  const html = `<div class="wp-page"><h1>Unsolved alerts</h1><p>Printed ${E(new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}))} · ${list.length} alert${list.length===1?'':'s'}</p>`
+    + list.map(l=>`<div class="wp-entry"><b>${E(l.who)}</b> — ${E(entryDateLong(l))} — ${E(carNameForEntry(l).replace(/^⚠ /,''))}<br>${E(l.flag)}</div>`).join('') + `</div>`;
+  let sheet = document.getElementById('weekPrintSheet');
+  if(!sheet){ sheet = document.createElement('div'); sheet.id = 'weekPrintSheet'; document.body.appendChild(sheet); }
+  sheet.innerHTML = html;
+  document.body.classList.add('printing-week');
+  const done = ()=>{ document.body.classList.remove('printing-week'); sheet.innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(()=>window.print(), 80);
 }
 function printHistoryWeek(wid){
   const hw = historyWeeks.find(x=>x.id===wid); if(!hw) return;
@@ -2991,6 +3351,22 @@ function sbChoice(message, yesLabel, noLabel){
     d.querySelector('#sbChoiceNo').onclick = ()=>end(false);
   });
 }
+function sbChoiceMulti(message, labels){
+  return new Promise(resolve=>{
+    const d = document.createElement('div');
+    d.id = 'sbChoice';
+    d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    d.innerHTML = '<div style="background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:460px;width:100%;max-height:85vh;overflow:auto"><div class="sbChoiceMsg" style="white-space:pre-wrap;line-height:1.5;margin-bottom:16px"></div><div class="sbChoiceBtns" style="display:flex;flex-direction:column;gap:10px"></div></div>';
+    document.body.appendChild(d);
+    d.querySelector('.sbChoiceMsg').textContent = message;
+    labels.forEach((lab,i)=>{
+      const b = document.createElement('button'); b.className = i===0?'btn-primary':'btn-ghost'; b.textContent = lab; b.style.width = '100%';
+      b.onclick = ()=>{ d.remove(); resolve(i); };
+      d.querySelector('.sbChoiceBtns').appendChild(b);
+    });
+  });
+}
+function entryFinished(l){ return String(l.billable==null?'':l.billable).trim()!==''; }
 function recalcHistoryWeek(hw){
   const es = entries.filter(l=>l.historyWeekId===hw.id);
   hw.cars = [...new Set(es.map(l=>l.car).filter(Boolean))];
@@ -3004,7 +3380,7 @@ function tagPackage(hw, grp, withReceipts){
   completedDocs.forEach(d=>{ if(mine(d)) d.pkgWeek = hw.id; });
   cars.forEach(c=>safeArr(c.photos).forEach(ph=>{ if(mine(ph)) ph.pkgWeek = hw.id; }));
   unmatchedPhotos.forEach(ph=>{ if(mine(ph)) ph.pkgWeek = hw.id; });
-  if(withReceipts) receipts.forEach(r=>{ if(!r.pkgWeek) r.pkgWeek = hw.id; });
+  if(withReceipts){ receipts.forEach(r=>{ if(!r.pkgWeek) r.pkgWeek = hw.id; }); shopExpenses.forEach(x=>{ if(!x.pkgWeek) x.pkgWeek = hw.id; }); }
 }
 function correctionMessage(hw, who, g2){
   const all = [...listingChangeLines(g2), ...listingAddedLines(g2)];
@@ -3025,12 +3401,24 @@ function applyToHistoryWeek(hw, g2){
 }
 async function asmReleaseToHistory(){
   if(!asm.sentToAccountant && !confirm('You haven\'t marked this week as sent to the accountant yet. Release to history anyway?')) return;
+  const allLive = currentEntries();
+  const clockOnlyWks = asmListings().filter(L=>!L.es.length).map(L=>L.wk);
+  if(!allLive.length && !clockOnlyWks.length){ alert('Nothing to release — Incoming is already empty.'); return; }
+  const unfinished = allLive.filter(l=>!entryFinished(l));
   const left = asmStatus().filter(x=>x.state!=='done').length;
-  if(left && !confirm(left+(left===1?' listing is':' listings are')+' not marked done yet. Release to history anyway?')) return;
-  const live = currentEntries();
-  if(!live.length){ alert('Nothing to release — Incoming is already empty.'); return; }
+  if(!unfinished.length && left && !confirm(left+(left===1?' listing is':' listings are')+' not marked done yet. Release to history anyway?')) return;
+  let live = allLive;
+  if(unfinished.length){
+    const fin = allLive.length - unfinished.length;
+    const c = await sbChoiceMulti('Release to History\n\nFinished entries (billable hours filled in): '+fin+'\nNot finished (billable hours missing): '+unfinished.length+'\n\nWhat do you want to send?', ['Send only the finished entries ('+fin+')', 'Send everything ('+allLive.length+')', 'Cancel']);
+    if(c===2) return;
+    if(c===0){
+      if(!fin){ alert('No entry is finished yet, so nothing was sent. Fill in the billable hours first.'); return; }
+      live = allLive.filter(entryFinished);
+    } else if(!(await sbChoice('Are you sure? '+unfinished.length+' unfinished entr'+(unfinished.length===1?'y':'ies')+' will go to History with an exclamation mark.', 'Yes, send everything', 'Cancel'))) return;
+  }
   const released = []; const kept = []; let firstDone = false; let lastLabel = '';
-  for(const wk of [...new Set(live.map(l=>l.wk||''))].sort()){
+  for(const wk of [...new Set([...live.map(l=>l.wk||''), ...(live===allLive?clockOnlyWks:[])])].sort()){
     const grp = live.filter(l=>(l.wk||'')===wk);
     const hw0 = wk ? historyWeeks.find(h=>h.wk===wk) : null;
     if(hw0){
@@ -3053,10 +3441,12 @@ async function asmReleaseToHistory(){
     }
   }
   const rest = currentEntries();
+  // Entries left behind in a week that is now saved in History join it later through the "Change your saved week" question.
+  rest.forEach(l=>{ if(l.wk && historyWeeks.some(h=>h.wk===l.wk) && !l.fromHistory) l.late = true; });
   if(!rest.length) asm = {reviewed:{}, waived:{}, sentToAccountant:false};
   else asmListings().forEach(L=>{ if(!L.es.length) { delete asm.reviewed[L.key]; delete asm.waived[L.key]; } });
   persist();
-  if(!released.length){ render(); return; }
+  if(!released.length && !lastLabel){ render(); return; }
   alert('Released — '+released.length+' entr'+(released.length===1?'y':'ies')+' moved into History as "'+lastLabel+'".'+(kept.length?'\n\nStill in Incoming because you chose Cancel: '+kept.join('; ')+'.':' Incoming is clear for next week.'));
   navReplace({type:'history'});
 }
@@ -3069,6 +3459,7 @@ function reopenHistoryWeek(wid){
   entries.forEach(l=>{ if(l.historyWeekId===wid) l.historyWeekId = null; });
   completedDocs.forEach(d=>{ if(d.pkgWeek===wid) delete d.pkgWeek; });
   receipts.forEach(r=>{ if(r.pkgWeek===wid) delete r.pkgWeek; });
+  shopExpenses.forEach(x=>{ if(x.pkgWeek===wid) delete x.pkgWeek; });
   cars.forEach(c=>safeArr(c.photos).forEach(ph=>{ if(ph.pkgWeek===wid) delete ph.pkgWeek; }));
   unmatchedPhotos.forEach(ph=>{ if(ph.pkgWeek===wid) delete ph.pkgWeek; });
   const idx = historyWeeks.findIndex(x=>x.id===wid);
@@ -3077,15 +3468,102 @@ function reopenHistoryWeek(wid){
   persist();
   navReplace({type:'assembly', tab:'incoming'});
 }
-function deleteHistoryWeek(wid){
+// ---- Real deletes of work records: a week, a day, or one task. Employees, cars and blank forms are never touched. ----
+function wrAllCarPhotos(){ const out = []; cars.forEach(c=>safeArr(c.photos).forEach(ph=>out.push({carId:c.id, photo:ph}))); return out; }
+function wrCollectWeek(hw){
+  return {
+    entries: entries.filter(l=>l.historyWeekId===hw.id),
+    clocks: hw.wk ? clockRecs.filter(c=>c.wk===hw.wk) : [],
+    docs: completedDocs.filter(d=>d.pkgWeek===hw.id),
+    photos: wrAllCarPhotos().filter(x=>x.photo.pkgWeek===hw.id),
+    loose: unmatchedPhotos.filter(ph=>ph.pkgWeek===hw.id)
+  };
+}
+function wrCollectDay(iso, es, who){
+  return {
+    entries: es.slice(),
+    clocks: clockRecs.filter(c=>c.date===iso && (!who || c.who===who)),
+    docs: completedDocs.filter(d=>d.iso===iso && (!who || d.who===who)),
+    photos: wrAllCarPhotos().filter(x=>x.photo.iso===iso && (!who || x.photo.empName===who)),
+    loose: unmatchedPhotos.filter(ph=>ph.iso===iso && (!who || ph.empName===who))
+  };
+}
+function wrCountsText(s){
+  const bits = [];
+  if(s.entries.length) bits.push(s.entries.length+' work entr'+(s.entries.length===1?'y':'ies')+' ('+fmtHrsMin(s.entries.reduce((t,l)=>t+(parseFloat(l.hours)||0),0))+' task hours)');
+  const parts = s.entries.reduce((t,l)=>t+safeArr(l.parts).length,0);
+  if(parts) bits.push(parts+' part'+(parts===1?'':'s'));
+  if(s.clocks.length) bits.push(s.clocks.length+' clock-in/clock-out record'+(s.clocks.length===1?'':'s'));
+  if(s.docs.length) bits.push(s.docs.length+' form'+(s.docs.length===1?'':'s'));
+  const ph = s.photos.length + s.loose.length;
+  if(ph) bits.push(ph+' photo'+(ph===1?'':'s'));
+  return bits.length ? bits.join(', ') : 'nothing';
+}
+// Takes the records out of every place they live, fixes the History week summaries, and keeps a copy in Recently Deleted for 30 days.
+function wrRemove(s, kind, name, extraSnap){
+  const hwIds = new Set(s.entries.map(l=>l.historyWeekId).filter(Boolean));
+  const subs = new Set([...s.entries, ...s.docs, ...s.photos.map(x=>x.photo), ...s.loose].map(x=>x.sub).filter(Boolean));
+  const eset = new Set(s.entries);
+  for(let i=entries.length-1;i>=0;i--) if(eset.has(entries[i])) entries.splice(i,1);
+  const cset = new Set(s.clocks); clockRecs = clockRecs.filter(c=>!cset.has(c));
+  s.docs.forEach(d=>{
+    const i = completedDocs.indexOf(d); if(i>=0) completedDocs.splice(i,1);
+    const c = cars.find(k=>k.id===d.carId); if(c && Array.isArray(c.docs)){ const j = c.docs.indexOf(d.name); if(j>=0) c.docs.splice(j,1); }
+  });
+  s.photos.forEach(x=>{ const c = cars.find(k=>k.id===x.carId); if(c){ const i = c.photos.indexOf(x.photo); if(i>=0) c.photos.splice(i,1); } });
+  s.loose.forEach(ph=>{ const i = unmatchedPhotos.indexOf(ph); if(i>=0) unmatchedPhotos.splice(i,1); });
+  const removedWeeks = [];
+  hwIds.forEach(id=>{
+    const hw = historyWeeks.find(h=>h.id===id); if(!hw) return;
+    const left = entries.some(l=>l.historyWeekId===id);
+    const hasClocks = hw.wk && clockRecs.some(c=>c.wk===hw.wk);
+    if(!left && !hasClocks){ historyWeeks.splice(historyWeeks.indexOf(hw),1); removedWeeks.push(hw); }
+    else recalcHistoryWeek(hw);
+  });
+  if(s.wholeWeek && !removedWeeks.includes(s.wholeWeek)){ const i = historyWeeks.indexOf(s.wholeWeek); if(i>=0){ historyWeeks.splice(i,1); removedWeeks.push(s.wholeWeek); } }
+  subs.forEach(sub=>{
+    const still = entries.some(l=>l.sub===sub) || completedDocs.some(d=>d.sub===sub) || clockRecs.some(c=>c.sub===sub) || wrAllCarPhotos().some(x=>x.photo.sub===sub) || unmatchedPhotos.some(x=>x.sub===sub);
+    if(!still){ const i = importedSubmissionFingerprints.indexOf(sub); if(i>=0) importedSubmissionFingerprints.splice(i,1); }
+  });
+  trash.push({id:'trash-wr-'+Date.now()+Math.random().toString(36).slice(2,6), kind, name, deleted:'Just now', daysLeft:30,
+    snapshot:Object.assign({entries:s.entries, clocks:s.clocks, docs:s.docs, photos:s.photos, loose:s.loose, weeks:removedWeeks, subs:[...subs]}, extraSnap||{})});
+  persist();
+}
+function wrRestore(sn){
+  safeArr(sn.weeks).forEach(hw=>{ if(!historyWeeks.some(h=>h.id===hw.id)) historyWeeks.unshift(hw); });
+  safeArr(sn.entries).forEach(l=>{ if(!entries.includes(l) && !(l.id && entries.some(x=>x.id===l.id))) entries.push(l); });
+  safeArr(sn.clocks).forEach(c=>{ if(!clockRecs.some(x=>x.id===c.id)) clockRecs.push(c); });
+  safeArr(sn.docs).forEach(d=>{ if(!completedDocs.some(x=>x.id===d.id)){ completedDocs.push(d); const c = cars.find(k=>k.id===d.carId); if(c && d.name){ if(!Array.isArray(c.docs)) c.docs = []; c.docs.push(d.name); } } });
+  safeArr(sn.photos).forEach(x=>{ const c = cars.find(k=>k.id===x.carId); if(c){ if(!Array.isArray(c.photos)) c.photos = []; if(!c.photos.some(q=>q.id===x.photo.id)) c.photos.push(x.photo); } });
+  safeArr(sn.loose).forEach(ph=>{ if(!unmatchedPhotos.some(x=>x.id===ph.id)) unmatchedPhotos.push(ph); });
+  safeArr(sn.subs).forEach(sub=>{ if(!importedSubmissionFingerprints.includes(sub)) importedSubmissionFingerprints.push(sub); });
+  historyWeeks.forEach(hw=>recalcHistoryWeek(hw));
+}
+async function deleteHistoryWeek(wid){
   const w = historyWeeks.find(x=>x.id===wid);
   if(!w) return;
-  if(!confirm('Delete "'+w.label+'" from history? Its work log entries stay on file (they\'ll just show under the car as usual) — only the History summary goes to Recently Deleted, and can be restored for 30 days.')) return;
-  const hidx = historyWeeks.findIndex(x=>x.id===wid);
-  if(hidx>=0) historyWeeks.splice(hidx,1);
-  trash.push({id:'trash-hist-'+Date.now()+Math.random().toString(36).slice(2,6), kind:'HistoryWeek', name:w.label, deleted:'Just now', daysLeft:30, snapshot:w});
-  persist();
+  const s = wrCollectWeek(w);
+  const ok = await sbChoice('Are you sure you want to delete this entire week?\n\n'+w.label+'\n\nThis deletes: '+wrCountsText(s)+'.\n\nEmployees, cars and blank forms are not deleted. A copy goes to Recently Deleted for 30 days.', 'Yes', 'Cancel');
+  if(!ok) return;
+  s.wholeWeek = w;
+  wrRemove(s, 'HistoryWeek', w.label+' (entire week)');
   navReplace({type:'history'});
+}
+async function deleteWorkDay(iso, who){
+  const es = entries.filter(l=>entryIso(l)===iso && (!who || l.who===who));
+  const s = wrCollectDay(iso, es, who);
+  const label = isoToShopBossDate(iso)+', '+iso.slice(0,4);
+  const ok = await sbChoice('Are you sure you want to delete this entire day?\n\n'+label+(who?' — '+who+' only':'')+'\n\nThis deletes: '+wrCountsText(s)+'.\n\nA copy goes to Recently Deleted for 30 days.', 'Yes', 'Cancel');
+  if(!ok) return;
+  wrRemove(s, 'WorkDay', label+(who?' — '+who:'')+' (entire day)');
+  goBack();
+}
+async function deleteWorkEntry(entryId){
+  const l = entries.find(x=>x.id===entryId); if(!l) return;
+  const ok = await sbChoice('Delete this task?\n\n'+l.who+', '+l.date+', '+carNameForEntry(l)+', '+fmtHrsMin(l.hours)+' task hours\n\nA copy goes to Recently Deleted for 30 days.', 'Yes', 'Cancel');
+  if(!ok) return;
+  wrRemove({entries:[l], clocks:[], docs:[], photos:[], loose:[]}, 'WorkEntry', l.who+' — '+l.date+' — '+carNameForEntry(l).replace(/^⚠ /,''));
+  render();
 }
 function asmChecklist(){
   const st = asmStatus();
@@ -3131,13 +3609,22 @@ function searchPick(w){
   const parts = el.value.split(/\s+/); parts[parts.length-1] = w;
   el.value = parts.join(' ') + ' '; el.focus(); runSearch(el.value);
 }
-const DEMO_TODAY = new Date(2026, 8, 27); // fixed demo date for the shell
+function sbToday(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function isoOfDate(d){ return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()); }
+// The real calendar date of an entry (year included). Entries from WorkClock carry it; for anything older that only has "Tue 9/22", the most recent such date is used.
+function entryIso(l){
+  if(l.iso && /^\d{4}-\d{2}-\d{2}$/.test(l.iso)) return l.iso;
+  const md = String(l.date||'').split(' ')[1]; if(!md || md.indexOf('/')<0) return '';
+  const [m,d] = md.split('/').map(Number); const t = sbToday();
+  let y = t.getFullYear(); if(new Date(y,m-1,d) > new Date(t.getFullYear(), t.getMonth(), t.getDate()+31)) y--;
+  return y+'-'+p2(m)+'-'+p2(d);
+}
 const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function workWeekRange(){
   const {startDay, endDay} = getWeekBoundary();
   const startIdx = DOW.indexOf(startDay);
-  const back = (DEMO_TODAY.getDay() - startIdx + 7) % 7;
-  const wkStart = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth(), DEMO_TODAY.getDate() - back);
+  const back = (sbToday().getDay() - startIdx + 7) % 7;
+  const wkStart = new Date(sbToday().getFullYear(), sbToday().getMonth(), sbToday().getDate() - back);
   // Start and end are independent — the span between them is whatever it works out to (a
   // Tue-start/Fri-end week is a 3-day span, not a forced 7), except picking the same day for
   // both means "the whole week," not a zero-length one.
@@ -3147,8 +3634,8 @@ function workWeekRange(){
   return {startIdx, wkStart, wkEnd};
 }
 function entryDate(l){
-  const md = l.date.split(' ')[1].split('/');
-  return new Date(DEMO_TODAY.getFullYear(), parseInt(md[0])-1, parseInt(md[1]));
+  const iso = entryIso(l);
+  return iso ? new Date(iso+'T00:00:00') : new Date(0);
 }
 function thisWeekHours(e){
   const {wkStart, wkEnd} = workWeekRange();
@@ -3158,22 +3645,22 @@ function thisWeekHours(e){
 }
 function calendarHTML(e, monthOffset){
   const {startIdx, wkStart, wkEnd} = workWeekRange();
-  const first = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth()+monthOffset, 1);
+  const first = new Date(sbToday().getFullYear(), sbToday().getMonth()+monthOffset, 1);
   const y = first.getFullYear(), m = first.getMonth();
   const daysIn = new Date(y, m+1, 0).getDate();
   const lead = (first.getDay() - startIdx + 7) % 7;
   const hoursByLabel = {};
-  entries.filter(l=>l.who===e.name).forEach(l=>{ hoursByLabel[l.date] = (hoursByLabel[l.date]||0) + (parseFloat(l.hours)||0); });
+  entries.filter(l=>l.who===e.name).forEach(l=>{ const k = entryIso(l); hoursByLabel[k] = (hoursByLabel[k]||0) + (parseFloat(l.hours)||0); });
   let cells = '';
   for(let i=0;i<lead;i++) cells += '<div class="cal-day empty"></div>';
   for(let d=1; d<=daysIn; d++){
     const dt = new Date(y, m, d);
-    const label = `${DOW[dt.getDay()]} ${m+1}/${d}`;
-    const hrs = hoursByLabel[label];
+    const label = `${DOW[dt.getDay()]} ${m+1}/${d}`, isoK = isoOfDate(dt);
+    const hrs = hoursByLabel[isoK];
     const inWeek = dt>=wkStart && dt<=wkEnd;
-    const isToday = dt.getTime()===DEMO_TODAY.getTime();
+    const isToday = dt.getTime()===sbToday().getTime();
     const cls = ['cal-day', inWeek?'in-week':'', hrs?'worked':'', isToday?'today':''].join(' ');
-    const click = hrs ? ` onclick='nav({type:"dateView",date:"${label}",emp:"${e.id}"})'` : '';
+    const click = hrs ? ` onclick='nav({type:"dateView",date:"${label}",iso:"${isoK}",emp:"${e.id}"})'` : '';
     cells += `<div class="${cls}"${click}><span class="cal-num">${d}</span>${hrs?`<span class="cal-hrs">${fmtHrsMin(hrs)}</span>`:''}</div>`;
   }
   const dows = Array.from({length:7},(_,i)=>DOW[(startIdx+i)%7]);
@@ -3194,26 +3681,27 @@ function calendarHTML(e, monthOffset){
 }
 function historyCalendarHTML(monthOffset){
   const {startIdx, wkStart, wkEnd} = workWeekRange();
-  const first = new Date(DEMO_TODAY.getFullYear(), DEMO_TODAY.getMonth()+monthOffset, 1);
+  const first = new Date(sbToday().getFullYear(), sbToday().getMonth()+monthOffset, 1);
   const y = first.getFullYear(), m = first.getMonth();
   const daysIn = new Date(y, m+1, 0).getDate();
   const lead = (first.getDay() - startIdx + 7) % 7;
   const hoursByLabel = {}, alertByLabel = {};
   entries.forEach(l=>{
-    hoursByLabel[l.date] = (hoursByLabel[l.date]||0) + (parseFloat(l.hours)||0);
-    if(l.flag && !l.flagDone) alertByLabel[l.date] = true;
+    const k = entryIso(l);
+    hoursByLabel[k] = (hoursByLabel[k]||0) + (parseFloat(l.hours)||0);
+    if(l.flag && !l.flagDone) alertByLabel[k] = true;
   });
   let cells = '';
   for(let i=0;i<lead;i++) cells += '<div class="cal-day empty"></div>';
   for(let d=1; d<=daysIn; d++){
     const dt = new Date(y, m, d);
-    const label = `${DOW[dt.getDay()]} ${m+1}/${d}`;
-    const hrs = hoursByLabel[label];
+    const label = `${DOW[dt.getDay()]} ${m+1}/${d}`, isoK = isoOfDate(dt);
+    const hrs = hoursByLabel[isoK];
     const inWeek = dt>=wkStart && dt<=wkEnd;
-    const isToday = dt.getTime()===DEMO_TODAY.getTime();
+    const isToday = dt.getTime()===sbToday().getTime();
     const cls = ['cal-day', inWeek?'in-week':'', hrs?'worked':'', isToday?'today':''].join(' ');
-    const click = hrs ? ` onclick='nav({type:"dateView",date:"${label}"})'` : '';
-    cells += `<div class="${cls}"${click}><span class="cal-num">${d}</span>${hrs?`<span class="cal-hrs">${fmtHrsMin(hrs)}</span>`:''}${alertByLabel[label]?`<span class="cal-alert">${warnIcon(14)}</span>`:''}</div>`;
+    const click = hrs ? ` onclick='nav({type:"dateView",date:"${label}",iso:"${isoK}"})'` : '';
+    cells += `<div class="${cls}"${click}><span class="cal-num">${d}</span>${hrs?`<span class="cal-hrs">${fmtHrsMin(hrs)}</span>`:''}${alertByLabel[isoK]?`<span class="cal-alert">${warnIcon(14)}</span>`:''}</div>`;
   }
   const dows = Array.from({length:7},(_,i)=>DOW[(startIdx+i)%7]);
   const monthName = first.toLocaleString('en-US',{month:'long', year:'numeric'});
@@ -3228,14 +3716,14 @@ function historyCalendarHTML(monthOffset){
         ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}
         ${cells}
       </div>
-      <p class="cal-legend">Bright outline = current work week · Filled = days with logged work (tap for that day) · ⚠ = unsolved alert that day</p>
+      <p class="cal-legend">Bright outline = current work week · Filled = days with work (tap for that day) · ⚠ = unsolved alert that day</p>
     </section>`;
 }
 let rep = {range:'all', from:'', to:'', emps:[], cars:[], open:false};
 function fltReset(){ rep = {range:'all', from:'', to:'', emps:[], cars:[], open:false}; }
 function repRange(){
   const {wkStart, wkEnd} = workWeekRange();
-  const T = DEMO_TODAY;
+  const T = sbToday();
   const add = (d,n)=>new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
   switch(rep.range){
     case 'week': return {a:wkStart, b:wkEnd};
@@ -3318,7 +3806,7 @@ function filterBar(dims){
 }
 function printBlock(groups){
   return `<div class="print-only">${groups.map(g=>`
-    <div class="assembly-group"><div class="assembly-group-head"><h3>${g.title}</h3><span class="group-totals">${fmtHrsMin(sumBy(g.es,'hours'))} logged / ${fmtHrsMin(sumBy(g.es,'billable'))} billable</span></div>
+    <div class="assembly-group"><div class="assembly-group-head"><h3>${g.title}</h3><span class="group-totals">${fmtHrsMin(sumBy(g.es,'hours'))} task hours / ${fmtHrsMin(sumBy(g.es,'billable'))} billable</span></div>
     ${g.es.map(l=>`<div class="entry"><div class="entry-top"><span class="entry-who">${g.byCar ? l.who : carNameForEntry(l)} · ${l.date}</span><span class="entry-hours">${fmtHrsMin(l.hours)} / ${fmtHrsMin(l.billable)}</span></div><div class="entry-desc">${descHTML(l)}</div>${entryExtras(l)}</div>`).join('')}</div>`).join('')}</div>`;
 }
 // New-format entries (from the Tasks + lists WorkClock) show "Tasks: a, b" as their first line;
@@ -3379,12 +3867,13 @@ function render(){
   try{ persist(); }catch(e){}
   if(!stack || !stack.length) stack = ['home'];
   const view = stack[stack.length-1];
+  if(!isAsmSubView(view.type)) outSnap = null;
   try{
     const backBtn = document.getElementById('backBtn');
     if(backBtn) backBtn.hidden = stack.length<=1 || view.type==='assembly';
     const app = document.getElementById('app');
     const body = renderers[view.type] ? renderers[view.type](view) : renderers.home();
-    const printed = DEMO_TODAY.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    const printed = sbToday().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
     app.innerHTML = `<div class="print-only print-head">Shop Boss — printed ${printed}${fltActive()?' — Filtered: '+fltSummary():''}</div>` + body;
   }catch(err){
     // A screen failed to draw. Never leave the tap looking like nothing happened —
@@ -3449,8 +3938,8 @@ const renderers = {
     </div>
     ${view==='cal' ? historyCalendarHTML(monthOffset) : historyWeeks.map(w=>`
       <div class="row" onclick='nav({type:"historyDetail",id:"${w.id}"})'>
-        <div><div class="row-title">${w.label}</div><div class="row-meta">${w.cars.map(cid=>(cars.find(c=>c.id===cid)||{name:'(deleted car)'}).name).join(', ')}</div></div>
-        ${weekFlaggedEntries(w.id).length?`<span class="row-warn">${warnIcon(22)}</span>`:''}
+        <div><div class="row-title">${w.label}</div><div class="row-meta">${w.cars.map(cid=>(cars.find(c=>c.id===cid)||{name:'(deleted car)'}).name).join(', ')}</div><div class="row-meta">Employee hours ${fmtHrsMin(hwEmpHours(w).total)} · Task hours ${fmtHrsMin(w.totalLogged)}</div></div>
+        ${(weekFlaggedEntries(w.id).length||hwUnfinished(w).length||hwEmpHours(w).missing)?`<span class="row-warn">${warnIcon(22)}</span>`:''}
         <span class="badge">${fmtHrsMin(w.totalBillable)} billable</span>
         <div class="chev">${icon("chev")}</div>
       </div>`).join('')}`;
@@ -3462,8 +3951,10 @@ const renderers = {
       <div class="detail-head">
         <p class="kicker">History · read-only</p>
         <h1 class="detail-title">${w.label}</h1>
-        <p class="detail-meta">${fmtHrsMin(w.totalLogged)} logged / ${fmtHrsMin(w.totalBillable)} billable — already sent</p>
+        <p class="detail-meta">${fmtHrsMin(hwEmpHours(w).total)} employee hours / ${fmtHrsMin(w.totalLogged)} task hours / ${fmtHrsMin(w.totalBillable)} billable</p>
       </div>
+      ${(()=>{ const H = hwEmpHours(w); return H.whos.length ? `<section class="block"><p class="block-title">Employee hours</p>${H.whos.map(n=>`<div class="assembly-row-hours"><b>${escH(n)}</b> <span>${fmtHrsMin(empHoursTotal(n,w.wk))}</span>${empHoursMissingCount(n,w.wk)?` <span>${warnIcon(14)} ${empHoursMissingCount(n,w.wk)} day${empHoursMissingCount(n,w.wk)===1?'':'s'} with no clock-out</span>`:''}</div>`).join('')}</section>` : ''; })()}
+      ${hwUnfinished(w).length?`<section class="block"><p class="block-title">Unfinished entries (billable hours missing)</p>${hwUnfinished(w).map(l=>`<div class="entry"><div class="entry-top"><span class="entry-who">${warnIcon(16)} ${escH(carNameForEntry(l))} — ${escH(l.who)}, ${escH(l.date)}</span><span class="entry-hours">${fmtHrsMin(l.hours)}</span></div><div class="entry-desc">${escH(descHTML(l))}</div></div>`).join('')}</section>`:''}
       <section class="block">
         <p class="block-title">Cars in this week</p>
         <div class="chips">${w.cars.map(cid=>`<div class="chip" onclick='nav({type:"car",id:"${cid}"})'><span class="dot"></span>${(cars.find(c=>c.id===cid)||{name:'(deleted car)'}).name}</div>`).join('')}</div>
@@ -3475,7 +3966,7 @@ const renderers = {
       </div>
       <div class="assembly-actions">
         <button class="btn-ghost" onclick="reopenHistoryWeek('${w.id}')">Reopen in Assembly Room</button>
-        <button class="btn-ghost" style="border-color:#7a2020;color:#e05a5a" onclick="deleteHistoryWeek('${w.id}')">Delete from history</button>
+        <button class="btn-ghost" style="border-color:#7a2020;color:#e05a5a" onclick="deleteHistoryWeek('${w.id}')">Delete this entire week</button>
       </div>`;
   },
 
@@ -3811,6 +4302,7 @@ const renderers = {
       <button class="assembly-tab ${tab==='outgoing'?'active':''}" onclick='navReplace({type:"assembly",tab:"outgoing"})'>Outgoing — Next update</button>
     </div>`;
     if(tab==='outgoing'){
+      if(!outSnap) outSnapTake();
       const selCarsForDisplay = cars.filter(c=>c.includeInEmployeeUpdate!==false);
       const openEmpOut = (v&&v.openEmpOut) || null;
       const pill = (v&&v.pill) || null;
@@ -3947,7 +4439,7 @@ const renderers = {
       <input type="file" id="outPicCamera" accept="image/*" capture="environment" style="display:none" onchange="handleOutPicFile(event)">
       <input type="file" id="outPicFile" accept="image/*" style="display:none" onchange="handleOutPicFile(event)">
       <div class="assembly-actions" style="align-items:center">
-        <button class="btn-primary" onclick="outgoingSend()">Send update to employees →</button>${infoTip('Sending clears out any photos, completed documents, and blank forms employees have already submitted or been given in WorkClock — make sure you have what you need from them first.')}
+        <button class="btn-primary" onclick="outgoingSend()">Send update to employees →</button>${infoTip('Each update replaces the forms, photo requests and notes on the phones with what is set up here. Forms and photo requests an employee already finished stay finished.')}
       </div>
       </div>`;
     }
@@ -3960,8 +4452,9 @@ const renderers = {
     <div class="assembly-banner"><span>🔒 ASSEMBLY ROOM — editing mode</span><button class="exit-btn" onclick="exitAssembly()">Exit ✕</button></div>
     <h2 class="list-title">Assembly Room${infoTip('Sealed while you\'re in here — nothing links out. Use Exit at the top right when you\'re done.')}</h2>
     ${tabs}
-    <input type="file" id="importSubmissionFile" accept=".json,application/json" style="display:none" onchange="handleImportSubmissionFile(event)">
-    <button class="btn-ghost" style="width:100%;margin-bottom:16px" onclick="triggerImportSubmissionPicker()">📥 Import a work week from WorkClock</button>
+    <input type="file" id="importSubmissionFile" accept=".json,application/json" multiple style="display:none" onchange="handleImportSubmissionFile(event)">
+    <button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="triggerImportSubmissionPicker()">📥 Import work weeks from WorkClock</button>
+    <button class="btn-ghost" style="width:100%;margin-bottom:16px" onclick="printAlerts()">🖨 Print alerts (${entries.filter(l=>l.flag && !l.flagDone).length})</button>
     ${unmatchedCarItemsHTML()}
     ${st.length ? `<p class="list-sub" style="margin:0 0 10px">${doneN} of ${st.length} listing${st.length===1?'':'s'} marked done. Tap a listing to review everything turned in for that work week.</p>` : `<p class="list-sub" style="margin:0 0 10px">Nothing has been turned in yet. A listing appears here when a work week is imported.</p>`}
     ${st.map(x=>{
@@ -3984,11 +4477,13 @@ const renderers = {
           ${(chLines.length||addLines.length)?`<div class="flag" style="display:block"><b>Corrected week. Already saved in history.</b><br>${chLines.concat(addLines).map(t=>escH(t)).join('<br>')}<br>Everything else stays exactly as you saved it, including your billable hours, parts and corrections.</div>`:''}
           <div class="stat-pills">
             <span class="pill">${es.length} entr${es.length===1?'y':'ies'}</span>
-            <span class="pill">${fmtHrsMin(totalLogged)} logged</span>
+            ${clocksFor(x.e.name, x.wk).length?`<span class="pill">${fmtHrsMin(empHoursTotal(x.e.name, x.wk))} employee hours${empHoursMissingCount(x.e.name, x.wk)?' ⚠':''}</span>`:''}
+            <span class="pill">${fmtHrsMin(totalLogged)} task hours</span>
             <span class="pill">${fmtHrsMin(totalBillable)} billable</span>
             ${b.docs.length?`<span class="pill">📄 ${b.docs.length} form${b.docs.length===1?'':'s'} turned in</span>`:''}
             ${b.photoCount?`<span class="pill">📷 ${b.photoCount} photo${b.photoCount===1?'':'s'}</span>`:''}
           </div>
+          ${empHoursBlockHTML(x.e.name, x.wk, es)}
           ${es.map(l=>{
             const idx = entries.indexOf(l);
             const editing = asmEditingEntryIdx === idx;
@@ -4001,8 +4496,8 @@ const renderers = {
               ${editing ? `
               <div style="margin:8px 0 4px">
                 <label class="hours-k" style="display:block;margin-bottom:4px">Date</label>
-                <input class="search-input" id="asmEditDate-${idx}" value="${(l.date||'').replace(/"/g,'&quot;')}" onclick="event.stopPropagation()">
-                <label class="hours-k" style="display:block;margin:10px 0 4px">Hours logged</label>
+                <input class="search-input" id="asmEditDate-${idx}" type="date" value="${entryIso(l)}" onclick="event.stopPropagation()">
+                <label class="hours-k" style="display:block;margin:10px 0 4px">Task hours</label>
                 <input class="search-input" id="asmEditHours-${idx}" type="number" step="0.25" value="${fmtHrs(l.hours)}" onclick="event.stopPropagation()">
                 <label class="hours-k" style="display:block;margin:10px 0 4px">Description</label>
                 <textarea class="search-input" id="asmEditDesc-${idx}" style="min-height:60px" onclick="event.stopPropagation()">${(l.desc||'').replace(/</g,'&lt;')}</textarea>
@@ -4015,10 +4510,10 @@ const renderers = {
               ` : `
               <div class="assembly-row-desc">${descHTML(l)}</div>
               <div class="assembly-row-hours">
-                <span>Logged <b>${fmtHrsMin(l.hours)}</b></span>
+                <span>Task hours <b>${fmtHrsMin(l.hours)}</b></span>
                 <span>·</span>
                 <span>Billable</span>
-                <input class="hours-input-inline" type="number" step="0.25" value="${fmtHrs(l.billable)}" onchange="asmSetBillable(${idx},this.value)" onclick="event.stopPropagation()">
+                <input class="hours-input-inline" type="number" step="0.25" placeholder="not set" value="${entryFinished(l)?fmtHrs(l.billable):''}" onchange="asmSetBillable(${idx},this.value)" onclick="event.stopPropagation()">
                 <span>hr</span>
               </div>
               ${partsEditorHTML(l, idx)}
@@ -4034,7 +4529,7 @@ const renderers = {
           </div>
         </div>`:''}
       </div>`;}).join('')}
-    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="nav({type:'receipts'})">🧾 Parts receipts${receipts.filter(r=>!r.sentToAccountant).length?` (${receipts.filter(r=>!r.sentToAccountant).length} not sent yet)`:''}</button>
+    <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="nav({type:'receipts'})">🧾 Receipts and Shop Expenses${(receipts.filter(r=>!r.sentToAccountant).length+shopExpenses.filter(x=>!x.sentToAccountant).length)?` (${receipts.filter(r=>!r.sentToAccountant).length+shopExpenses.filter(x=>!x.sentToAccountant).length} not sent yet)`:''}</button>
     <div class="assembly-actions">
       <button class="btn-ghost" onclick="asmSendToAccountant()">Save for accountant →</button>
       <button class="btn-primary" onclick="asmReleaseToHistory()">Release to history</button>
@@ -4050,7 +4545,7 @@ const renderers = {
     <h2 class="list-title">Cars</h2>
     <p class="list-sub">${rows.length} ${F?'with work in this filter':'in the shop'}${!F?' · alphabetical by default — press and hold the ⋮⋮ handle, then drag a car to pin your most-used ones to the top':''} · "In update" controls whether a car goes out in the next employees update — uncheck a car that's gone quiet so it stops showing up there</p>
     ${filterBar(['dates','emps'])}
-    ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} logged</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
+    ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} task hours</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
     ${!F?reorderResetButtonHTML('resetCarOrder','cars'):''}
     <div class="no-print">
     ${rows.length ? rows.map(({c,es})=>{
@@ -4133,7 +4628,7 @@ const renderers = {
     <h2 class="list-title">Employees</h2>
     <p class="list-sub">${F?rows.length+' with work in this filter':employees.length+' on staff — alphabetical by default — press and hold the ⋮⋮ handle, then drag to pin your most-used ones to the top'}</p>
     ${filterBar(['dates','cars'])}
-    ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} logged</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
+    ${F?`<div class="stat-pills"><span class="pill pill-accent">${all.length} entr${all.length===1?'y':'ies'}</span><span class="pill">${fmtHrsMin(sumBy(all,'hours'))} task hours</span><span class="pill">${fmtHrsMin(sumBy(all,'billable'))} billable</span></div>`:''}
     ${!F?reorderResetButtonHTML('resetEmployeeOrder','employees'):''}
     ${!F && emptyEmployees().length ? `<button class="btn-ghost" style="width:100%;margin:8px 0;border-color:#7a2020;color:#e05a5a" onclick="removeEmptyEmployees()">Remove ${emptyEmployees().length} employee${emptyEmployees().length===1?'':'s'} with no work logged</button>`:''}
     <div class="no-print">
@@ -4195,15 +4690,15 @@ const renderers = {
         </div>
       </div>
       ${filterBar(['dates','emps'])}
-      <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged · ${totalPhotos} photo${totalPhotos===1?'':'s'} · ${allDocs.length} document${allDocs.length===1?'':'s'} (listed by name — attached separately)</p></div>
+      <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours · ${totalPhotos} photo${totalPhotos===1?'':'s'} · ${allDocs.length} document${allDocs.length===1?'':'s'} (listed by name — attached separately)</p></div>
       <div class="stat-pills no-print">
         <span class="pill tap-reveal" onclick="focusWorklog(this)">${logs.length} entr${logs.length===1?'y':'ies'}</span>
-        <span class="pill tap-reveal" onclick="togglePanel('car-hours-panel', this)">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged</span>
+        <span class="pill tap-reveal" onclick="togglePanel('car-hours-panel', this)">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours</span>
         ${(c.photos.length||allDocs.length||c.notes.length)?`<span class="pill tap-reveal" onclick="togglePanel('car-media-panel', this)">🗂 ${c.photos.length+allDocs.length+c.notes.length}</span>`:''}
       </div>
       <div class="reveal-panel" id="car-hours-panel" style="display:none">
         <div class="hours-row" style="margin-top:0">
-          <div class="hours-box"><span class="hours-k">Logged</span><span class="hours-v">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))}</span></div>
+          <div class="hours-box"><span class="hours-k">Task hours</span><span class="hours-v">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))}</span></div>
           <div class="hours-box billable"><span class="hours-k">Billable</span><span class="hours-v" style="color:var(--accent)">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.billable)||0),0))}</span></div>
         </div>
       </div>
@@ -4247,7 +4742,7 @@ const renderers = {
         ${logs.map(l=>`
           <div class="entry">
             <div class="entry-top"><span class="entry-who">${l.who}</span><span class="entry-hours">${fmtHrsMin(l.hours)}</span></div>
-            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}"})'>${l.date}</div>
+            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}",iso:"${entryIso(l)}"})'>${l.date}</div>
             <div class="entry-desc">${descHTML(l)}</div>
             ${entryExtras(l)}
             ${flagHTML(l)}
@@ -4386,6 +4881,7 @@ const renderers = {
     return `
     <div class="assembly-mode" style="${asmStyle('incoming')}">
     <div class="assembly-banner"><span>🔒 ASSEMBLY ROOM — editing mode</span><button class="exit-btn" onclick="exitAssembly()">Exit ✕</button></div>
+    ${receiptTabsHTML('parts')}
     <div class="detail-head">
       <p class="kicker">Incoming</p>
       <h1 class="detail-title">Parts receipts</h1>
@@ -4396,6 +4892,51 @@ const renderers = {
     ${cars.map(c=>carRow(c.id, c.name)).join('') || `<p class="list-sub">No cars on file yet.</p>`}
     <p class="list-sub" style="margin:16px 0 6px">Other</p>
     ${carRow(null, 'Shop supplies (no car)')}
+    <button class="btn-ghost" style="width:100%;margin-top:16px" onclick="goBack()">Back</button>
+    </div>`;
+  },
+
+  shopExpenses: ()=>{
+    const unsent = shopExpenses.filter(x=>!x.sentToAccountant), sent = shopExpenses.filter(x=>x.sentToAccountant);
+    const total = shopExpenses.reduce((t,x)=>t+partNum(x.amount),0);
+    const esc = s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    const row = x=>`
+      <div class="row" style="cursor:default;align-items:flex-start">
+        ${x.dataUrl ? `<img src="${x.dataUrl}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0">` : `<div class="thumb">💲</div>`}
+        <div style="flex:1;min-width:0">
+          <div class="row-meta">${x.sentToAccountant?'<span class="badge submitted">Sent</span>':''}</div>
+          <input class="search-input" style="margin-top:4px" type="date" value="${x.date||ymdFromMs(x.addedAt)}" onchange="seSet('${x.id}','date',this.value)">
+          <input class="search-input" style="margin-top:6px" placeholder="What was it for" value="${esc(x.what)}" onchange="seSet('${x.id}','what',this.value)">
+          <input class="search-input" style="margin-top:6px" type="number" step="0.01" min="0" placeholder="Amount" value="${x.amount!=null&&x.amount!==''?x.amount:''}" onchange="seSet('${x.id}','amount',this.value)">
+          <input class="search-input" style="margin-top:6px" placeholder="Note (optional)" value="${esc(x.note)}" onchange="seSet('${x.id}','note',this.value)">
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button class="btn-ghost chip-btn" onclick="triggerExpensePhoto('${x.id}')">${x.dataUrl?'Replace receipt photo':'📷 Add receipt photo'}</button>
+            ${x.dataUrl?`<button class="btn-ghost chip-btn" onclick="seRemovePhoto('${x.id}')">Remove photo</button>`:''}
+          </div>
+        </div>
+        <button class="btn-ghost chip-btn" onclick="seDelete('${x.id}')">✕</button>
+      </div>`;
+    return `
+    <div class="assembly-mode" style="${asmStyle('incoming')}">
+    <div class="assembly-banner"><span>🔒 ASSEMBLY ROOM — editing mode</span><button class="exit-btn" onclick="exitAssembly()">Exit ✕</button></div>
+    ${receiptTabsHTML('expenses')}
+    <div class="detail-head">
+      <p class="kicker">Incoming</p>
+      <h1 class="detail-title">Shop Expenses</h1>
+      <p class="detail-meta">${total>0?fmtMoney(total)+' in shop expenses so far':'Costs that are not for one customer car: tools, software, a car bought for resale.'} They go out with the next accountant package.</p>
+    </div>
+    <input type="file" id="expenseFile" accept="image/*" capture="environment" style="display:none" onchange="handleExpensePhotoFile(event)">
+    <button class="btn-primary" style="width:100%" onclick="triggerExpensePhoto('new')">📷 Snap a receipt photo</button>
+    <div class="infoblock" style="margin:14px 0">
+      <p class="block-title">Add a manual entry (no photo)</p>
+      <input class="search-input" id="seDate" type="date" value="${isoOfDate(sbToday())}">
+      <input class="search-input" id="seWhat" placeholder="What was it for, e.g. impact wrench" style="margin-top:8px">
+      <input class="search-input" id="seAmount" type="number" step="0.01" min="0" placeholder="Amount" style="margin-top:8px">
+      <input class="search-input" id="seNote" placeholder="Note (optional), e.g. car bought for resale" style="margin-top:8px">
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="addShopExpenseManual()">Add</button>
+    </div>
+    ${unsent.length ? `<p class="list-sub" style="margin:16px 0 6px">Not yet sent (${unsent.length})</p>${unsent.map(row).join('')}` : `<p class="list-sub" style="margin:16px 0">No shop expenses added yet.</p>`}
+    ${sent.length ? `<p class="list-sub" style="margin:16px 0 6px">Already sent to the accountant (${sent.length})</p>${sent.map(row).join('')}` : ''}
     <button class="btn-ghost" style="width:100%;margin-top:16px" onclick="goBack()">Back</button>
     </div>`;
   },
@@ -4413,8 +4954,9 @@ const renderers = {
       <div class="row" style="cursor:default;align-items:flex-start">
         <div class="thumb">💲</div>
         <div style="flex:1;min-width:0">
-          <div class="row-meta">${new Date(r.addedAt).toLocaleDateString()}${r.sentToAccountant?' · <span class="badge submitted">Sent</span>':''}</div>
-          <input class="search-input" style="margin-top:4px" placeholder="Part name" value="${(r.partName||'').replace(/"/g,'&quot;')}" onchange="setReceiptPartName('${r.id}', this.value)">
+          <div class="row-meta">${r.sentToAccountant?'<span class="badge submitted">Sent</span>':''}</div>
+          <input class="search-input" style="margin-top:4px" type="date" value="${rcptDateIso(r)}" onchange="setReceiptDate('${r.id}', this.value)">
+          <input class="search-input" style="margin-top:6px" placeholder="Part name" value="${(r.partName||'').replace(/"/g,'&quot;')}" onchange="setReceiptPartName('${r.id}', this.value)">
           <input class="search-input" style="margin-top:6px" type="number" step="0.01" min="0" placeholder="Price" value="${r.price!=null?r.price:''}" onchange="setReceiptPrice('${r.id}', this.value)">
         </div>
         <button class="btn-ghost chip-btn" onclick="requestDeleteReceipt('${r.id}')">✕</button>
@@ -4440,7 +4982,8 @@ const renderers = {
     <p class="list-sub" style="margin:10px 0">On a multi-page invoice, just keep tapping the button — each tap stays right here so you can snap the next page.</p>
     <div class="infoblock" style="margin:14px 0">
       <p class="block-title">Add a manual entry (no photo)</p>
-      <input class="search-input" id="manualPartNameInput" placeholder="Part name">
+      <input class="search-input" id="manualDateInput" type="date" value="${isoOfDate(sbToday())}">
+      <input class="search-input" id="manualPartNameInput" placeholder="Part name" style="margin-top:8px">
       <div style="display:flex;gap:10px;margin-top:8px">
         <input class="search-input" id="manualPriceInput" type="number" step="0.01" min="0" placeholder="Price" style="flex:1">
         <button class="btn-primary" style="flex:none" onclick="addManualReceiptFromInputs(${carId?`'${carId}'`:'null'})">Add</button>
@@ -4508,7 +5051,7 @@ const renderers = {
       <div class="stat-pills">
         <span class="pill pill-accent">This work week: ${fmtHrsMin(thisWeekHours(e))}</span>
         <span class="pill">${theirCars.length} car${theirCars.length===1?'':'s'}</span>
-        <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged</span>
+        <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours</span>
         <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.billable)||0),0))} billable</span>
       </div>
       <section class="block infoblock open" id="emp-info">
@@ -4551,7 +5094,7 @@ const renderers = {
         ${logs.map(l=>`
           <div class="entry">
             <div class="entry-top"><span class="entry-who">${carNameForEntry(l)}</span><span class="entry-hours">${fmtHrsMin(l.hours)}</span></div>
-            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}"})'>${l.date}</div>
+            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}",iso:"${entryIso(l)}"})'>${l.date}</div>
             <div class="entry-desc">${descHTML(l)}</div>
             ${entryExtras(l)}
           </div>`).join('')}
@@ -4571,7 +5114,7 @@ const renderers = {
       </div>
       <div class="stat-pills">
         <span class="pill">${logs.length} entr${logs.length===1?'y':'ies'}</span>
-        <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} logged</span>
+        <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours</span>
         <span class="pill">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.billable)||0),0))} billable</span>
       </div>
       <div class="chips" style="margin-bottom:22px">
@@ -4584,7 +5127,7 @@ const renderers = {
         ${logs.length? logs.map(l=>`
           <div class="entry">
             <div class="entry-top"><span class="entry-who">${l.who}</span><span class="entry-hours">${fmtHrsMin(l.hours)}</span></div>
-            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}"})'>${l.date}</div>
+            <div class="entry-date" onclick='nav({type:"dateView",date:"${l.date}",iso:"${entryIso(l)}"})'>${l.date}</div>
             <div class="entry-desc">${descHTML(l)}</div>
             ${entryExtras(l)}
             ${flagHTML(l)}
@@ -4593,16 +5136,19 @@ const renderers = {
   },
   dateView: (v)=>{
     const empF = v.emp ? employees.find(x=>x.id===v.emp) : null;
-    const logs = applyFlt(entries.filter(l=>l.date===v.date && (!empF || l.who===empF.name)));
+    const dIso = v.iso || (entries.find(l=>l.date===v.date) ? entryIso(entries.find(l=>l.date===v.date)) : '');
+    const logs = applyFlt(entries.filter(l=>entryIso(l)===dIso && (!empF || l.who===empF.name)));
     return `
       <div class="detail-head">
         <p class="kicker">Filtered</p>
-        <h1 class="detail-title">${v.date}</h1>
+        <h1 class="detail-title">${v.date}${dIso?', '+dIso.slice(0,4):''}</h1>
         <p class="detail-meta">${empF ? `Only ${empF.name}'s entries this day` : 'Everything logged shop-wide this day'}</p>
       </div>
+      ${dIso && logs.length ? `<button class="btn-ghost no-print" style="width:100%;margin:0 0 10px;border-color:#7a2020;color:#e05a5a" onclick='deleteWorkDay(${JSON.stringify(dIso)}, ${empF?JSON.stringify(empF.name):'null'})'>Delete this entire day</button>` : ''}
       ${filterBar(['emps','cars'])}
       <section class="block" style="margin-top:0">
         ${shareBtn()}
+        ${logs.length ? '' : '<p class="list-sub">Nothing on this day.</p>'}
         ${logs.map(l=>`
           <div class="entry">
             <div class="entry-top">
@@ -4613,6 +5159,7 @@ const renderers = {
             <div class="entry-desc">${descHTML(l)}</div>
             ${entryExtras(l)}
             ${flagHTML(l)}
+            <button class="btn-ghost no-print" style="margin-top:8px;border-color:#7a2020;color:#e05a5a" onclick="deleteWorkEntry('${l.id}')">Delete this task</button>
           </div>`).join('')}
       </section>`;
   },
