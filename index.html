@@ -1563,9 +1563,6 @@ function focusWorklog(pill){
 }
 const PHOTO_DATES = ['Aug 12','Sep 3','Sep 24','Sep 25'];
 let trash = [];
-// Pulls all the demo/sample content above into the live arrays — used only for testing, and for
-// building the one-time sample restore file. Never called from any button in the real app, so a
-// real shop's data is never at risk of being overwritten by this.
 function trashRestore(id){
   const t = trash.find(x=>x.id===id);
   if(!t) return;
@@ -5167,7 +5164,7 @@ const renderers = {
 
 loadPersisted();
 // Lists default to alphabetical and stay that way until Darren manually reorders one. This also
-// catches the demo/seed data, which was written in no particular order — on first run (nothing
+// catches data that was written in no particular order — on first run (nothing
 // customized yet) everything snaps to A–Z immediately rather than only after the next edit.
 normalizeListItems(consumables);
 normalizeListItems(workTypes);
