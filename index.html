@@ -289,7 +289,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.24';
+const APP_VERSION = 'v0.25';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1880,7 +1880,7 @@ function seDelete(id){
   if(!confirm('Delete this shop expense'+(x.what?' ("'+x.what+'")':'')+'? This can\'t be undone.')) return;
   shopExpenses.splice(shopExpenses.indexOf(x),1); persist(); render();
 }
-function triggerExpensePhoto(target){ expensePhotoTarget = target; const el = document.getElementById('expenseFile'); if(el) el.click(); }
+function triggerExpensePhoto(target, pick){ expensePhotoTarget = target; const el = document.getElementById(pick ? 'expenseFilePick' : 'expenseFile'); if(el) el.click(); }
 function handleExpensePhotoFile(evt){
   const file = evt.target.files && evt.target.files[0];
   const target = expensePhotoTarget;
@@ -1903,6 +1903,7 @@ function handleExpensePhotoFile(evt){
   };
   reader.readAsDataURL(file);
 }
+function triggerReceiptPhotoPick(){ const el = document.getElementById('receiptFilePick'); if(el) el.click(); }
 function triggerReceiptPhoto(){ const el = document.getElementById('receiptFile'); if(el) el.click(); }
 function handleReceiptPhotoFile(evt){
   const file = evt.target.files && evt.target.files[0];
@@ -3080,6 +3081,78 @@ function formAnswersText(d){
   });
   return lines.join('\r\n');
 }
+// ---- A picture of each filled-out form (the whole form, top to bottom), made on the screen with a canvas ----
+const formImageCache = new Map(); // doc id -> PNG bytes, filled just before a zip is built
+function fiLoadImage(url){
+  return new Promise(res=>{ const im = new Image(); im.onload = ()=>res(im); im.onerror = ()=>res(null); im.src = url; });
+}
+async function renderFormImage(d){
+  const W = 900, PAD = 40, IW = W - PAD*2;
+  const mk = ()=>document.createElement('canvas');
+  const mctx = mk().getContext('2d');
+  const font = (px, w, st)=>(st||'')+' '+(w||'normal')+' '+px+'px Helvetica, Arial, sans-serif';
+  const wrap = (ctx, text, maxW)=>{
+    const out = []; String(text==null?'':text).split(/\r?\n/).forEach(par=>{
+      let line = ''; par.split(/\s+/).forEach(w=>{
+        let word = w;
+        while(ctx.measureText(word).width > maxW && word.length>1){ let k = word.length-1; while(k>1 && ctx.measureText(word.slice(0,k)).width > maxW) k--; if(line){ out.push(line); line=''; } out.push(word.slice(0,k)); word = word.slice(k); }
+        const t = line ? line+' '+word : word;
+        if(ctx.measureText(t).width > maxW && line){ out.push(line); line = word; } else line = t;
+      }); out.push(line);
+    }); return out;
+  };
+  const items = []; let h = PAD;
+  const add = (it, ht)=>{ it.y = h; it.h = ht; items.push(it); h += ht; };
+  mctx.font = font(30,'bold'); const tl = wrap(mctx, d.name||'Form', IW);
+  add({k:'title', lines:tl}, tl.length*38+4);
+  const car = d.carId ? ((cars.find(c=>c.id===d.carId)||{}).name||'') : (d.carTyped||'');
+  const sub = [car?'Car: '+car:'', d.who?'Filled out by '+d.who:'', d.date||''].filter(Boolean).join('   ·   ');
+  mctx.font = font(18); const sl = wrap(mctx, sub, IW);
+  add({k:'sub', lines:sl}, sl.length*26+14);
+  add({k:'rule'}, 18);
+  for(const a of Object.values(d.answers||{})){
+    if(a.type==='blank') continue;
+    if(a.type==='heading'){ mctx.font = font(22,'bold'); const l = wrap(mctx, String(a.label||'').toUpperCase(), IW); add({k:'heading', lines:l}, l.length*30+22); continue; }
+    if(a.type==='checkbox'){ mctx.font = font(19); const l = wrap(mctx, a.label||'', IW-40); add({k:'check', lines:l, on:!!a.value}, Math.max(l.length*27, 28)+10); continue; }
+    if(a.type==='photo'){
+      mctx.font = font(17,'bold'); const l = wrap(mctx, a.label||'Photo', IW);
+      const im = a.value ? await fiLoadImage(a.value) : null;
+      let iw = 0, ih = 0; if(im){ const sc = Math.min(1, 560/im.width, 420/im.height); iw = Math.round(im.width*sc); ih = Math.round(im.height*sc); }
+      add({k:'photo', lines:l, im, iw, ih}, l.length*24 + (im ? ih+14 : 28) + 12); continue;
+    }
+    mctx.font = font(17,'bold'); const ll = wrap(mctx, a.label||'(untitled field)', IW);
+    let vtxt;
+    if(a.type==='signature') vtxt = a.value ? 'Signed: '+a.value : '(not signed)';
+    else vtxt = (a.value===''||a.value==null) ? '-' : String(a.value);
+    mctx.font = font(a.type==='signature'?24:19, 'normal', a.type==='signature'?'italic':''); const vl = wrap(mctx, vtxt, IW);
+    add({k:'field', ll, vl, sig:a.type==='signature'}, ll.length*24 + vl.length*(a.type==='signature'?32:27) + 14);
+  }
+  const H = Math.min(h + PAD, 14000);
+  const cv = mk(); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0,0,W,H); c.textBaseline = 'top';
+  for(const it of items){
+    let y = it.y;
+    if(it.k==='title'){ c.fillStyle = '#111'; c.font = font(30,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*38)); }
+    else if(it.k==='sub'){ c.fillStyle = '#555'; c.font = font(18); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*26)); }
+    else if(it.k==='rule'){ c.fillStyle = '#222'; c.fillRect(PAD, y+6, IW, 2); }
+    else if(it.k==='heading'){ c.fillStyle = '#111'; c.font = font(22,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+14+i*30)); c.fillStyle = '#bbb'; c.fillRect(PAD, y+it.h-4, IW, 1); }
+    else if(it.k==='check'){ c.strokeStyle = '#222'; c.lineWidth = 2; c.strokeRect(PAD+1, y+3, 22, 22); if(it.on){ c.beginPath(); c.moveTo(PAD+5,y+14); c.lineTo(PAD+11,y+21); c.lineTo(PAD+20,y+7); c.stroke(); } c.fillStyle = '#111'; c.font = font(19); it.lines.forEach((t,i)=>c.fillText(t, PAD+36, y+3+i*27)); }
+    else if(it.k==='photo'){ c.fillStyle = '#555'; c.font = font(17,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*24)); const py = y+it.lines.length*24+4; if(it.im){ c.drawImage(it.im, PAD, py, it.iw, it.ih); c.strokeStyle = '#999'; c.lineWidth = 1; c.strokeRect(PAD, py, it.iw, it.ih); } else { c.fillStyle = '#111'; c.font = font(19); c.fillText('(no photo taken)', PAD, py); } }
+    else if(it.k==='field'){ c.fillStyle = '#555'; c.font = font(17,'bold'); it.ll.forEach((t,i)=>c.fillText(t, PAD, y+i*24)); const vy = y+it.ll.length*24+2; c.fillStyle = '#111'; c.font = font(it.sig?24:19,'normal',it.sig?'italic':''); it.vl.forEach((t,i)=>c.fillText(t, PAD, vy+i*(it.sig?32:27))); }
+  }
+  const b = dataUrlToBytes(cv.toDataURL('image/png'));
+  return b ? b.bytes : null;
+}
+// Makes the form pictures a package needs, just before its zip is built (the zip itself is built in one go).
+async function prepareFormImages(pkgs){
+  for(const pkg of [].concat(pkgs)){
+    for(const d of safeArr(pkg.docs)){
+      if(!d.answers || !Object.keys(d.answers).length || formImageCache.has(d.id)) continue;
+      try{ const bytes = await renderFormImage(d); if(bytes) formImageCache.set(d.id, bytes); }catch(e){}
+    }
+  }
+}
 function pkgZipName(pkg){ return pkg.wk ? 'Accountant - '+(pkg.correction?'CORRECTION - ':'')+'week of '+wkLabelYear(pkg.wk)+'.zip' : 'Accountant - current entries.zip'; }
 function buildPackageFiles(pkg){
   const enc = new TextEncoder(), files = [], used = new Set();
@@ -3098,7 +3171,7 @@ function buildPackageFiles(pkg){
     '  Summary.pdf         A printable summary: employee hours by day and week, billable hours and parts for each car, and the shop expenses.',
     '  1 Spreadsheets      Hours by Employee (clock-in, clock-out and employee hours by day, with a total for each employee), and Billing by Car (billable hours, parts and prices, typed receipts, a total for each car and a grand total). Open with Excel or any spreadsheet program.',
     '  2 Receipts          Parts receipt photos, one folder per car, plus a folder for shop supplies.',
-    '  3 Filled-Out Forms  Forms the employees filled out, one folder per car.',
+    '  3 Filled-Out Forms  Forms the employees filled out, one folder per car: a picture of each whole form, the answers as text, and any photos taken inside the form.',
     '  4 Car Photos        Photos the employees took, one folder per car.',
     '  5 Shop Expenses     Tools, software and other shop costs that are not for one car, with a Shop Expenses spreadsheet and any receipt photos.',
     '',
@@ -3120,6 +3193,7 @@ function buildPackageFiles(pkg){
     if(b) add(folder+stem.trim()+'.'+extFor(b.mime, d.fileName), b.bytes);
     if(d.answers && Object.keys(d.answers).length){
       add(folder+stem.trim()+(b?' answers':'')+'.txt', formAnswersText(d));
+      if(formImageCache.has(d.id)) add(folder+stem.trim()+' form image.png', formImageCache.get(d.id));
       Object.values(d.answers).filter(a=>a.type==='photo' && a.value).forEach((a,i)=>{
         const pb = dataUrlToBytes(a.value); if(pb) add(folder+stem.trim()+' photo '+(i+1)+'.'+extFor(pb.mime), pb.bytes);
       });
@@ -3212,6 +3286,7 @@ async function asmSendToAccountant(){
   if(left && !confirm(left+(left===1?' listing is':' listings are')+' not marked done yet. Save for the accountant anyway?')) return;
   const groups = pkgCurrentGroups();
   if(!groups.length){ alert('There is nothing in Incoming to save for the accountant.'); return; }
+  await prepareFormImages(groups);
   const zips = groups.map(g=>({fname:pkgZipName(g), blob:buildPackageZip(g)}));
   const {result, wroteCopy} = await deliverZips(zips);
   if(result==='declined' && !wroteCopy) return;
@@ -3226,6 +3301,7 @@ async function sendHistoryWeekToAccountant(wid){
   const hw = historyWeeks.find(x=>x.id===wid); if(!hw) return;
   const pkg = pkgFromHistoryWeek(hw);
   if(!(await warnUnfinishedBeforeSend(pkg.entries))) return;
+  await prepareFormImages(pkg);
   const z = {fname:pkgZipName(pkg), blob:buildPackageZip(pkg)};
   const {result, wroteCopy} = await deliverZips([z]);
   if(result==='declined' && !wroteCopy) return;
@@ -4908,7 +4984,8 @@ const renderers = {
           <input class="search-input" style="margin-top:6px" type="number" step="0.01" min="0" placeholder="Amount" value="${x.amount!=null&&x.amount!==''?x.amount:''}" onchange="seSet('${x.id}','amount',this.value)">
           <input class="search-input" style="margin-top:6px" placeholder="Note (optional)" value="${esc(x.note)}" onchange="seSet('${x.id}','note',this.value)">
           <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-            <button class="btn-ghost chip-btn" onclick="triggerExpensePhoto('${x.id}')">${x.dataUrl?'Replace receipt photo':'📷 Add receipt photo'}</button>
+            <button class="btn-ghost chip-btn" onclick="triggerExpensePhoto('${x.id}')">${x.dataUrl?'Replace with a new photo':'📷 Add receipt photo'}</button>
+            <button class="btn-ghost chip-btn" onclick="triggerExpensePhoto('${x.id}', true)">🖼 Choose a photo</button>
             ${x.dataUrl?`<button class="btn-ghost chip-btn" onclick="seRemovePhoto('${x.id}')">Remove photo</button>`:''}
           </div>
         </div>
@@ -4924,7 +5001,9 @@ const renderers = {
       <p class="detail-meta">${total>0?fmtMoney(total)+' in shop expenses so far':'Costs that are not for one customer car: tools, software, a car bought for resale.'} They go out with the next accountant package.</p>
     </div>
     <input type="file" id="expenseFile" accept="image/*" capture="environment" style="display:none" onchange="handleExpensePhotoFile(event)">
+    <input type="file" id="expenseFilePick" accept="image/*" style="display:none" onchange="handleExpensePhotoFile(event)">
     <button class="btn-primary" style="width:100%" onclick="triggerExpensePhoto('new')">📷 Snap a receipt photo</button>
+    <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="triggerExpensePhoto('new', true)">🖼 Choose a photo from this device</button>
     <div class="infoblock" style="margin:14px 0">
       <p class="block-title">Add a manual entry (no photo)</p>
       <input class="search-input" id="seDate" type="date" value="${isoOfDate(sbToday())}">
@@ -4976,7 +5055,9 @@ const renderers = {
       <p class="detail-meta">${total>0?`$${total.toFixed(2)} in manually-logged parts so far`:'Nothing manually logged yet'}</p>
     </div>
     <input type="file" id="receiptFile" accept="image/*" capture="environment" style="display:none" onchange="handleReceiptPhotoFile(event)">
+    <input type="file" id="receiptFilePick" accept="image/*" style="display:none" onchange="handleReceiptPhotoFile(event)">
     <button class="btn-primary" style="width:100%" onclick="triggerReceiptPhoto()">📷 Snap a receipt photo</button>
+    <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="triggerReceiptPhotoPick()">🖼 Choose a photo from this device</button>
     <p class="list-sub" style="margin:10px 0">On a multi-page invoice, just keep tapping the button — each tap stays right here so you can snap the next page.</p>
     <div class="infoblock" style="margin:14px 0">
       <p class="block-title">Add a manual entry (no photo)</p>
