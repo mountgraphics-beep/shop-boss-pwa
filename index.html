@@ -381,7 +381,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.40';
+const APP_VERSION = 'v0.41';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1316,10 +1316,10 @@ function untickTodoForEntry(l){
 function carTodoSectionHTML(c){
   const open = carTodos(c).filter(t=>!t.done), done = carTodos(c).filter(t=>t.done);
   return `<section class="block no-print" data-dz="1">
-    <p class="block-title">To do <span class="static-tag">${open.length} open — most important at the top</span></p>
+    <p class="block-title">Open <span class="static-tag">${open.length} — most important at the top</span></p>
     ${open.map((t,i)=>`<div class="row car-row lst-row" style="cursor:default">${listHandleHTML('todo:'+c.id, i)}<input type="checkbox" onchange="toggleCarTodo('${c.id}','${t.id}')" title="Mark done"><div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal">${escH(t.text)}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeCarTodo('${c.id}','${t.id}')">✕</button></div>`).join('') || '<p class="list-sub">Nothing to do yet.</p>'}
     <div style="display:flex;gap:8px;margin-top:8px"><input class="search-input" id="newTodo-${c.id}" style="margin:0;flex:1" placeholder="Add a job…" onkeydown="if(event.key==='Enter'){addCarTodo('${c.id}', this.value);}"><button class="btn-ghost" style="width:46px;margin:0;font-size:20px" onclick="addCarTodo('${c.id}', document.getElementById('newTodo-${c.id}').value)">+</button></div>
-    ${done.length?`<p class="list-sub" style="margin:14px 0 4px">Done</p>${done.map(t=>`<div class="row lst-row" style="cursor:default;opacity:.75"><input type="checkbox" checked onchange="toggleCarTodo('${c.id}','${t.id}')" title="Untick to put it back on the list"><div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal;text-decoration:line-through">${escH(t.text)}</div><div class="row-meta">${t.doneBy?'Done — '+escH(t.doneBy)+(t.doneDate?', '+escH(t.doneDate):''):'Ticked by you'+(t.doneDate?', '+escH(t.doneDate):'')}</div></div></div>`).join('')}`:''}
+    ${done.length?`<p class="block-title" style="margin-top:22px">Done <span class="static-tag">${done.length} — untick to put one back</span></p>${done.map(t=>`<div class="row lst-row" style="cursor:default;opacity:.75"><input type="checkbox" checked onchange="toggleCarTodo('${c.id}','${t.id}')" title="Untick to put it back on the list"><div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal;text-decoration:line-through">${escH(t.text)}</div><div class="row-meta">${t.doneBy?'Done — '+escH(t.doneBy)+(t.doneDate?', '+escH(t.doneDate):''):'Ticked by you'+(t.doneDate?', '+escH(t.doneDate):'')}</div></div></div>`).join('')}`:''}
   </section>`;
 }
 function listSendFlag(key){ return key==='cons' ? consumablesIncluded : listCfg[key].send; }
@@ -5558,6 +5558,18 @@ const renderers = {
     <button class="btn-primary" style="width:100%;margin-top:18px" onclick="submitAddEmployee(document.getElementById('newEmpName').value, document.getElementById('newEmpPhone').value, document.getElementById('newEmpEmail').value, document.getElementById('newEmpAddress').value, document.getElementById('newEmpStartDate').value)">Save employee</button>
     <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="goBack()">Cancel</button>`,
 
+  carTodo: (v)=>{
+    const c = cars.find(x=>x.id===v.id);
+    if(!c) return renderers.home();
+    return `
+    <div class="detail-head">
+      <p class="kicker">${escH(c.name)}</p>
+      <h1 class="detail-title">To-do list</h1>
+    </div>
+    ${carTodoSectionHTML(c)}
+    <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="goBack()">← Back to ${escH(c.name)}</button>`;
+  },
+
   car: (v)=>{
     const c = cars.find(x=>x.id===v.id);
     const owner = owners.find(o=>o.id===c.owner);
@@ -5621,7 +5633,7 @@ const renderers = {
       </section>
       ${c.notes.length?`<div class="print-only"><p class="block-title">Notes</p>${c.notes.map(n=>`<div class="entry"><div class="entry-desc">${n}</div></div>`).join('')}</div>`:''}
       ${c.docs.length?`<div class="print-only"><p class="block-title">Documents on file</p>${c.docs.map(d=>`<div class="entry"><div class="entry-desc">📄 ${d}</div></div>`).join('')}</div>`:''}
-      ${carTodoSectionHTML(c)}
+      <button class="btn-ghost no-print" style="width:100%;margin:8px 0" onclick="nav({type:'carTodo', id:'${c.id}'})">📋 To-do list${carTodos(c).some(t=>!t.done)?' · '+carTodos(c).filter(t=>!t.done).length+' open':''}</button>
       <section class="block">
         <p class="block-title">Employees who've worked on this car</p>
         <div class="chips">${emps.map(e=>`<div class="chip" onclick='nav({type:"intersection",emp:"${e.id}",car:"${c.id}"})'><span class="dot"></span>${e.name}</div>`).join('')}</div>
