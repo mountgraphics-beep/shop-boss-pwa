@@ -289,7 +289,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.27';
+const APP_VERSION = 'v0.28';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -4407,7 +4407,7 @@ const renderers = {
       if(f.type==='checkbox') return `<div class="fb-field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" style="width:20px;height:20px;flex:none"><span>${label}</span></div>`;
       if(f.type==='yesno') return `<div class="fb-field">${lab}<select style="width:100%"><option value="">—</option><option>Yes</option><option>No</option></select></div>`;
       if(f.type==='radio') return `<div class="fb-field">${lab}<div style="display:flex;flex-wrap:wrap;gap:8px 16px">${opts.length?opts.map(o=>`<label style="display:flex;align-items:center;gap:6px"><input type="radio" name="pv-${f.id}" style="width:20px;height:20px">${o}</label>`).join(''):'<span style="color:var(--muted)">(no choices added yet)</span>'}</div></div>`;
-      if(f.type==='dropdown') return `<div class="fb-field">${lab}<select style="width:100%"><option value="">—</option>${opts.map(o=>`<option>${o}</option>`).join('')}</select>${opts.length?'':'<span style="color:var(--muted);font-size:12px">(no choices added yet)</span>'}</div>`;
+      if(f.type==='dropdown'){ const cid='pvc-'+f.id; return `<div class="fb-field">${lab}<div style="display:flex;gap:8px"><input type="text" id="${cid}" data-accombo="1" autocomplete="off" placeholder="Type, or tap ▾ to pick" style="flex:1;min-width:0" data-acopts="${JSON.stringify(opts).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><button type="button" class="btn-ghost" style="width:46px;margin:0;padding:8px 0" onclick="acToggleAll('${cid}')" aria-label="Show the list">▾</button></div>${opts.length?'':'<span style="color:var(--muted);font-size:12px">(no choices added yet)</span>'}</div>`; }
       if(f.type==='photo') return `<div class="fb-field">${lab}<input type="file" accept="image/*"></div>`;
       if(f.type==='signature') return `<div class="fb-field">${lab}<input type="text" style="width:100%" placeholder="Type your full name"></div>`;
       if(f.type==='longtext') return `<div class="fb-field">${lab}<textarea rows="3" style="width:100%"></textarea></div>`;
@@ -5320,6 +5320,173 @@ try{
 }catch(e){}
 render();
 sbRestoreFolderHandles(); // async — reloads any previously-picked folder handles from IndexedDB, so writes/reads there resume without re-asking
+
+function acAppExtras(){
+  const out = [];
+  const addN = arr=>(arr||[]).forEach(x=>out.push(typeof x==='string'?x:(x&&x.name)||''));
+  addN(cars); addN(employees); addN(owners); addN(workTypes); addN(consumables); addN(billingParts); addN(notesHelper);
+  customLists.forEach(l=>addN(l.items));
+  forms.forEach(f=>(f.fields||[]).forEach(fl=>{ if(Array.isArray(fl.options)) addN(fl.options); }));
+  return out;
+}
+
+// ---- Autocomplete: as you type in any text box, suggests words and phrases from everything typed before in this app
+// plus your lists. Tap a suggestion, or press Enter to take the top one. Nothing is ever forced to match: whatever is
+// typed stays as typed, and a drop-down's choice just goes into the box where more text can be added. ----
+(function(){
+  const KEY = 'sb-autocomplete-v1';
+  let db = {};
+  try{ db = JSON.parse(localStorage.getItem(KEY)||'{}') || {}; }catch(e){ db = {}; }
+  let saveT = null, cur = null, items = [], active = -1, skipInput = false, box = null;
+  function persistDb(){
+    clearTimeout(saveT);
+    saveT = setTimeout(()=>{ try{
+      const ks = Object.keys(db);
+      if(ks.length>4000){ ks.sort((a,b)=>(db[a].n-db[b].n)||(db[a].u-db[b].u)); ks.slice(0,ks.length-3500).forEach(k=>delete db[k]); }
+      localStorage.setItem(KEY, JSON.stringify(db));
+    }catch(e){} }, 400);
+  }
+  function learnOne(t){
+    t = String(t||'').trim().replace(/\s+/g,' ');
+    if(t.length<2) return;
+    if(t.length>80){ t.split(/[^\p{L}\p{N}'-]+/u).forEach(w=>{ if(w.length>=3 && w.length<=30) learnOne(w); }); return; }
+    if(/^[\d\s.,:\/$%-]+$/.test(t)) return;
+    const k = t.toLowerCase(), r = db[k];
+    if(r){ r.n++; r.u = Date.now(); r.t = t; } else db[k] = {t:t, n:1, u:Date.now()};
+  }
+  function learn(text){ String(text||'').split(/[\n,;]+/).forEach(learnOne); persistDb(); }
+  function eligible(el){
+    if(!el || !el.tagName) return false;
+    if(el.readOnly || el.disabled || el.hasAttribute('data-noac')) return false;
+    if(el.tagName==='TEXTAREA') return true;
+    if(el.tagName!=='INPUT') return false;
+    const t = (el.getAttribute('type')||'text').toLowerCase();
+    if(t!=='text' && t!=='search') return false;
+    if(el.maxLength>0 && el.maxLength<=4) return false;
+    if(/numeric|decimal|tel/.test(el.getAttribute('inputmode')||'')) return false;
+    return true;
+  }
+  function ownOptions(el){
+    let o = null;
+    const a = el.getAttribute('data-acopts');
+    if(a){ try{ o = JSON.parse(a); }catch(e){} }
+    if(!o && typeof acAppSource==='function'){ try{ o = acAppSource(el); }catch(e){} }
+    return Array.isArray(o) ? o : null;
+  }
+  function pool(el){
+    const out = [], seen = new Set();
+    const add = arr=>(arr||[]).forEach(s=>{
+      s = String(s==null ? '' : (typeof s==='object' ? (s.name||'') : s)).trim();
+      if(!s || s.length>80) return;
+      const k = s.toLowerCase(); if(seen.has(k)) return; seen.add(k); out.push(s);
+    });
+    add(ownOptions(el));
+    try{ add(typeof acAppExtras==='function' ? acAppExtras() : []); }catch(e){}
+    Object.keys(db).map(k=>db[k]).sort((a,b)=>(b.n-a.n)||(b.u-a.u)).forEach(r=>add([r.t]));
+    return out;
+  }
+  function compute(el, showAll){
+    const own = ownOptions(el), v = el.value;
+    if(showAll){ return own ? own.map(o=>({text:String(o), from:0, to:v.length, all:true})).slice(0,80) : []; }
+    const caret = (el.selectionStart==null) ? v.length : el.selectionStart;
+    const before = v.slice(0, caret);
+    const segRaw = /[^,\n;]*$/.exec(before)[0];
+    const seg = segRaw.replace(/^\s+/, ''), segStart = caret - seg.length;
+    const word = /[^\s,;]*$/.exec(before)[0], wStart = caret - word.length;
+    const min = own ? 1 : 2;
+    const ls = seg.toLowerCase(), lw = word.toLowerCase();
+    const res = [], seen = new Set();
+    const push = (text, from)=>{ const k = text.toLowerCase(); if(seen.has(k)) return; seen.add(k); res.push({text:text, from:from, to:caret}); };
+    const P = pool(el);
+    if(seg.length>=min) P.forEach(t=>{ const l = t.toLowerCase(); if(l.startsWith(ls) && l!==ls) push(t, segStart); });
+    if(word.length>=min) P.forEach(t=>t.split(/[\s,;]+/).forEach(w=>{ const l = w.toLowerCase(); if(w && l.startsWith(lw) && l!==lw) push(w, wStart); }));
+    return res.slice(0,6);
+  }
+  function ensureBox(){
+    if(box) return box;
+    box = document.createElement('div');
+    box.id = 'acBox';
+    box.setAttribute('style','position:fixed;z-index:99999;display:none;background:var(--surface-2,#1F2123);color:var(--text,#ECEDEE);border:1px solid var(--line,#2C2E31);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.45);overflow-y:auto;max-height:260px;font-size:16px');
+    document.body.appendChild(box);
+    return box;
+  }
+  function place(){
+    if(!cur || !box || box.style.display==='none') return;
+    const r = cur.getBoundingClientRect();
+    const w = Math.max(r.width, 200);
+    box.style.width = w+'px';
+    box.style.left = Math.max(4, Math.min(r.left, window.innerWidth-w-4))+'px';
+    const h = Math.min(260, box.scrollHeight);
+    if(window.innerHeight - r.bottom < h+8 && r.top > h+8){ box.style.top = ''; box.style.bottom = (window.innerHeight - r.top + 4)+'px'; }
+    else { box.style.bottom = ''; box.style.top = (r.bottom+4)+'px'; }
+  }
+  function hide(){ if(box) box.style.display = 'none'; items = []; active = -1; }
+  function show(el, list, autoFirst){
+    if(!list.length){ hide(); return; }
+    cur = el; items = list; active = autoFirst ? 0 : -1;
+    const b = ensureBox();
+    b.innerHTML = '';
+    list.forEach((s,i)=>{
+      const d = document.createElement('div');
+      d.textContent = s.text; d.setAttribute('data-i', i);
+      d.setAttribute('style','padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--line,#2C2E31)');
+      d.addEventListener('pointerdown', ev=>{ ev.preventDefault(); accept(s); });
+      b.appendChild(d);
+    });
+    b.style.display = 'block';
+    paint(); place();
+  }
+  function paint(){
+    if(!box) return;
+    Array.prototype.forEach.call(box.children, (d,i)=>{ d.style.background = (i===active) ? 'var(--accent-tint,#241412)' : 'transparent'; });
+    if(active>=0 && box.children[active] && box.children[active].scrollIntoView){ try{ box.children[active].scrollIntoView({block:'nearest'}); }catch(e){} }
+  }
+  function accept(s){
+    const el = cur; if(!el) return;
+    const v = el.value;
+    el.value = v.slice(0, s.from) + s.text + v.slice(s.to);
+    const pos = s.from + s.text.length;
+    try{ el.setSelectionRange(pos, pos); }catch(e){}
+    skipInput = true;
+    try{ el.dispatchEvent(new Event('input', {bubbles:true})); }catch(e){}
+    skipInput = false;
+    learn(s.text);
+    hide();
+    try{ el.focus(); }catch(e){}
+  }
+  document.addEventListener('input', e=>{
+    if(skipInput) return;
+    const el = e.target;
+    if(!eligible(el)){ return; }
+    cur = el;
+    show(el, compute(el,false), true);
+  });
+  document.addEventListener('focusin', e=>{
+    const el = e.target;
+    if(el && el.getAttribute && el.getAttribute('data-accombo') && eligible(el) && !el.value) show(el, compute(el,true), false);
+  });
+  document.addEventListener('click', e=>{
+    const el = e.target;
+    if(el && el.getAttribute && el.getAttribute('data-accombo') && eligible(el) && !el.value && (!box || box.style.display==='none')) show(el, compute(el,true), false);
+  });
+  document.addEventListener('change', e=>{ if(eligible(e.target) && e.target.value) learn(e.target.value); });
+  document.addEventListener('focusout', ()=>{ setTimeout(()=>{ if(document.activeElement!==cur) hide(); }, 150); });
+  document.addEventListener('keydown', e=>{
+    if(!box || box.style.display==='none' || e.target!==cur || !items.length) return;
+    if(e.key==='ArrowDown'){ active = Math.min(items.length-1, active+1); paint(); e.preventDefault(); }
+    else if(e.key==='ArrowUp'){ active = Math.max(0, active-1); paint(); e.preventDefault(); }
+    else if(e.key==='Escape'){ hide(); e.preventDefault(); }
+    else if(e.key==='Enter' && active>=0){ e.preventDefault(); e.stopImmediatePropagation(); accept(items[active]); }
+  }, true);
+  window.addEventListener('resize', place);
+  document.addEventListener('scroll', place, true);
+  window.acToggleAll = function(id){
+    const el = document.getElementById(id); if(!el) return;
+    if(box && box.style.display!=='none' && cur===el){ hide(); return; }
+    el.focus(); cur = el; show(el, compute(el,true), false);
+  };
+  window.acLearn = learn; window.acDb = ()=>db;
+})();
 </script>
 </body>
 </html>
