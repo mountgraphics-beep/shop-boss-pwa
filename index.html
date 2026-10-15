@@ -359,7 +359,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.35';
+const APP_VERSION = 'v0.36';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1245,6 +1245,43 @@ function addCustomListItem(id, text){
   else { let i=0; const t=text.toLowerCase(); while(i<l.items.length && l.items[i].toLowerCase()<t) i++; l.items.splice(i,0,text); }
   persist();
   render();
+}
+// ---- Paste a list: one item per line, on every list in Settings ----
+function pasteListHTML(kind, id){
+  const k = 'pl-'+kind+(id?'-'+id:'');
+  const hint = kind==='bill' ? 'One part per line. Add a price after a | if you like, e.g. Brake pad set | 45' : 'One item per line';
+  return `<div style="margin-top:10px"><button class="btn-ghost" style="width:100%" onclick="var b=document.getElementById('${k}');b.hidden=!b.hidden;if(!b.hidden)document.getElementById('${k}-t').focus()">📋 Paste a list</button>
+    <div id="${k}" hidden style="margin-top:8px"><textarea id="${k}-t" rows="7" placeholder="${hint}" style="width:100%;font-size:14px;padding:8px"></textarea>
+    <button class="btn-primary" style="width:100%;margin-top:8px" onclick="pasteListAdd('${kind}','${id||''}','${k}-t')">Add these</button></div></div>`;
+}
+function pasteListAdd(kind, id, taId){
+  const ta = document.getElementById(taId); if(!ta) return;
+  const rows = ta.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!rows.length){ alert('Nothing to add yet. Type or paste one item per line first.'); return; }
+  let added = 0, skipped = 0;
+  const has = {
+    notes: n=>notesHelper.some(t=>t.name.toLowerCase()===n), work: n=>workTypes.some(t=>t.name.toLowerCase()===n),
+    cons: n=>consumables.some(c=>c.name.toLowerCase()===n), bill: n=>billingParts.some(b=>b.name.toLowerCase()===n),
+    custom: n=>{ const l = customLists.find(x=>x.id===id); return !!(l && l.items.some(i=>i.toLowerCase()===n)); }
+  }[kind];
+  if(!has) return;
+  rows.forEach(r=>{
+    let name = r, price = '';
+    if(kind==='bill'){ const p = r.split(/\s*[|\t]\s*/); name = (p[0]||'').trim(); price = (p[1]||'').replace(/[^0-9.]/g,''); }
+    if(!name || has(name.toLowerCase())){ skipped++; return; }
+    if(kind==='notes') insertSortedOrPush(notesHelper, {name}, 'notesHelper', t=>t.name);
+    else if(kind==='work') insertSortedOrPush(workTypes, {name, includeInUpdate:true}, 'workTypes', t=>t.name);
+    else if(kind==='cons') insertSortedOrPush(consumables, {name, includeInUpdate:true}, 'consumables', c=>c.name);
+    else if(kind==='bill'){ billingParts.push({name, price}); billingParts.sort((a,b)=>a.name.localeCompare(b.name)); }
+    else if(kind==='custom'){
+      const l = customLists.find(x=>x.id===id);
+      if(listOrderCustomized.customLists[id]) l.items.push(name);
+      else { let i=0; const t=name.toLowerCase(); while(i<l.items.length && l.items[i].toLowerCase()<t) i++; l.items.splice(i,0,name); }
+    }
+    added++;
+  });
+  persist(); render();
+  alert('Added '+added+(skipped?'. Skipped '+skipped+' that were already on the list or empty.':'.'));
 }
 function removeCustomListItem(id, idx){
   const l = customLists.find(x=>x.id===id);
@@ -4615,6 +4652,7 @@ const renderers = {
     <div style="margin-top:14px">
       <input class="search-input" id="newListItem" placeholder="Add an item…" onkeydown="if(event.key==='Enter'){addCustomListItem('${l.id}', this.value); this.value='';}">
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="addCustomListItem('${l.id}', document.getElementById('newListItem').value); document.getElementById('newListItem').value=''">+ Add item</button>
+      ${pasteListHTML('custom', l.id)}
     </div>
     <p class="list-sub" style="margin-top:4px">Items save as soon as you add them — nothing to remember to hit Save for. Whether this list goes out to WorkClock is set in Assembly Room → Outgoing → Task lists going out.</p>
     <button class="btn-ghost" style="width:100%;margin-top:22px;border-color:#7a2020;color:#e05a5a" onclick="deleteCustomList('${l.id}')">Delete this whole list</button>`;
@@ -4645,7 +4683,8 @@ const renderers = {
         ${reorderResetButtonHTML('resetConsumableOrder', 'consumables')}
         ${consumables.map((c,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML('moveConsumableItem', i, consumables.length)}<div style="flex:1"><div class="row-title">${c.name}</div></div><button class="btn-ghost chip-btn" onclick="removeConsumable(${jsStr(c.name)})">✕</button></div>`).join('')}
         <input class="search-input" id="newConsumableName" style="margin-top:14px" placeholder="e.g. Windshield washer fluid">
-        <button class="btn-primary" style="width:100%" onclick="addConsumable(document.getElementById('newConsumableName').value); document.getElementById('newConsumableName').value=''">+ Add new</button>`;
+        <button class="btn-primary" style="width:100%" onclick="addConsumable(document.getElementById('newConsumableName').value); document.getElementById('newConsumableName').value=''">+ Add new</button>
+        ${pasteListHTML('cons')}`;
     }
     if(v.which==='Billing parts'){
       return `
@@ -4656,7 +4695,8 @@ const renderers = {
         <p class="list-sub">Parts you bill customers for. You pick these on a work entry in Incoming. The price is the last one you used, and it fills in by itself next time. This list stays in Shop Boss and is never sent to WorkClock.</p>
         ${billingParts.length ? billingParts.map((b,i)=>`<div class="row" style="cursor:default;gap:8px"><div style="flex:1;min-width:0"><div class="row-title">${b.name}</div></div><span>$</span><input class="hours-input-inline" style="width:80px" type="number" inputmode="decimal" step="0.01" min="0" value="${String(b.price==null?'':b.price)}" onchange="setBillingPartPrice(${i},this.value)"><button class="btn-ghost chip-btn" onclick="removeBillingPart(${i})">✕</button></div>`).join('') : `<p class="list-sub">No parts yet. Add one below, or pick "Other (type it in)" on a work entry and it saves here.</p>`}
         <input class="search-input" id="newBillingPart" style="margin-top:14px" placeholder="e.g. Brake pad set">
-        <button class="btn-primary" style="width:100%" onclick="addBillingPart(document.getElementById('newBillingPart').value)">+ Add new</button>`;
+        <button class="btn-primary" style="width:100%" onclick="addBillingPart(document.getElementById('newBillingPart').value)">+ Add new</button>
+        ${pasteListHTML('bill')}`;
     }
     if(v.which==='Notes Helper'){
       return `
@@ -4667,7 +4707,8 @@ const renderers = {
         <p class="list-sub">Quick words employees can tap in to build their Notes on WorkClock. Always sent in every update and can't be deleted; it's fine to leave it empty.</p>
         ${notesHelper.map(t=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn" onclick="removeNotesHelperItem(${jsStr(t.name)})">✕</button></div>`).join('') || '<p class="list-sub">Nothing added yet.</p>'}
         <input class="search-input" id="newNotesHelperName" style="margin-top:14px" placeholder="e.g. Needs follow-up">
-        <button class="btn-primary" style="width:100%" onclick="addNotesHelperItem(document.getElementById('newNotesHelperName').value); document.getElementById('newNotesHelperName').value=''">+ Add new</button>`;
+        <button class="btn-primary" style="width:100%" onclick="addNotesHelperItem(document.getElementById('newNotesHelperName').value); document.getElementById('newNotesHelperName').value=''">+ Add new</button>
+        ${pasteListHTML('notes')}`;
     }
     if(v.which==='Work Types'){
       return `
@@ -4679,7 +4720,8 @@ const renderers = {
         ${reorderResetButtonHTML('resetWorkTypeOrder', 'workTypes')}
         ${workTypes.map((t,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML('moveWorkTypeItem', i, workTypes.length)}<div style="flex:1"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn" onclick="removeWorkType(${jsStr(t.name)})">✕</button></div>`).join('')}
         <input class="search-input" id="newWorkTypeName" style="margin-top:14px" placeholder="e.g. Suspension work">
-        <button class="btn-primary" style="width:100%" onclick="addWorkType(document.getElementById('newWorkTypeName').value); document.getElementById('newWorkTypeName').value=''">+ Add new</button>`;
+        <button class="btn-primary" style="width:100%" onclick="addWorkType(document.getElementById('newWorkTypeName').value); document.getElementById('newWorkTypeName').value=''">+ Add new</button>
+        ${pasteListHTML('work')}`;
     }
     return `
     <div class="detail-head">
