@@ -289,7 +289,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.25';
+const APP_VERSION = 'v0.26';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -488,6 +488,65 @@ const FB_FIELD_TYPES = {
   signature: {icon:'✒',  label:'Signature',    hasOptions:false, allowAutoFill:false},
 };
 function fbTypeMeta(type){ return FB_FIELD_TYPES[type] || FB_FIELD_TYPES.text; }
+
+// ---- Export / import of blank forms (build on a computer, import on the tablet) ----
+function exportForms(formId){
+  const list = formId ? forms.filter(f=>f.id===formId) : forms.slice();
+  if(!list.length){ alert('There are no forms to export yet.'); return; }
+  const listIds = new Set();
+  list.forEach(f=>(f.fields||[]).forEach(fl=>{ if(fl.source && String(fl.source).indexOf('list:')===0) listIds.add(String(fl.source).slice(5)); }));
+  const payload = {app:'shop-boss-forms', version:APP_VERSION, savedAt:new Date().toISOString(),
+    forms: JSON.parse(JSON.stringify(list)),
+    lists: JSON.parse(JSON.stringify(customLists.filter(l=>listIds.has(l.id))))};
+  const nm = formId ? list[0].name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-') : 'all-forms';
+  const fname = 'shop-boss-form-'+(nm||'form')+'-'+isoOfDate(sbToday())+'.json';
+  const ok = sbDownloadBlob(fname, new Blob([JSON.stringify(payload,null,1)], {type:'application/json'}));
+  if(ok===false) alert('Could not save the file.'); else alert('Saved '+list.length+' form'+(list.length===1?'':'s')+' as '+fname+'.\n\nCopy that file to the other device and use "Import forms" on the Forms screen there.');
+}
+function triggerFormsImport(){ const el = document.getElementById('formsImportFile'); if(el) el.click(); }
+function importFormsPayload(payload){
+  if(!payload || payload.app!=='shop-boss-forms' || !Array.isArray(payload.forms)) return {error:'That file is not a Shop Boss forms file.'};
+  const incoming = payload.forms.filter(f=>f && typeof f.name==='string' && Array.isArray(f.fields));
+  if(!incoming.length) return {error:'That file has no forms in it.'};
+  // Lists the forms use: reuse a list with the same id or name, otherwise add it.
+  const idMap = {}; let listsAdded = 0;
+  (Array.isArray(payload.lists)?payload.lists:[]).forEach(l=>{
+    if(!l || !l.id) return;
+    let ex = customLists.find(x=>x.id===l.id) || customLists.find(x=>x.name.toLowerCase()===String(l.name||'').toLowerCase());
+    if(ex){ idMap[l.id]=ex.id; return; }
+    customLists.push({id:l.id, name:l.name||'List', items:Array.isArray(l.items)?l.items.slice():[], includeInUpdate:false}); idMap[l.id]=l.id; listsAdded++;
+  });
+  let added=0, replaced=0;
+  incoming.forEach(f=>{
+    const copy = JSON.parse(JSON.stringify(f));
+    copy.fields.forEach(fl=>{ if(fl.source && String(fl.source).indexOf('list:')===0){ const k=String(fl.source).slice(5); if(idMap[k]) fl.source='list:'+idMap[k]; } });
+    const i = forms.findIndex(x=>x.id===copy.id);
+    if(i>=0){ forms[i]=copy; replaced++; return; }
+    if(!copy.id) copy.id='form-'+Date.now()+Math.random().toString(36).slice(2,6);
+    if(forms.some(x=>x.name.toLowerCase()===copy.name.toLowerCase())) copy.name = copy.name+' (imported)';
+    forms.push(copy); added++;
+  });
+  persist();
+  return {added, replaced, listsAdded};
+}
+function handleFormsImportFile(evt){
+  const file = evt.target.files && evt.target.files[0];
+  evt.target.value='';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let payload; try{ payload = JSON.parse(reader.result); }catch(e){ alert('That file could not be read.'); return; }
+    const n = payload && Array.isArray(payload.forms) ? payload.forms.length : 0;
+    if(!payload || payload.app!=='shop-boss-forms'){ alert('That file is not a Shop Boss forms file. (A full backup is restored from Settings → Backup instead.)'); return; }
+    const same = payload.forms.filter(f=>f && forms.some(x=>x.id===f.id)).length;
+    if(!confirm('This file has '+n+' form'+(n===1?'':'s')+'.'+(same?'\n\n'+same+' of them are already here and will be replaced by the version in the file.':'')+'\n\nImport now?')) return;
+    const r = importFormsPayload(payload);
+    if(r.error){ alert(r.error); return; }
+    render();
+    alert('Imported: '+r.added+' new form'+(r.added===1?'':'s')+(r.replaced?', '+r.replaced+' replaced':'')+(r.listsAdded?', '+r.listsAdded+' list'+(r.listsAdded===1?'':'s')+' added':'')+'.');
+  };
+  reader.readAsText(file);
+}
 function deleteForm(id){
   const f = forms.find(x=>x.id===id);
   if(!f) return;
@@ -4223,9 +4282,14 @@ const renderers = {
         ${forms.length ? forms.map(f=>`
           <div class="row" onclick="openFormBuilder('${f.id}')">
             <div><div class="row-title">${f.name}</div><div class="row-meta">${f.fields.length} field${f.fields.length===1?'':'s'}</div></div>
+            <button class="btn-ghost chip-btn" title="Export this form" onclick="event.stopPropagation();exportForms('${f.id}')">⬇ Export</button>
             <button class="btn-ghost chip-btn" onclick="event.stopPropagation();deleteForm('${f.id}')">✕</button>
           </div>`).join('') : `<p class="list-sub">No forms yet — create the first one below.</p>`}
-        <button class="btn-primary" style="width:100%;margin-top:14px" onclick="openFormBuilder(null)">+ Create new form</button>`;
+        <button class="btn-primary" style="width:100%;margin-top:14px" onclick="openFormBuilder(null)">+ Create new form</button>
+        <input type="file" id="formsImportFile" accept="application/json,.json" style="display:none" onchange="handleFormsImportFile(event)">
+        <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="triggerFormsImport()">⬆ Import forms from a file</button>
+        ${forms.length>1?`<button class="btn-ghost" style="width:100%;margin-top:10px" onclick="exportForms(null)">⬇ Export all forms to a file</button>`:''}
+        <p class="list-sub">Build forms on your computer, export them, then import the file on the tablet.</p>`;
     }
     if(v.which==='Consumables'){
       return `
