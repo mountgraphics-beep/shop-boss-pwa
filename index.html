@@ -54,6 +54,11 @@
      44px touch targets plus the tight gap between them) — see .reorder-arrows below — so the row
      reads as one deliberate unit instead of a small swatch dwarfed by a tall stack of arrows. */
   .car-row{gap:8px;padding:6px 2px;background:var(--bg)}
+  .lst-row{padding:2px 2px;gap:6px;min-height:0}
+  .lst-row .row-title{font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lst-row .drag-handle{padding:6px 0}
+  .x-sm{padding:0 7px !important;font-size:11px !important;min-height:0 !important;height:22px !important;min-width:0 !important;width:auto !important;line-height:1;border-radius:6px !important}
+  .lst-row .drag-handle{margin-right:4px}
   .car-row .thumb-car{width:40px;height:40px;border-radius:8px}
   .car-row .thumb-car .swatch{width:16px;height:16px;border-radius:4px}
   .car-row .row-title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -376,7 +381,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.38';
+const APP_VERSION = 'v0.39';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1144,10 +1149,14 @@ function carHandleUp(ev){
   try{ d.handle.releasePointerCapture(ev.pointerId); }catch(e){}
   d.rows.forEach(r=>{ r.style.transform=''; r.classList.remove('car-dragging','car-shift'); });
   if(d.active && d.target!==d.idx){
-    const arr = d.kind==='employees' ? employees : cars;
+    let arr = cars, key = 'cars';
+    if(d.kind==='employees'){ arr = employees; key = 'employees'; }
+    else if(d.kind==='workTypes'){ arr = workTypes; key = 'workTypes'; }
+    else if(d.kind==='consumables'){ arr = consumables; key = 'consumables'; }
+    else if(String(d.kind).indexOf('c:')===0){ const cl = customLists.find(x=>x.id===d.kind.slice(2)); if(cl){ arr = cl.items; listOrderCustomized.customLists[cl.id] = true; key = null; } }
     const it = arr.splice(d.idx,1)[0];
     arr.splice(d.target,0,it);
-    listOrderCustomized[d.kind==='employees'?'employees':'cars'] = true;
+    if(key) listOrderCustomized[key] = true;
     persist(); render();
   }
 }
@@ -1167,6 +1176,9 @@ function moveCustomListItem(listId,i,dir){
   const tmp = l.items[i]; l.items[i]=l.items[j]; l.items[j]=tmp;
   listOrderCustomized.customLists[listId]=true;
   persist(); render();
+}
+function listHandleHTML(kind, idx){
+  return `<span class="drag-handle" title="Press and hold, then drag to move" onpointerdown="carHandleDown(event,${idx},${jsStr(kind)})" onpointermove="carHandleMove(event)" onpointerup="carHandleUp(event)" onpointercancel="carHandleUp(event)" onclick="event.stopPropagation()">⋮⋮</span>`;
 }
 function reorderControlsHTML(moveFnName, idx, len){
   return `<span class="reorder-arrows">
@@ -1794,7 +1806,7 @@ async function outgoingSend(){
     library: listLibrary(),
     // Darryl's own custom lists — only the ones currently marked "Included." WorkClock auto-renders
     // one dropdown per list here, so a brand-new list just works the next time this goes out.
-    pickLists: [].concat(listSent('parts') ? [{id:'billingparts', name:listCfg.parts.name, items:billingParts.map(b=>b.name)}] : [], listSent('cons') ? [{id:'consumables', name:listCfg.cons.name, items:consumables.map(c=>c.name)}] : [], customLists.filter(customSent).map(l=>({id:l.id, name:l.name, items:l.items}))),
+    pickLists: [].concat(listSent('cons') ? [{id:'consumables', name:listCfg.cons.name, items:consumables.map(c=>c.name)}] : [], customLists.filter(customSent).map(l=>({id:l.id, name:l.name, items:l.items}))),
     documents: outgoingForms.map(f=>({
       name:f.name,
       employeeId:f.employeeId||null,
@@ -2691,9 +2703,10 @@ function applyWorkClockSubmissionCore(payload){
     let ans = pe.pickListAnswers && typeof pe.pickListAnswers==='object' ? pe.pickListAnswers : null;
     // Parts the employee picked on WorkClock become this entry's parts (price left for Darren, filled from the last price used when there is one).
     let wcParts = null;
-    if(ans && ans.billingparts){
-      wcParts = String(ans.billingparts).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const saved = billingParts.find(b=>b.name.toLowerCase()===n.toLowerCase()); return {name: saved?saved.name:n, price: saved&&saved.price!=null?String(saved.price):'', custom: !saved, src:'wc'}; });
-      ans = Object.assign({}, ans); delete ans.billingparts; if(!Object.keys(ans).length) ans = null;
+    const partsKey = (ans && ans.consumables) ? 'consumables' : ((ans && ans.billingparts) ? 'billingparts' : null);
+    if(partsKey){
+      wcParts = String(ans[partsKey]).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const low = n.toLowerCase(); const onList = consumables.find(c=>c.name.toLowerCase()===low); const saved = billingParts.find(x=>x.name.toLowerCase()===low); return {name: onList?onList.name:(saved?saved.name:n), price: saved&&saved.price!=null?String(saved.price):'', custom: !onList && !saved, src:'wc'}; });
+      ans = Object.assign({}, ans); delete ans[partsKey]; if(!Object.keys(ans).length) ans = null;
     }
     const ne = {
       id: newEntryId(), sub: importFingerprint, ch: importHash, wcId: pe.id||null,
@@ -2707,7 +2720,7 @@ function applyWorkClockSubmissionCore(payload){
       desc: newFormat ? (String(pe.task||'').trim() || '(no task)') : ([pe.task, pe.desc].filter(Boolean).join(' — ') || '(no description)'),
       notes: notesText || null, lists: newFormat,
       flag: flagParts.length ? flagParts.join(' · ') : null, flagDone:false,
-      consumables: pe.consumables || (ans && ans.consumables) || null, photos:0, docs:[],
+      consumables: pe.consumables || null, photos:0, docs:[],
       pickListAnswers: ans
     };
     if(wcParts && wcParts.length) ne.parts = wcParts;
@@ -2972,10 +2985,10 @@ function asmSetPartPrice(idx, pi, v){
 }
 function partsEditorHTML(l, idx){
   const parts = safeArr(l.parts);
-  const opts = (cur)=>`<option value="">Pick a part…</option>${billingParts.map(b=>`<option value="${b.name.replace(/"/g,'&quot;')}" ${b.name.toLowerCase()===String(cur||'').toLowerCase()?'selected':''}>${b.name}</option>`).join('')}${cur && !billingParts.some(b=>b.name.toLowerCase()===cur.toLowerCase())?`<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>`:''}<option value="__other__">Other (type it in)</option>`;
+  const opts = (cur)=>`<option value="">Pick a part…</option>${consumables.map(b=>`<option value="${b.name.replace(/"/g,'&quot;')}" ${b.name.toLowerCase()===String(cur||'').toLowerCase()?'selected':''}>${b.name}</option>`).join('')}${cur && !consumables.some(b=>b.name.toLowerCase()===cur.toLowerCase())?`<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>`:''}<option value="__other__">Other (type it in)</option>`;
   return `
   <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--line)" onclick="event.stopPropagation()">
-    <div class="hours-k" style="margin-bottom:4px">Parts used${parts.length?` · ${fmtMoney(entryPartsTotal(l))}`:''}</div>
+    <div class="hours-k" style="margin-bottom:4px">${escH(listCfg.cons.name)}${parts.length?` · ${fmtMoney(entryPartsTotal(l))}`:''}</div>
     ${parts.map((p,pi)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
       ${p.custom ? `<input class="search-input" style="flex:1;min-width:0;margin:0" placeholder="Part name" value="${escH(p.name||'')}" onchange="asmSetPartName(${idx},${pi},this.value)">` : `<select style="flex:1;min-width:0" onchange="asmSetPartName(${idx},${pi},this.value)">${opts(p.name)}</select>`}
       <span>$</span><input class="hours-input-inline" style="width:76px" type="number" inputmode="decimal" step="0.01" min="0" value="${(p.price==null?'':String(p.price)).replace(/"/g,'')}" onchange="asmSetPartPrice(${idx},${pi},this.value)">
@@ -4648,12 +4661,16 @@ const renderers = {
       </button>
       <button class="door" onclick='nav({type:"setup"})'>
         <div class="icon">${icon("setup")}</div>
-        <div><div class="label">Settings &amp; Lists</div><div class="desc">Tasks, consumables and parts, forms</div></div>
+        <div><div class="label">Lists</div><div class="desc">Tasks, consumables and parts, forms</div></div>
       </button>
       <button class="door" onclick='nav({type:"history"})'>
         <div class="icon">${icon("history")}</div>
         <div><div class="label">History</div><div class="desc">Past weeks, already sent</div></div>
         ${histNeedsAttention()?`<span class="attn-icon" title="Jump to the open alert" onclick="event.stopPropagation();goToHistoryAlert()">${warnIcon(28)}</span>`:''}
+      </button>
+      <button class="door" onclick='nav({type:"settingsHome"})'>
+        <div class="icon">${icon("setup")}</div>
+        <div><div class="label">Settings</div><div class="desc">Preferences, backup, recently deleted</div></div>
       </button>
     </div>`,
 
@@ -4711,22 +4728,19 @@ const renderers = {
   },
 
   setup: ()=>`
-    <h2 class="list-title">Settings &amp; Lists</h2>
+    <h2 class="list-title">Lists</h2>
     <p class="list-sub">What you maintain here becomes what employees pick from on their end</p>
     <div class="row" onclick='nav({type:"lists"})'>
       <div><div class="row-title">Task lists</div><div class="row-meta">Tasks, Notes Helper, consumables and parts</div></div>
       <div class="chev">${icon("chev")}</div>
     </div>
-    <div class="row" onclick='nav({type:"catalog",which:"Billing parts"})'>
-      <div><div class="row-title">Billing parts</div><div class="row-meta">Parts and prices for customer billing</div></div>
-      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('parts')">⚙</button>
-      <span class="badge">${billingParts.length}</span>
-      <div class="chev">${icon("chev")}</div>
-    </div>
     <div class="row" onclick='nav({type:"catalog",which:"Forms"})'>
       <div><div class="row-title">Forms</div><div class="row-meta">Build blank forms, assign them, get filled ones back</div></div>
       <div class="chev">${icon("chev")}</div>
-    </div>
+    </div>`,
+
+  settingsHome: ()=>`
+    <h2 class="list-title">Settings</h2>
     <div class="row" onclick='nav({type:"settings"})'>
       <div><div class="row-title">Preferences</div><div class="row-meta">Theme, work week &amp; more</div></div>
       <div class="chev">${icon("chev")}</div>
@@ -4739,8 +4753,7 @@ const renderers = {
     <div class="row" onclick='nav({type:"backup"})'>
       <div><div class="row-title">Backup</div><div class="row-meta">Save a backup, or add a backup file</div></div>
       <div class="chev">${icon("chev")}</div>
-    </div>
-    <p class="list-sub" style="margin-top:22px">Cars and Employees are managed from their own lists, not here — no need to duplicate them.</p>`,
+    </div>`,
 
   trash: ()=>`
     <div class="detail-head"><p class="kicker">Settings</p><h1 class="detail-title">Recently Deleted</h1></div>
@@ -4874,7 +4887,7 @@ const renderers = {
     </div>
     <input class="search-input" value="${l.name.replace(/"/g,'&quot;')}" style="margin-bottom:14px" onchange="renameCustomList('${l.id}', this.value)" placeholder="List name">
     ${l.items.length && listOrderCustomized.customLists[l.id] ? `<button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="resetCustomListOrder('${l.id}')">↺ Reset to alphabetical order</button>` : ''}
-    ${l.items.length ? l.items.map((it,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML(`moveCustomListItem.bind(null,'${l.id}')`, i, l.items.length)}<div style="flex:1"><div class="row-title">${it}</div></div><button class="btn-ghost chip-btn" onclick="removeCustomListItem('${l.id}', ${i})">✕</button></div>`).join('') : `<p class="list-sub">No items yet — add the first one below. New lists start alphabetical; using the arrows to reorder unlocks a custom order.</p>`}
+    ${l.items.length ? l.items.map((it,i)=>`<div class="row car-row lst-row" style="cursor:default">${listHandleHTML('c:'+l.id, i)}<div style="flex:1;min-width:0"><div class="row-title">${it}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeCustomListItem('${l.id}', ${i})">✕</button></div>`).join('') : `<p class="list-sub">No items yet — add the first one below. New lists start alphabetical; using the arrows to reorder unlocks a custom order.</p>`}
     <div style="margin-top:14px">
       <input class="search-input" id="newListItem" placeholder="Add an item…" onkeydown="if(event.key==='Enter'){addCustomListItem('${l.id}', this.value); this.value='';}">
       <button class="btn-primary" style="width:100%;margin-top:8px" onclick="addCustomListItem('${l.id}', document.getElementById('newListItem').value); document.getElementById('newListItem').value=''">+ Add item</button>
@@ -4905,9 +4918,9 @@ const renderers = {
           <p class="kicker">Settings</p>
           <h1 class="detail-title">Consumables and parts</h1>
         </div>
-        <p class="list-sub">The items employees can pick from on WorkClock for Consumables and parts. Whether this whole list goes out is set in Assembly Room → Outgoing → Lists going out — alphabetical by default; use the arrows to pin your most-used ones to the top.</p>
+        <p class="list-sub">The items employees can pick from on WorkClock for Consumables and parts. Whether this whole list goes out is set in Assembly Room → Outgoing → Lists going out — alphabetical by default; press and drag the ⋮⋮ handle to pin your most-used ones to the top.</p>
         ${reorderResetButtonHTML('resetConsumableOrder', 'consumables')}
-        ${consumables.map((c,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML('moveConsumableItem', i, consumables.length)}<div style="flex:1"><div class="row-title">${c.name}</div></div><button class="btn-ghost chip-btn" onclick="removeConsumable(${jsStr(c.name)})">✕</button></div>`).join('')}
+        ${consumables.map((c,i)=>`<div class="row car-row lst-row" style="cursor:default">${listHandleHTML('consumables', i)}<div style="flex:1;min-width:0"><div class="row-title">${c.name}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeConsumable(${jsStr(c.name)})">✕</button></div>`).join('')}
         <input class="search-input" id="newConsumableName" style="margin-top:14px" placeholder="e.g. Windshield washer fluid">
         <button class="btn-primary" style="width:100%" onclick="addConsumable(document.getElementById('newConsumableName').value); document.getElementById('newConsumableName').value=''">+ Add new</button>
         ${pasteListHTML('cons')}`;
@@ -4931,7 +4944,7 @@ const renderers = {
           <h1 class="detail-title">Notes Helper</h1>
         </div>
         <p class="list-sub">Quick words employees can tap in to build their Notes on WorkClock. Always sent in every update and can't be deleted; it's fine to leave it empty.</p>
-        ${notesHelper.map(t=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn" onclick="removeNotesHelperItem(${jsStr(t.name)})">✕</button></div>`).join('') || '<p class="list-sub">Nothing added yet.</p>'}
+        ${notesHelper.map(t=>`<div class="row car-row lst-row" style="cursor:default"><div style="flex:1;min-width:0"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeNotesHelperItem(${jsStr(t.name)})">✕</button></div>`).join('') || '<p class="list-sub">Nothing added yet.</p>'}
         <input class="search-input" id="newNotesHelperName" style="margin-top:14px" placeholder="e.g. Needs follow-up">
         <button class="btn-primary" style="width:100%" onclick="addNotesHelperItem(document.getElementById('newNotesHelperName').value); document.getElementById('newNotesHelperName').value=''">+ Add new</button>
         ${pasteListHTML('notes')}`;
@@ -4942,9 +4955,9 @@ const renderers = {
           <p class="kicker">Settings</p>
           <h1 class="detail-title">Tasks</h1>
         </div>
-        <p class="list-sub">The common jobs employees pick from when logging work on WorkClock. This list is always sent in every update and can't be deleted — add, remove or reorder its items. Alphabetical by default; use the arrows to pin your most-used ones to the top.</p>
+        <p class="list-sub">The common jobs employees pick from when logging work on WorkClock. This list is always sent in every update and can't be deleted — add, remove or reorder its items. Alphabetical by default; press and drag the ⋮⋮ handle to pin your most-used ones to the top.</p>
         ${reorderResetButtonHTML('resetWorkTypeOrder', 'workTypes')}
-        ${workTypes.map((t,i)=>`<div class="row" style="cursor:default">${reorderControlsHTML('moveWorkTypeItem', i, workTypes.length)}<div style="flex:1"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn" onclick="removeWorkType(${jsStr(t.name)})">✕</button></div>`).join('')}
+        ${workTypes.map((t,i)=>`<div class="row car-row lst-row" style="cursor:default">${listHandleHTML('workTypes', i)}<div style="flex:1;min-width:0"><div class="row-title">${t.name}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeWorkType(${jsStr(t.name)})">✕</button></div>`).join('')}
         <input class="search-input" id="newWorkTypeName" style="margin-top:14px" placeholder="e.g. Suspension work">
         <button class="btn-primary" style="width:100%" onclick="addWorkType(document.getElementById('newWorkTypeName').value); document.getElementById('newWorkTypeName').value=''">+ Add new</button>
         ${pasteListHTML('work')}`;
@@ -5141,7 +5154,7 @@ const renderers = {
           <div style="flex:1"><div class="row-title">🖼 ${ph.caption||'Photo'}</div>${ph.carId?`<div class="row-meta">${(cars.find(c=>c.id===ph.carId)||{}).name||''}</div>`:''}</div>
           <button class="btn-ghost chip-btn" onclick="removeOutgoingPhoto('${ph.id}')">✕</button>
         </div>`;
-      const listsGoingOut = ['tasks','notes','cons','parts'].filter(listSent).length + customLists.filter(customSent).length;
+      const listsGoingOut = ['tasks','notes','cons'].filter(listSent).length + customLists.filter(customSent).length;
       const pillHead = (key, title, count, tip)=>`
         <div class="assembly-group-head pill-head" onclick='outNav(${pill===key?'null':`"${key}"`}, null)'>
           <h3>${title}${tip?infoTip(tip):''}</h3>
@@ -5211,7 +5224,7 @@ const renderers = {
         ${pill==='lists'?`
         <div>
         ${(()=>{
-          const rows = [['tasks',workTypes.length],['notes',notesHelper.length],['cons',consumables.length],['parts',billingParts.length]].filter(([k])=>listCfg[k].show)
+          const rows = [['tasks',workTypes.length],['notes',notesHelper.length],['cons',consumables.length]].filter(([k])=>listCfg[k].show)
             .map(([k,n])=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${listCfg[k].name}</div><div class="row-meta">${n} item${n===1?'':'s'}${listCfg[k].lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(listCfg[k].lock||listSendFlag(k))?'checked':''} ${listCfg[k].lock?'disabled':''} onchange="toggleListSend('${k}')"></label></div>`);
           const cust = customLists.filter(l=>l.show!==false).map(l=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}${l.lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(l.lock||l.includeInUpdate)?'checked':''} ${l.lock?'disabled':''} onchange="toggleCustomListInclude('${l.id}')"></label></div>`);
           return rows.concat(cust).join('') || '<p class="list-sub">No lists are set to show here. Use the ⚙ next to a list in Settings → Task lists.</p>';
