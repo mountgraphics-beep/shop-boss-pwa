@@ -218,7 +218,10 @@
   .fm-hdr input:focus{background:var(--surface-2)!important;border-color:var(--line)!important;outline:none}
   .fm-hdr input::placeholder{color:var(--muted);opacity:.55}
   .fm-hdr-car-in input,.fm-hdr-car-in .fm-combo input{font:700 28px/1.2 var(--display,var(--sans))!important;color:var(--accent)!important;padding-right:34px!important}
-  .fm-hdr-car-in .fm-combo button{height:32px}
+  .fm-hdr-car-in .fm-combo{display:inline-flex;align-items:center;position:static;max-width:100%}
+  .fm-hdr-car-in .fm-combo input{field-sizing:content;width:auto!important;min-width:5ch;max-width:calc(100% - 36px);padding:2px 6px 2px 0!important;margin:0!important;border-radius:0}
+  .fm-hdr-car-in .fm-combo input:focus{background:transparent!important;border-color:transparent transparent var(--accent) transparent!important}
+  .fm-hdr-car-in .fm-combo button{position:static;transform:none;width:32px;height:32px;flex:none;color:var(--accent)!important}
   .fm-hdr-date input{text-align:right;color:var(--muted)!important;width:auto!important;min-width:130px;margin:0!important}
   .fm-hdr input[type=date]::-webkit-calendar-picker-indicator{opacity:0;width:0;margin:0;padding:0}
   .fm-hdr input[type=date]:focus::-webkit-calendar-picker-indicator{opacity:1;width:auto;margin-left:4px}
@@ -356,7 +359,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.32';
+const APP_VERSION = 'v0.33';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
