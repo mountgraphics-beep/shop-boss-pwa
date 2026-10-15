@@ -359,7 +359,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.34';
+const APP_VERSION = 'v0.35';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -789,6 +789,10 @@ function sbPvHdrFill(){
     if(!el.value || el.value===el.dataset.auto) el.value = v;
     el.dataset.auto = v;
   });
+}
+function empAvatarHTML(name, px){
+  const e = employees.find(x=>x.name===name); const t = e && e.thumbDataUrl; px = px||22;
+  return t ? '<img src="'+t+'" alt="" style="width:'+px+'px;height:'+px+'px;border-radius:50%;object-fit:contain;background:#222;max-width:none;min-width:'+px+'px;vertical-align:middle;margin-right:6px">' : '';
 }
 function sbHdrAuto(carRec, key){
   const c = carRec || {}; const o = owners.find(x=>x.id===c.owner) || {};
@@ -2516,6 +2520,7 @@ function applyWorkClockSubmissionCore(payload){
       employees.push(emp);
     }
   }
+  if(emp && payload.employeeThumb && /^data:image\//.test(payload.employeeThumb) && payload.employeeThumb.length<200000) emp.thumbDataUrl = payload.employeeThumb;
   const whoName = emp ? emp.name : (payload.employee || 'Unknown');
   // Employee hours (clock-in to clock-out), one record per clock-in. A resent week replaces what Shop Boss had for that employee and week.
   const incomingClocks = Array.isArray(payload.clocks) ? payload.clocks.filter(c=>c && c.date && c.clockedInAt).map(c=>({
@@ -3490,9 +3495,12 @@ async function renderFormImage(d){
   } else {
     mctx.font = font(30,'bold'); const tl = wrap(mctx, d.name||'Form', IW);
     add({k:'title', lines:tl}, tl.length*38+4);
-    const sub = [car?'Car: '+car:'', d.who?'Filled out by '+d.who:'', d.date||''].filter(Boolean).join('   ·   ');
+    const empRec = d.who ? employees.find(x=>x.name===d.who) : null;
+    const avImg = (empRec && empRec.thumbDataUrl) ? await fiLoadImage(empRec.thumbDataUrl) : null;
+    const sub = [car?'Car: '+car:'', (d.who && !avImg)?'Filled out by '+d.who:'', d.date||''].filter(Boolean).join('   ·   ');
     mctx.font = font(18); const sl = wrap(mctx, sub, IW);
     add({k:'sub', lines:sl}, sl.length*26+14);
+    if(avImg) add({k:'who', img:avImg, name:d.who}, 44);
     add({k:'rule'}, 18);
   }
   for(const a of Object.values(d.answers||{})){
@@ -3521,6 +3529,7 @@ async function renderFormImage(d){
     let y = it.y;
     if(it.k==='title'){ c.fillStyle = '#111'; c.font = font(30,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*38)); }
     else if(it.k==='sub'){ c.fillStyle = '#555'; c.font = font(18); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*26)); }
+    else if(it.k==='who'){ c.save(); c.beginPath(); c.arc(PAD+16, y+16, 16, 0, Math.PI*2); c.clip(); const q = Math.min(32/it.img.width, 32/it.img.height); c.drawImage(it.img, PAD+16-it.img.width*q/2, y+16-it.img.height*q/2, it.img.width*q, it.img.height*q); c.restore(); c.fillStyle = '#555'; c.font = font(18); c.fillText('Filled out by '+it.name, PAD+42, y+6); }
     else if(it.k==='rule'){ c.fillStyle = '#222'; c.fillRect(PAD, y+6, IW, 2); }
     else if(it.k==='line'){ c.fillStyle = accent; c.fillRect(PAD, y+5, IW, 3); }
     else if(it.k==='hdr'){
@@ -5542,10 +5551,10 @@ const renderers = {
     ${hasHdr ? '' : `<div class="detail-head">
       <p class="kicker">${c?c.name:'Document'}</p>
       <h1 class="detail-title">${d.name}</h1>
-      <p class="detail-meta">${[d.who?'Filled out by '+d.who:'', d.date].filter(Boolean).join(' · ')||'No date on file'}</p>
+      <p class="detail-meta">${[d.who?empAvatarHTML(d.who,22)+'Filled out by '+d.who:'', d.date].filter(Boolean).join(' · ')||'No date on file'}</p>
     </div>
     <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${d.name} — ${[d.date, d.who].filter(Boolean).join(' · ')}</p></div>`}
-    ${hasHdr && d.who ? `<p class="list-sub" style="margin:0 0 6px">Filled out by ${d.who}</p>` : ''}
+    ${hasHdr && d.who ? `<p class="list-sub" style="margin:0 0 6px">${empAvatarHTML(d.who,22)}Filled out by ${d.who}</p>` : ''}
     ${d.answers && Object.keys(d.answers).length ? `
     <div style="margin-bottom:16px">
       ${fmViewerHTML(d.answers, vctx)}
