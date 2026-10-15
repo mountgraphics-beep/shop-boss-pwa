@@ -289,7 +289,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.26';
+const APP_VERSION = 'v0.27';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -489,64 +489,6 @@ const FB_FIELD_TYPES = {
 };
 function fbTypeMeta(type){ return FB_FIELD_TYPES[type] || FB_FIELD_TYPES.text; }
 
-// ---- Export / import of blank forms (build on a computer, import on the tablet) ----
-function exportForms(formId){
-  const list = formId ? forms.filter(f=>f.id===formId) : forms.slice();
-  if(!list.length){ alert('There are no forms to export yet.'); return; }
-  const listIds = new Set();
-  list.forEach(f=>(f.fields||[]).forEach(fl=>{ if(fl.source && String(fl.source).indexOf('list:')===0) listIds.add(String(fl.source).slice(5)); }));
-  const payload = {app:'shop-boss-forms', version:APP_VERSION, savedAt:new Date().toISOString(),
-    forms: JSON.parse(JSON.stringify(list)),
-    lists: JSON.parse(JSON.stringify(customLists.filter(l=>listIds.has(l.id))))};
-  const nm = formId ? list[0].name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-') : 'all-forms';
-  const fname = 'shop-boss-form-'+(nm||'form')+'-'+isoOfDate(sbToday())+'.json';
-  const ok = sbDownloadBlob(fname, new Blob([JSON.stringify(payload,null,1)], {type:'application/json'}));
-  if(ok===false) alert('Could not save the file.'); else alert('Saved '+list.length+' form'+(list.length===1?'':'s')+' as '+fname+'.\n\nCopy that file to the other device and use "Import forms" on the Forms screen there.');
-}
-function triggerFormsImport(){ const el = document.getElementById('formsImportFile'); if(el) el.click(); }
-function importFormsPayload(payload){
-  if(!payload || payload.app!=='shop-boss-forms' || !Array.isArray(payload.forms)) return {error:'That file is not a Shop Boss forms file.'};
-  const incoming = payload.forms.filter(f=>f && typeof f.name==='string' && Array.isArray(f.fields));
-  if(!incoming.length) return {error:'That file has no forms in it.'};
-  // Lists the forms use: reuse a list with the same id or name, otherwise add it.
-  const idMap = {}; let listsAdded = 0;
-  (Array.isArray(payload.lists)?payload.lists:[]).forEach(l=>{
-    if(!l || !l.id) return;
-    let ex = customLists.find(x=>x.id===l.id) || customLists.find(x=>x.name.toLowerCase()===String(l.name||'').toLowerCase());
-    if(ex){ idMap[l.id]=ex.id; return; }
-    customLists.push({id:l.id, name:l.name||'List', items:Array.isArray(l.items)?l.items.slice():[], includeInUpdate:false}); idMap[l.id]=l.id; listsAdded++;
-  });
-  let added=0, replaced=0;
-  incoming.forEach(f=>{
-    const copy = JSON.parse(JSON.stringify(f));
-    copy.fields.forEach(fl=>{ if(fl.source && String(fl.source).indexOf('list:')===0){ const k=String(fl.source).slice(5); if(idMap[k]) fl.source='list:'+idMap[k]; } });
-    const i = forms.findIndex(x=>x.id===copy.id);
-    if(i>=0){ forms[i]=copy; replaced++; return; }
-    if(!copy.id) copy.id='form-'+Date.now()+Math.random().toString(36).slice(2,6);
-    if(forms.some(x=>x.name.toLowerCase()===copy.name.toLowerCase())) copy.name = copy.name+' (imported)';
-    forms.push(copy); added++;
-  });
-  persist();
-  return {added, replaced, listsAdded};
-}
-function handleFormsImportFile(evt){
-  const file = evt.target.files && evt.target.files[0];
-  evt.target.value='';
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    let payload; try{ payload = JSON.parse(reader.result); }catch(e){ alert('That file could not be read.'); return; }
-    const n = payload && Array.isArray(payload.forms) ? payload.forms.length : 0;
-    if(!payload || payload.app!=='shop-boss-forms'){ alert('That file is not a Shop Boss forms file. (A full backup is restored from Settings → Backup instead.)'); return; }
-    const same = payload.forms.filter(f=>f && forms.some(x=>x.id===f.id)).length;
-    if(!confirm('This file has '+n+' form'+(n===1?'':'s')+'.'+(same?'\n\n'+same+' of them are already here and will be replaced by the version in the file.':'')+'\n\nImport now?')) return;
-    const r = importFormsPayload(payload);
-    if(r.error){ alert(r.error); return; }
-    render();
-    alert('Imported: '+r.added+' new form'+(r.added===1?'':'s')+(r.replaced?', '+r.replaced+' replaced':'')+(r.listsAdded?', '+r.listsAdded+' list'+(r.listsAdded===1?'':'s')+' added':'')+'.');
-  };
-  reader.readAsText(file);
-}
 function deleteForm(id){
   const f = forms.find(x=>x.id===id);
   if(!f) return;
@@ -2780,8 +2722,98 @@ async function downloadBackup(){
   if(wroteCopy && result==='unavailable') alert('Backup saved to '+backupFolderName+'.');
   render();
 }
+// ---- "Add a backup file": ADDITIVE. Brings in whatever the file has that this device doesn't; exact duplicates are
+// ignored; nothing on this device is deleted or overwritten. Cars/employees/owners/lists are matched by id, then by name,
+// and the file's records are re-pointed at the matching local ones so entries, photos and receipts land on the right car. ----
+function mergeBackupData(d0){
+  let d = JSON.parse(JSON.stringify(d0));
+  const cnt = {};
+  const bump = (k,n)=>{ if(n) cnt[k] = (cnt[k]||0)+n; };
+  const low = x=>String(x==null?'':x).trim().toLowerCase();
+  const nameOf = x=> (typeof x==='string') ? x : (x && (x.name||x.label)) || JSON.stringify(x);
+  const idMap = {};
+  const mapBy = (incoming, local)=>(incoming||[]).forEach(o=>{
+    if(!o || !o.id) return;
+    const ex = local.find(x=>x.id===o.id) || local.find(x=>low(x.name)===low(o.name) && low(o.name));
+    if(ex && ex.id!==o.id) idMap[o.id] = ex.id;
+  });
+  mapBy(d.cars, cars); mapBy(d.employees, employees); mapBy(d.owners, owners); mapBy(d.customLists, customLists);
+  if(Object.keys(idMap).length){
+    let t = JSON.stringify(d);
+    Object.keys(idMap).forEach(o=>{ t = t.split(o).join(idMap[o]); });
+    d = JSON.parse(t);
+  }
+  const keyJ = o=> (o && o.id) ? 'id:'+o.id : 'j:'+JSON.stringify(o);
+  function addUnique(target, items, keyFn){
+    const have = new Set(target.map(keyFn)); let n = 0;
+    (items||[]).forEach(o=>{ const k = keyFn(o); if(!have.has(k)){ have.add(k); target.push(o); n++; } });
+    return n;
+  }
+  const fillBlank = (ex, o, fields)=>fields.forEach(f=>{ if((ex[f]===undefined||ex[f]===''||ex[f]===null) && o[f]!==undefined && o[f]!=='' && o[f]!==null) ex[f] = o[f]; });
+  // cars (photos, notes, docs and assigned employees are combined for a car that exists on both)
+  (d.cars||[]).forEach(c=>{
+    const ex = cars.find(x=>x.id===c.id);
+    if(!ex){ cars.push(c); bump('cars',1); return; }
+    fillBlank(ex, c, ['desc','owner','color','year','body','vin','dropoff']);
+    ['photos','notes','docs'].forEach(k=>{ if(!Array.isArray(ex[k])) ex[k]=[]; bump(k==='photos'?'car photos':'',addUnique(ex[k], c[k], keyJ)); });
+    if(!Array.isArray(ex.employees)) ex.employees=[];
+    addUnique(ex.employees, c.employees, x=>x);
+  });
+  (d.employees||[]).forEach(e=>{
+    const ex = employees.find(x=>x.id===e.id);
+    if(!ex){ employees.push(e); bump('employees',1); return; }
+    fillBlank(ex, e, ['phone','email','address','startDate']);
+    if(!Array.isArray(ex.cars)) ex.cars=[];
+    addUnique(ex.cars, e.cars, x=>x);
+  });
+  (d.owners||[]).forEach(o=>{
+    const ex = owners.find(x=>x.id===o.id);
+    if(!ex){ owners.push(o); bump('owners',1); return; }
+    fillBlank(ex, o, ['phone']);
+    if(!Array.isArray(ex.cars)) ex.cars=[];
+    addUnique(ex.cars, o.cars, x=>x);
+  });
+  // work entries: a duplicate is the same id, or the same car/person/day/hours/description
+  const entKey = l=> 'c:'+[l.car||l.carTyped||'',low(l.who),l.date,l.hours,low(l.desc),low(l.consumables)].join('|');
+  const haveIds = new Set(entries.map(l=>l.id).filter(Boolean)), haveContent = new Set(entries.map(entKey));
+  (d.entries||[]).forEach(l=>{
+    if((l.id && haveIds.has(l.id)) || haveContent.has(entKey(l))) return;
+    if(l.id) haveIds.add(l.id); haveContent.add(entKey(l)); entries.push(l); bump('work entries',1);
+  });
+  bump('weeks in history', addUnique(historyWeeks, d.historyWeeks, keyJ));
+  bump('', addUnique(trash, d.trash, keyJ));
+  bump('completed forms', addUnique(completedDocs, d.completedDocs, keyJ));
+  bump('loose photos', addUnique(unmatchedPhotos, d.unmatchedPhotos, keyJ));
+  bump('receipts', addUnique(receipts, d.receipts, keyJ));
+  bump('clock records', addUnique(clockRecs, d.clockRecs, r=> r && r.id ? 'id:'+r.id : 'c:'+[r&&r.empId,r&&r.date,r&&r.inAt,r&&r.outAt].join('|')));
+  bump('shop expenses', addUnique(shopExpenses, d.shopExpenses, keyJ));
+  // simple name lists
+  [['consumables',consumables,'consumables'],['workTypes',workTypes,'tasks'],['billingParts',billingParts,'billing parts'],['notesHelper',notesHelper,'note helpers']].forEach(([k,arr,label])=>{
+    bump(label, addUnique(arr, d[k], o=>low(nameOf(o))));
+  });
+  // custom lists: same list on both → combine the items
+  (d.customLists||[]).forEach(l=>{
+    const ex = customLists.find(x=>x.id===l.id);
+    if(!ex){ customLists.push(Object.assign({includeInUpdate:false}, l)); bump('custom lists',1); return; }
+    if(!Array.isArray(ex.items)) ex.items=[];
+    bump('custom list items', addUnique(ex.items, l.items, x=>low(nameOf(x))));
+  });
+  // forms
+  (d.forms||[]).forEach(f=>{
+    if(!f || forms.some(x=>x.id===f.id)) return;
+    const same = forms.find(x=>low(x.name)===low(f.name));
+    if(same){
+      if(JSON.stringify(same.fields)===JSON.stringify(f.fields)) return;
+      f = Object.assign({}, f, {name:f.name+' (added)'});
+    }
+    forms.push(f); bump('forms',1);
+  });
+  entries.forEach(l=>{ if(!l.id) l.id = newEntryId(); });
+  persist();
+  return cnt;
+}
 function triggerRestorePicker(){ const el = document.getElementById('restoreFileInput'); if(el) el.click(); }
-function handleRestoreFile(evt){
+function handleAddBackupFile(evt){
   const file = evt.target.files && evt.target.files[0];
   if(!file) return;
   const reader = new FileReader();
@@ -2791,47 +2823,14 @@ function handleRestoreFile(evt){
     const d = payload && payload.data ? payload.data : payload;
     if(!d || !Array.isArray(d.cars)){ alert('That file does not look like a Shop Boss backup.'); return; }
     const when = payload.savedAt ? new Date(payload.savedAt).toLocaleString() : 'an unknown date';
-    const summary = `${d.cars.length} car${d.cars.length===1?'':'s'}, ${(d.employees||[]).length} employee${(d.employees||[]).length===1?'':'s'}, ${(d.entries||[]).length} work entr${(d.entries||[]).length===1?'y':'ies'}`;
-    if(!confirm(`This backup was made ${when} and contains: ${summary}.\n\nEverything currently on this device will be replaced with what's in this file. A safety copy of what's here now will be kept first. Proceed?`)) return;
+    const n = k=> (d[k]||[]).length;
+    const summary = `${n('cars')} car${n('cars')===1?'':'s'}, ${n('employees')} employee${n('employees')===1?'':'s'}, ${n('forms')} form${n('forms')===1?'':'s'}, ${n('entries')} work entr${n('entries')===1?'y':'ies'}`;
+    if(!confirm(`This backup was made ${when} and contains: ${summary}.\n\nAnything in it that is not already on this device will be ADDED. Anything already here, and any exact duplicate, is left alone. Nothing on this device is deleted or changed. A safety copy of what is here now is kept first.\n\nAdd it?`)) return;
     try{ localStorage.setItem('sb-pre-restore-safety', JSON.stringify(buildBackupPayload())); }catch(e){}
-    cars.length=0; cars.push(...d.cars);
-    owners.length=0; owners.push(...(d.owners||[]));
-    employees.length=0; employees.push(...(d.employees||[]));
-    entries.length=0; entries.push(...(d.entries||[]));
-    trash.length=0; trash.push(...(d.trash||[]));
-    historyWeeks.length=0; historyWeeks.push(...(d.historyWeeks||[]));
-    if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
-    if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
-    if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
-    if(Array.isArray(d.billingParts)){ billingParts.length=0; billingParts.push(...d.billingParts); }
-    if(Array.isArray(d.notesHelper)){ notesHelper.length=0; notesHelper.push(...d.notesHelper); }
-    if(Array.isArray(d.forms)){ forms.length=0; forms.push(...d.forms); }
-    if(Array.isArray(d.customLists)){ customLists.length=0; customLists.push(...d.customLists); }
-    customLists.forEach(l=>{ if(typeof l.includeInUpdate!=='boolean') l.includeInUpdate=false; delete l.mandatory; });
-    if(Array.isArray(d.completedDocs)){ completedDocs.length=0; completedDocs.push(...d.completedDocs); }
-    if(Array.isArray(d.unmatchedPhotos)){ unmatchedPhotos.length=0; unmatchedPhotos.push(...d.unmatchedPhotos); }
-    if(Array.isArray(d.receipts)){ receipts.length=0; receipts.push(...d.receipts); }
-    clockRecs = Array.isArray(d.clockRecs) ? d.clockRecs : [];
-    lastSentState = (d.lastSentState && typeof d.lastSentState==='object') ? d.lastSentState : null;
-    shopExpenses = Array.isArray(d.shopExpenses) ? d.shopExpenses : [];
-    if(d.listOrderCustomized) listOrderCustomized = Object.assign({cars:false, employees:false, consumables:false, workTypes:false, customLists:{}}, d.listOrderCustomized);
-    asm = d.asm || {reviewed:{}, waived:{}};
-    if(d.settings){
-      try{
-        if(d.settings.themeAccent){ localStorage.setItem('sb-theme-accent', d.settings.themeAccent); applyAccent(d.settings.themeAccent); }
-        if(d.settings.themeIncoming) localStorage.setItem('sb-theme-incoming', d.settings.themeIncoming);
-        if(d.settings.themeOutgoing) localStorage.setItem('sb-theme-outgoing', d.settings.themeOutgoing);
-        if(d.settings.weekStart) localStorage.setItem('sb-week-start', d.settings.weekStart);
-        if(d.settings.weekStartDay) localStorage.setItem('sb-week-start-day', d.settings.weekStartDay);
-        if(d.settings.weekStartTime!=null) localStorage.setItem('sb-week-start-time', d.settings.weekStartTime);
-        if(d.settings.weekEndDay) localStorage.setItem('sb-week-end-day', d.settings.weekEndDay);
-        if(d.settings.weekEndTime!=null) localStorage.setItem('sb-week-end-time', d.settings.weekEndTime);
-      }catch(e){}
-    }
-    entries.forEach(l=>{ if(!l.id) l.id = newEntryId(); });
-    persist();
-    alert('Restored — this device now matches the backup from '+when+'.');
-    stack = ['home'];
+    let cnt;
+    try{ cnt = mergeBackupData(d); }catch(e){ alert('Something went wrong while adding that file, and it may be only partly added: '+e.message+'\n\nA safety copy of what was here before is kept.'); render(); return; }
+    const parts = Object.keys(cnt).filter(k=>k).map(k=>cnt[k]+' '+k);
+    alert(parts.length ? 'Added: '+parts.join(', ')+'.\n\nEverything else in the file was already on this device.' : 'Nothing new — everything in that file was already on this device.');
     render();
   };
   reader.readAsText(file);
@@ -4129,7 +4128,7 @@ const renderers = {
       <div class="chev">${icon("chev")}</div>
     </div>
     <div class="row" onclick='nav({type:"backup"})'>
-      <div><div class="row-title">Backup &amp; Restore</div><div class="row-meta">Back up now, or restore from a file</div></div>
+      <div><div class="row-title">Backup</div><div class="row-meta">Save a backup, or add a backup file</div></div>
       <div class="chev">${icon("chev")}</div>
     </div>
     <p class="list-sub" style="margin-top:22px">Cars and Employees are managed from their own lists, not here — no need to duplicate them.</p>`,
@@ -4151,10 +4150,10 @@ const renderers = {
       <button class="btn-primary" style="width:100%" onclick="downloadBackup()">Back up now</button>
     </section>
     <section class="block infoblock">
-      <p class="block-title">Restore</p>
-      <p class="list-sub" style="margin:4px 0 12px">Pick a backup file. Before anything is replaced, Shop Boss shows what is inside it and the date it was made, keeps a safety copy of what is on this device right now, and asks you to confirm. This is also how you'd bring a second device up to date.</p>
-      <button class="btn-ghost" style="width:100%" onclick="triggerRestorePicker()">Restore from a backup file…</button>
-      <input type="file" id="restoreFileInput" accept="application/json" style="display:none" onchange="handleRestoreFile(event)">
+      <p class="block-title">Add a backup file</p>
+      <p class="list-sub" style="margin:4px 0 12px">Pick a backup file from another device (or an older one). Shop Boss shows what is inside it, then ADDS anything this device doesn't have yet — cars, employees, forms, lists, work entries. Anything already here, and exact duplicates, are left alone. Nothing on this device is deleted or changed. A safety copy of what is here now is kept first.</p>
+      <button class="btn-ghost" style="width:100%" onclick="triggerRestorePicker()">Add a backup file…</button>
+      <input type="file" id="restoreFileInput" accept="application/json" style="display:none" onchange="handleAddBackupFile(event)">
     </section>
     <section class="block infoblock">
       <p class="block-title">Folders</p>
@@ -4282,14 +4281,9 @@ const renderers = {
         ${forms.length ? forms.map(f=>`
           <div class="row" onclick="openFormBuilder('${f.id}')">
             <div><div class="row-title">${f.name}</div><div class="row-meta">${f.fields.length} field${f.fields.length===1?'':'s'}</div></div>
-            <button class="btn-ghost chip-btn" title="Export this form" onclick="event.stopPropagation();exportForms('${f.id}')">⬇ Export</button>
             <button class="btn-ghost chip-btn" onclick="event.stopPropagation();deleteForm('${f.id}')">✕</button>
           </div>`).join('') : `<p class="list-sub">No forms yet — create the first one below.</p>`}
-        <button class="btn-primary" style="width:100%;margin-top:14px" onclick="openFormBuilder(null)">+ Create new form</button>
-        <input type="file" id="formsImportFile" accept="application/json,.json" style="display:none" onchange="handleFormsImportFile(event)">
-        <button class="btn-ghost" style="width:100%;margin-top:10px" onclick="triggerFormsImport()">⬆ Import forms from a file</button>
-        ${forms.length>1?`<button class="btn-ghost" style="width:100%;margin-top:10px" onclick="exportForms(null)">⬇ Export all forms to a file</button>`:''}
-        <p class="list-sub">Build forms on your computer, export them, then import the file on the tablet.</p>`;
+        <button class="btn-primary" style="width:100%;margin-top:14px" onclick="openFormBuilder(null)">+ Create new form</button>`;
     }
     if(v.which==='Consumables'){
       return `
