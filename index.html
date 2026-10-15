@@ -214,6 +214,8 @@
   .fm-hdr-k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
   .fm-hdr-v{font-size:16px;overflow-wrap:anywhere}
   .fm-hdr-v input{width:100%}
+  .fm-hdr-car-in{margin:8px 0 10px}
+  .fm-hdr-car-in .fm-combo input,.fm-hdr-car-in input{width:100%;font-size:22px;font-weight:700}
   .fm-vcheck{display:flex;gap:12px;align-items:flex-start;padding:2px 0}
   .fm-vbox{flex:none;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;text-align:center;line-height:18px;font-size:16px;margin-top:1px}
   .fm-vbox.on{border-color:var(--good,#2EA85B);color:var(--good,#2EA85B)}
@@ -348,7 +350,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.30';
+const APP_VERSION = 'v0.31';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -571,6 +573,7 @@ function fmHdrLines(f){
 }
 function fmHdrHTML(o){
   return '<div class="fm-hdr"><div class="fm-hdr-top">'+(o.title!=null?'<div class="fm-hdr-title">'+fmEsc(o.title)+'</div>':'<div></div>')+(o.dateHTML?'<div class="fm-hdr-date">'+o.dateHTML+'</div>':'')+'</div>'
+    +(o.carHTML!=null?'<div class="fm-hdr-car-in">'+o.carHTML+'</div>':'')
     +(o.car!=null?'<div class="fm-hdr-car">'+fmEsc(o.car||'—')+'</div>':'')
     +((o.lines||[]).length?'<div class="fm-hdr-grid">'+o.lines.map(l=>'<div class="fm-hdr-line"><span class="fm-hdr-k">'+fmEsc(l.label)+'</span><span class="fm-hdr-v">'+(l.html!=null?l.html:fmEsc(l.value||'—'))+'</span></div>').join('')+'</div>':'')+'</div>';
 }
@@ -657,7 +660,7 @@ function fmViewerHTML(answers, ctx){
   const item = a=>{
     if(a.type==='heading') return '<div class="fm-line"></div>';
     if(a.type==='formheader'){
-      const lines = (a.lines||[]).map(l=>({label:l.label, value: l.auto ? (ctx.auto ? ctx.auto(l.key) : '') : l.value})).filter(l=>String(l.value||'').trim());
+      const lines = (a.lines||[]).map(l=>({label:l.label, value: String(l.value||'').trim() || (l.auto && ctx.auto ? ctx.auto(l.key) : '')})).filter(l=>String(l.value||'').trim());
       const items = a.items||['car','date'];
       return fmHdrHTML({title: ctx.title, car: items.indexOf('car')>=0 ? ctx.car : null, dateHTML: items.indexOf('date')>=0 ? fmEsc(a.date||ctx.date||'') : '', lines});
     }
@@ -750,6 +753,16 @@ function fbHdrAddCustom(fid){
 function fbHdrCustomLabel(fid, cid, v){ if(!fbDraft) return; const f = fbDraft.fields.find(x=>x.id===fid); const c = f && (f.custom||[]).find(x=>x.id===cid); if(c) c.label = v; }
 function fbHdrRemoveCustom(fid, cid){ if(!fbDraft) return; const f = fbDraft.fields.find(x=>x.id===fid); if(f) f.custom = (f.custom||[]).filter(x=>x.id!==cid); render(); }
 // Details Shop Boss already knows about the car and its owner (used for the form header's automatic lines).
+function sbPvHdrFill(){
+  const inp = document.getElementById('pvhdr-car'); if(!inp) return;
+  const nm = inp.value.trim().toLowerCase();
+  const car = cars.find(c=>(c.name||'').toLowerCase()===nm) || null;
+  document.querySelectorAll('.fm-hdr-in[data-auto]').forEach(el=>{
+    const v = sbHdrAuto(car, el.dataset.key);
+    if(!el.value || el.value===el.dataset.auto) el.value = v;
+    el.dataset.auto = v;
+  });
+}
 function sbHdrAuto(carRec, key){
   const c = carRec || {}; const o = owners.find(x=>x.id===c.owner) || {};
   if(key==='yearmake') return [c.year, c.body].filter(Boolean).join(' ');
@@ -1604,7 +1617,7 @@ async function outgoingSend(){
     weekStart,
     // the whole work week, not just its first day - WorkClock only nudges about days inside it
     weekEnd: wb.endDay, weekStartTime: wb.startTime, weekEndTime: wb.endTime,
-    cars: selCars.map(c=>({id:c.id, name:c.name, thumbDataUrl:c.thumbDataUrl||null})),
+    cars: selCars.map(c=>({id:c.id, name:c.name, thumbDataUrl:c.thumbDataUrl||null, info:{yearmake:sbHdrAuto(c,'yearmake'), vin:sbHdrAuto(c,'vin'), ownername:sbHdrAuto(c,'ownername'), ownerphone:sbHdrAuto(c,'ownerphone')}})),
     employees: employees.map(e=>({id:e.id, name:e.name})),
     // Whether each of these whole lists goes out at all, and whether it's required, is now set as
     // ONE pair of toggles per list in Assembly Room → Outgoing → "Lists going out" — not per item.
@@ -3399,7 +3412,7 @@ function formAnswersText(d){
     if(a.type==='blank' || a.type==='note' || a.type==='endsec') return;
     if(a.type==='formheader'){
       const car = d.carId ? cars.find(c=>c.id===d.carId) : null;
-      (a.lines||[]).forEach(l=>{ const val = l.auto ? sbHdrAuto(car, l.key) : l.value; if(String(val||'').trim()) lines.push(l.label+': '+val); });
+      (a.lines||[]).forEach(l=>{ const val = String(l.value||'').trim() || (l.auto ? sbHdrAuto(car, l.key) : ''); if(String(val||'').trim()) lines.push(l.label+': '+val); });
       return;
     }
     if(a.type==='heading'){ if(String(a.label||'').trim()) lines.push('', (a.label||'').toUpperCase()); return; }
@@ -3442,7 +3455,7 @@ async function renderFormImage(d){
     const hItems = hdrA.items || ['car','date'];
     mctx.font = font(30,'bold'); const tl = wrap(mctx, d.name||'Form', Math.round(IW*0.62));
     const dateTxt = hItems.indexOf('date')>=0 ? String(hdrA.date||d.date||'') : '';
-    const hl = (hdrA.lines||[]).map(l=>({k:l.label, v: l.auto ? sbHdrAuto(carRec, l.key) : l.value})).filter(l=>String(l.v||'').trim());
+    const hl = (hdrA.lines||[]).map(l=>({k:l.label, v: String(l.value||'').trim() || (l.auto ? sbHdrAuto(carRec, l.key) : '')})).filter(l=>String(l.v||'').trim());
     mctx.font = font(46,'bold'); const cl = hItems.indexOf('car')>=0 ? wrap(mctx, car||'-', IW) : [];
     mctx.font = font(20); const cellW = Math.round(IW/2)-14; const hv = hl.map(l=>wrap(mctx, l.v, cellW));
     let gh = 0; for(let i=0;i<hl.length;i+=2){ gh += 22 + Math.max(hv[i].length, hv[i+1]?hv[i+1].length:0)*26 + 10; }
@@ -4757,8 +4770,9 @@ const renderers = {
       if(f.type==='note') return fmNoteTextHTML(f);
       if(f.type==='formheader'){
         const items = Array.isArray(f.items) ? f.items : ['car','date'];
-        const lines = fmHdrLines(f).map(l=>({label:l.label, html: l.auto ? '<span style="color:var(--muted)">(from the car record)</span>' : '<input type="text" placeholder="typed on WorkClock">'}));
-        return fmHdrHTML({title: fbDraft.name||'(form name)', car: items.indexOf('car')>=0 ? 'Car name' : null, dateHTML: items.indexOf('date')>=0 ? fmEsc(new Date().toLocaleDateString('en-US')) : '', lines});
+        const lines = fmHdrLines(f).map(l=>({label:l.label, html:'<input type="text" class="fm-hdr-in" data-key="'+l.key+'"'+(l.auto?' data-auto=""':'')+'>'}));
+        const td = new Date(), iso = td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0');
+        return fmHdrHTML({title: fbDraft.name||'(form name)', carHTML: items.indexOf('car')>=0 ? fmComboHTML('pvhdr-car', cars.map(c=>c.name), ' oninput="sbPvHdrFill()" onchange="sbPvHdrFill()"').replace('Type, or tap ▾ to pick','Car name — type, or tap ▾ to pick') : null, dateHTML: items.indexOf('date')>=0 ? '<input type="date" value="'+iso+'">' : '', lines});
       }
       if(f.type==='heading') return `<div class="fb-field"><div style="font-weight:700;font-size:16.5px;padding:10px 0 4px;border-bottom:1px solid var(--line)">${f.label||'(untitled heading)'}</div></div>`;
       if(f.type==='checkbox') return fmCheckHTML({label:f.label, help:f.help});
