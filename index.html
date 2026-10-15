@@ -163,7 +163,41 @@
   .edit-link{float:right;color:var(--accent);cursor:pointer;font-weight:600;font-size:12.5px}
   .tap-reveal{cursor:pointer}
   .info-i{color:var(--muted);font-size:20px;vertical-align:middle}
-  .fb-field{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:8px;color:var(--muted);font-size:14.5px}
+  .fb-field{color:var(--muted);font-size:14.5px}
+  /* ---- Forms: one look everywhere (Shop Boss preview, WorkClock, returned-form view). No boxes around fields: a plain list, bold section breaks. ---- */
+  .fm-form{margin:0 0 16px}
+  .fm-row{display:flex;flex-wrap:wrap;gap:0 16px;border-bottom:1px solid var(--line)}
+  .fm-cell{flex:1 1 170px;min-width:0;padding:11px 0}
+  .fm-cell .field,.fm-cell .fb-field{margin:0}
+  .fm-sec{margin-top:26px}
+  .fm-sec:first-child{margin-top:0}
+  .fm-sec-head{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;border-bottom:3px solid var(--line);padding:10px 2px 9px;color:var(--text);cursor:pointer;text-align:left;font:700 22px/1.15 var(--display,var(--sans));letter-spacing:.03em;text-transform:uppercase;margin:0}
+  .fm-sec.open .fm-sec-head{border-bottom-color:var(--accent)}
+  .fm-title{flex:1;min-width:0;overflow-wrap:anywhere}
+  .fm-badge{flex:none;font:600 13px var(--sans);letter-spacing:0;text-transform:none;background:var(--accent);color:#fff;border-radius:12px;padding:3px 10px}
+  .fm-badge.ok{background:transparent;color:var(--good,#2EA85B);border:1px solid currentColor}
+  .fm-chev{flex:none;color:var(--muted);font-size:18px;transition:transform .15s}
+  .fm-sec.open .fm-chev{transform:rotate(90deg)}
+  .fm-body{display:none}
+  .fm-sec.open .fm-body{display:block}
+  .fm-check{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 14px}
+  .fm-left{display:flex;align-items:center;gap:8px;flex:0 1 auto;min-width:0}
+  .fm-check.on .fm-left{flex:0 1 38%}
+  .fm-ct{display:flex;align-items:center;gap:12px;margin:0;cursor:pointer;color:var(--text);font-size:16px;text-transform:none;letter-spacing:0}
+  .fm-ct input{width:24px;height:24px;flex:none;margin:0}
+  .fm-info{flex:none;background:none;border:none;color:var(--muted);font-size:20px;line-height:1;padding:2px 4px;cursor:pointer}
+  .fm-note{flex:1 1 220px;min-width:0;min-height:44px;resize:vertical;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px 12px;font:15px var(--sans)}
+  .fm-note:focus{outline:none;border-color:var(--accent)}
+  .fm-help{flex:1 0 100%;color:var(--muted);font-size:14px;padding:0 0 2px 36px}
+  .fm-vcheck{display:flex;gap:12px;align-items:flex-start;padding:2px 0}
+  .fm-vbox{flex:none;width:22px;height:22px;border:2px solid var(--muted);border-radius:5px;text-align:center;line-height:18px;font-size:16px;margin-top:1px}
+  .fm-vbox.on{border-color:var(--good,#2EA85B);color:var(--good,#2EA85B)}
+  .fm-vlabel{font-size:16px}
+  .fm-vnote{color:var(--muted);font-size:14.5px;margin-top:3px;white-space:pre-wrap}
+  .fm-vk{color:var(--muted);font-size:13px;margin-bottom:3px}
+  .fm-vv{font-size:16px;white-space:pre-wrap}
+  @media (max-width:560px){ .fm-blank{display:none} .fm-check.on .fm-left{flex:1 0 100%} }
+  @media print{ .fm-body{display:block!important} .fm-chev{display:none} .fm-sec-head{border-bottom-color:#000!important;color:#000} .fm-badge{display:none} .fm-sec{break-inside:auto} .fm-vnote,.fm-vk{color:#333} }
   .entry-date{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:8px;cursor:pointer;display:inline-block;padding:4px 0}
   .entry-date-plain{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:8px;padding:4px 0}
   .entry-extra{color:var(--muted);font-size:12.5px;margin-top:6px}
@@ -289,7 +323,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.28';
+const APP_VERSION = 'v0.29';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -478,7 +512,8 @@ const FB_FIELD_TYPES = {
   longtext:  {icon:'📝', label:'Long text',    hasOptions:false, allowAutoFill:true},
   number:    {icon:'#',  label:'Number',       hasOptions:false, allowAutoFill:false},
   date:      {icon:'📅', label:'Date',         hasOptions:false, allowAutoFill:false},
-  checkbox:  {icon:'☑',  label:'Checkbox',     hasOptions:false, allowAutoFill:false},
+  checkbox:  {icon:'☑',  label:'Checkbox',     hasOptions:false, allowAutoFill:false, allowHelp:true},
+  checkexp:  {icon:'☑✎', label:'Checkbox with note', hasOptions:false, allowAutoFill:false, allowHelp:true},
   yesno:     {icon:'◎',  label:'Yes / No',     hasOptions:false, allowAutoFill:false},
   dropdown:  {icon:'▾',  label:'Dropdown',     hasOptions:true,  allowAutoFill:false},
   radio:     {icon:'◉',  label:'Radio choice', hasOptions:true,  allowAutoFill:false},
@@ -488,6 +523,81 @@ const FB_FIELD_TYPES = {
   signature: {icon:'✒',  label:'Signature',    hasOptions:false, allowAutoFill:false},
 };
 function fbTypeMeta(type){ return FB_FIELD_TYPES[type] || FB_FIELD_TYPES.text; }
+
+// ---- Forms: shared look and behaviour (same code in Shop Boss and WorkClock). A heading starts a SECTION: the fields after it
+// belong to it until the next heading. Sections show as bold bars; tapping one opens it and closes the one that was open.
+// A badge on each bar counts the checkboxes not yet checked. Nothing here ever blocks submitting a form. ----
+function fmEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmSplit(fields, rowsFn){
+  const top = [], secs = []; let cur = null;
+  rowsFn(fields).forEach(r=>{
+    if(r[0] && r[0].type==='heading'){ cur = {head:r[0], rows:[]}; secs.push(cur); const rest = r.slice(1); if(rest.length) cur.rows.push(rest); }
+    else (cur ? cur.rows : top).push(r);
+  });
+  return {top, secs};
+}
+function fmIsCheck(f){ return f && (f.type==='checkbox' || f.type==='checkexp'); }
+function fmBadgeHTML(un, total){
+  if(!total) return '<span class="fm-badge" hidden></span>';
+  return un ? '<span class="fm-badge">'+un+' unchecked</span>' : '<span class="fm-badge ok">✓ all checked</span>';
+}
+function fmFormHTML(fields, rowsFn, cellFn){
+  const sp = fmSplit(fields, rowsFn);
+  const rowHTML = r=>'<div class="fm-row">'+r.map(f=>'<div class="fm-cell'+(f.type==='blank'?' fm-blank':'')+'">'+cellFn(f)+'</div>').join('')+'</div>';
+  return '<div class="fm-form">'+sp.top.map(rowHTML).join('')+sp.secs.map((s,i)=>{
+    const total = s.rows.reduce((n,r)=>n+r.filter(fmIsCheck).length, 0);
+    return '<div class="fm-sec'+(i===0?' open':'')+'"><button type="button" class="fm-sec-head" onclick="fmToggleSection(this)"><span class="fm-title">'+fmEsc(s.head.label||'(untitled section)')+'</span>'+fmBadgeHTML(total,total)+'<span class="fm-chev">▸</span></button><div class="fm-body">'+s.rows.map(rowHTML).join('')+'</div></div>';
+  }).join('')+'</div>';
+}
+function fmCheckHTML(o){
+  return '<div class="fm-check"><div class="fm-left"><label class="fm-ct"><input type="checkbox" class="fm-cb"'+(o.id?' id="'+o.id+'"':'')+' onchange="fmCheckChanged(this)"><span>'+fmEsc(o.label||'(untitled checkbox)')+'</span></label>'
+    +(o.help?'<button type="button" class="fm-info" onclick="fmToggleHelp(this)" aria-label="More info">ⓘ</button>':'')+'</div>'
+    +(o.note?'<textarea class="fm-note"'+(o.noteId?' id="'+o.noteId+'"':'')+' rows="1" hidden placeholder="Explanation (optional)" oninput="fmGrow(this)"></textarea>':'')
+    +(o.help?'<div class="fm-help" hidden>'+fmEsc(o.help)+'</div>':'')+'</div>';
+}
+function fmGrow(el){ if(!el||!el.style) return; el.style.height='auto'; el.style.height=(el.scrollHeight||0)>0 ? el.scrollHeight+'px' : ''; }
+function fmCheckChanged(cb){
+  const w = cb.closest ? cb.closest('.fm-check') : null;
+  if(w){
+    w.classList.toggle('on', cb.checked);
+    const n = w.querySelector('.fm-note');
+    if(n){ n.hidden = !cb.checked; if(cb.checked){ fmGrow(n); try{ n.focus(); }catch(e){} } }
+  }
+  fmBadges(document);
+}
+function fmToggleHelp(btn){ const w = btn.closest('.fm-check'); const h = w && w.querySelector('.fm-help'); if(h) h.hidden = !h.hidden; }
+function fmToggleSection(btn){
+  const sec = btn.closest('.fm-sec'); if(!sec) return;
+  const was = sec.classList.contains('open');
+  Array.prototype.forEach.call(sec.parentNode.children, s=>{ if(s.classList && s.classList.contains('fm-sec')) s.classList.remove('open'); });
+  if(!was){ sec.classList.add('open'); try{ sec.scrollIntoView({block:'start', behavior:'smooth'}); }catch(e){} }
+}
+function fmBadges(root){
+  (root||document).querySelectorAll('.fm-sec').forEach(sec=>{
+    const b = sec.querySelector('.fm-badge'); if(!b) return;
+    const total = sec.querySelectorAll('input.fm-cb').length, un = sec.querySelectorAll('input.fm-cb:not(:checked)').length;
+    if(!total){ b.hidden = true; return; }
+    b.hidden = false; b.className = un ? 'fm-badge' : 'fm-badge ok'; b.textContent = un ? un+' unchecked' : '✓ all checked';
+  });
+}
+// A filled-out form, read-only, in the same sections (answers come in field order; a heading starts a section).
+function fmViewerHTML(answers){
+  const list = Object.values(answers||{}).filter(a=>a && a.type!=='blank');
+  const top = [], secs = []; let cur = null;
+  list.forEach(a=>{ if(a.type==='heading'){ cur = {head:a, items:[]}; secs.push(cur); } else (cur ? cur.items : top).push(a); });
+  const item = a=>{
+    if(fmIsCheck(a)) return '<div class="fm-row"><div class="fm-cell"><div class="fm-vcheck"><span class="fm-vbox'+(a.value?' on':'')+'">'+(a.value?'✔':'')+'</span><div><div class="fm-vlabel">'+fmEsc(a.label||'(untitled checkbox)')+'</div>'+((a.note&&String(a.note).trim())?'<div class="fm-vnote">'+fmEsc(a.note)+'</div>':'')+'</div></div></div></div>';
+    let shown;
+    if(a.type==='photo') shown = a.value ? '📷 photo attached' : '— no photo taken';
+    else if(a.type==='signature') shown = a.value ? '✒ '+a.value : '— not signed';
+    else shown = (a.value===''||a.value==null) ? '—' : a.value;
+    return '<div class="fm-row"><div class="fm-cell"><div class="fm-vk">'+fmEsc(a.label||'(untitled field)')+'</div><div class="fm-vv">'+fmEsc(shown)+'</div></div></div>';
+  };
+  return '<div class="fm-form">'+top.map(item).join('')+secs.map((s,i)=>{
+    const checks = s.items.filter(fmIsCheck), un = checks.filter(a=>!a.value).length;
+    return '<div class="fm-sec'+(i===0?' open':'')+'"><button type="button" class="fm-sec-head" onclick="fmToggleSection(this)"><span class="fm-title">'+fmEsc(s.head.label||'(untitled section)')+'</span>'+fmBadgeHTML(un, checks.length)+'<span class="fm-chev">▸</span></button><div class="fm-body">'+s.items.map(item).join('')+'</div></div>';
+  }).join('')+'</div>';
+}
 
 function deleteForm(id){
   const f = forms.find(x=>x.id===id);
@@ -514,15 +624,30 @@ function openFormBuilder(formId){
 }
 function fbSetName(name){ if(fbDraft) fbDraft.name = name; }
 let fbPasteOpen = false;
+let fbPasteNote = true;
+const fbCollapsed = new Set();
+function fbToggleSection(id){ if(fbCollapsed.has(id)) fbCollapsed.delete(id); else fbCollapsed.add(id); render(); }
+function fbCollapseAll(flag){ if(!fbDraft) return; fbCollapsed.clear(); if(flag) fbDraft.fields.forEach(f=>{ if(f.type==='heading') fbCollapsed.add(f.id); }); render(); }
+function fbSetHelp(fid, val){ if(!fbDraft) return; const f = fbDraft.fields.find(x=>x.id===fid); if(f) f.help = String(val||''); }
+function fbSetPasteNote(v){ fbPasteNote = !!v; }
 function fbTogglePaste(){ fbPasteOpen = !fbPasteOpen; render(); }
 function fbAddPasted(){
   if(!fbDraft) return;
   const box = document.getElementById('fbPasteBox');
   const lines = String(box ? box.value : '').split(/\r?\n/).map(x=>x.replace(/^\s*(?:[-*\u2022\u00b7\u25aa\u2610]+|\d+[.)])\s*/,'').trim()).filter(Boolean);
   if(!lines.length){ alert('Nothing to add yet. Type or paste one item per line first.'); return; }
+  const tg = document.getElementById('fbPasteNoteToggle'); if(tg) fbPasteNote = !!tg.checked;
   const titleEl = document.getElementById('fbTitleInput'); if(titleEl) fbDraft.name = titleEl.value;
   const rows = fbRows(fbDraft.fields);
-  lines.forEach(label=>{ rows.push([{id:newFieldId(rows.reduce((a,r)=>a.concat(r),[])), type:'checkbox', label, autoFill:null}]); });
+  lines.forEach(line=>{
+    const bar = line.indexOf('|');
+    const label = (bar>=0 ? line.slice(0,bar) : line).trim();
+    const help = bar>=0 ? line.slice(bar+1).trim() : '';
+    if(!label) return;
+    const f = {id:newFieldId(rows.reduce((a,r)=>a.concat(r),[])), type: fbPasteNote ? 'checkexp' : 'checkbox', label, autoFill:null};
+    if(help) f.help = help;
+    rows.push([f]);
+  });
   fbCommitRows(rows);
   fbPasteOpen = false;
   render();
@@ -3131,7 +3256,7 @@ function formAnswersText(d){
     if(a.type==='blank') return;
     if(a.type==='heading'){ lines.push('', (a.label||'').toUpperCase()); return; }
     let v;
-    if(a.type==='checkbox') v = a.value ? 'Yes' : 'No';
+    if(a.type==='checkbox' || a.type==='checkexp') v = (a.value ? 'Yes' : 'No') + ((a.note && String(a.note).trim()) ? ' - '+String(a.note).trim().replace(/\s*\r?\n\s*/g,' ') : '');
     else if(a.type==='photo') v = a.value ? '(photo saved as its own file)' : '(no photo taken)';
     else if(a.type==='signature') v = a.value ? 'Signed: '+a.value : '(not signed)';
     else v = (a.value===''||a.value==null) ? '-' : String(a.value);
@@ -3170,8 +3295,8 @@ async function renderFormImage(d){
   add({k:'rule'}, 18);
   for(const a of Object.values(d.answers||{})){
     if(a.type==='blank') continue;
-    if(a.type==='heading'){ mctx.font = font(22,'bold'); const l = wrap(mctx, String(a.label||'').toUpperCase(), IW); add({k:'heading', lines:l}, l.length*30+22); continue; }
-    if(a.type==='checkbox'){ mctx.font = font(19); const l = wrap(mctx, a.label||'', IW-40); add({k:'check', lines:l, on:!!a.value}, Math.max(l.length*27, 28)+10); continue; }
+    if(a.type==='heading'){ mctx.font = font(26,'bold'); const l = wrap(mctx, String(a.label||'').toUpperCase(), IW); add({k:'heading', lines:l}, l.length*34+30); continue; }
+    if(a.type==='checkbox' || a.type==='checkexp'){ mctx.font = font(19); const l = wrap(mctx, a.label||'', IW-40); const nt = (a.note && String(a.note).trim()) ? String(a.note).trim() : ''; mctx.font = font(17,'normal','italic'); const nl = nt ? wrap(mctx, nt, IW-40) : []; add({k:'check', lines:l, on:!!a.value, nl}, Math.max(l.length*27, 28)+(nl.length?nl.length*24+4:0)+10); continue; }
     if(a.type==='photo'){
       mctx.font = font(17,'bold'); const l = wrap(mctx, a.label||'Photo', IW);
       const im = a.value ? await fiLoadImage(a.value) : null;
@@ -3194,8 +3319,8 @@ async function renderFormImage(d){
     if(it.k==='title'){ c.fillStyle = '#111'; c.font = font(30,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*38)); }
     else if(it.k==='sub'){ c.fillStyle = '#555'; c.font = font(18); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*26)); }
     else if(it.k==='rule'){ c.fillStyle = '#222'; c.fillRect(PAD, y+6, IW, 2); }
-    else if(it.k==='heading'){ c.fillStyle = '#111'; c.font = font(22,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+14+i*30)); c.fillStyle = '#bbb'; c.fillRect(PAD, y+it.h-4, IW, 1); }
-    else if(it.k==='check'){ c.strokeStyle = '#222'; c.lineWidth = 2; c.strokeRect(PAD+1, y+3, 22, 22); if(it.on){ c.beginPath(); c.moveTo(PAD+5,y+14); c.lineTo(PAD+11,y+21); c.lineTo(PAD+20,y+7); c.stroke(); } c.fillStyle = '#111'; c.font = font(19); it.lines.forEach((t,i)=>c.fillText(t, PAD+36, y+3+i*27)); }
+    else if(it.k==='heading'){ c.fillStyle = '#111'; c.font = font(26,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+16+i*34)); c.fillStyle = '#222'; c.fillRect(PAD, y+it.h-6, IW, 3); }
+    else if(it.k==='check'){ c.strokeStyle = '#222'; c.lineWidth = 2; c.strokeRect(PAD+1, y+3, 22, 22); if(it.on){ c.beginPath(); c.moveTo(PAD+5,y+14); c.lineTo(PAD+11,y+21); c.lineTo(PAD+20,y+7); c.stroke(); } c.fillStyle = '#111'; c.font = font(19); it.lines.forEach((t,i)=>c.fillText(t, PAD+36, y+3+i*27)); if(it.nl && it.nl.length){ c.fillStyle = '#555'; c.font = font(17,'normal','italic'); it.nl.forEach((t,i)=>c.fillText(t, PAD+36, y+3+it.lines.length*27+2+i*24)); } }
     else if(it.k==='photo'){ c.fillStyle = '#555'; c.font = font(17,'bold'); it.lines.forEach((t,i)=>c.fillText(t, PAD, y+i*24)); const py = y+it.lines.length*24+4; if(it.im){ c.drawImage(it.im, PAD, py, it.iw, it.ih); c.strokeStyle = '#999'; c.lineWidth = 1; c.strokeRect(PAD, py, it.iw, it.ih); } else { c.fillStyle = '#111'; c.font = font(19); c.fillText('(no photo taken)', PAD, py); } }
     else if(it.k==='field'){ c.fillStyle = '#555'; c.font = font(17,'bold'); it.ll.forEach((t,i)=>c.fillText(t, PAD, y+i*24)); const vy = y+it.ll.length*24+2; c.fillStyle = '#111'; c.font = font(it.sig?24:19,'normal',it.sig?'italic':''); it.vl.forEach((t,i)=>c.fillText(t, PAD, vy+i*(it.sig?32:27))); }
   }
@@ -4347,9 +4472,10 @@ const renderers = {
     const gap = (beforeId)=>`<div class="fb-gap" data-gap="${beforeId||''}"></div>`;
     const card = (f)=>{
       const meta = fbTypeMeta(f.type);
-      const hasMore = meta.allowAutoFill || meta.hasOptions;
+      const hasMore = meta.allowAutoFill || meta.hasOptions || meta.allowHelp;
       const open = fbOpenIds.has(f.id) || (meta.hasOptions && !f.source && !(f.options||[]).length);
-      const more = !open ? '' : (meta.allowAutoFill ? `
+      const more = !open ? '' : (meta.allowHelp ? `
+          <textarea oninput="fbSetHelp('${f.id}', this.value)" rows="2" placeholder="Info shown behind the ⓘ next to this checkbox (optional)" style="width:100%;margin-top:6px;font-size:13px;padding:6px">${fmEsc(f.help||'')}</textarea>` : meta.allowAutoFill ? `
           <select onchange="fbSetFieldAutoFill('${f.id}', this.value)" style="font-size:12.5px;padding:3px 6px;margin-top:6px;width:100%">
             <option value="" ${!f.autoFill?'selected':''}>No auto-fill</option>
             <option value="carName" ${f.autoFill==='carName'?'selected':''}>Auto-fill: car name</option>
@@ -4370,7 +4496,8 @@ const renderers = {
           <span class="fb-grip" title="Drag to move" onpointerdown="fbDragStart(event,'move','${f.id}')">⠿</span>
           <span style="flex:none" title="${meta.label}">${meta.icon}</span>
           ${f.type==='blank' ? `<span class="fb-label" style="color:var(--muted);border-bottom:none">Blank space</span>` : `<input class="fb-label" ${f.type==='heading'?'style="font-weight:700;font-size:15.5px" ':''}value="${(f.label||'').replace(/"/g,'&quot;')}" oninput="fbSetFieldLabel('${f.id}', this.value)" placeholder="${meta.label}">`}
-          ${hasMore?`<button class="btn-ghost chip-btn" onclick="fbToggleOpen('${f.id}')" title="More options">⚙</button>`:''}
+          ${f.type==='heading'?`<button class="btn-ghost chip-btn" onclick="fbToggleSection('${f.id}')" title="Show or hide this section's fields">${fbCollapsed.has(f.id)?'▸':'▾'}</button>`:''}
+          ${hasMore?`<button class="btn-ghost chip-btn" onclick="fbToggleOpen('${f.id}')" title="${meta.allowHelp?'Info text':'More options'}">${meta.allowHelp?(f.help?'ⓘ':'⚙'):'⚙'}</button>`:''}
           <button class="btn-ghost chip-btn" onclick="fbRemoveField('${f.id}')" title="Remove">✕</button>
         </div>${more}
       </div>`;
@@ -4382,10 +4509,11 @@ const renderers = {
     </div>
     <section class="block infoblock fb-canvas">
       <input class="fb-title-input" id="fbTitleInput" placeholder="Form title..." value="${(fbDraft.name||'').replace(/"/g,'&quot;')}" style="width:100%;background:none;border:none;color:var(--text);font-family:var(--display);font-size:19px;margin-bottom:10px" oninput="fbSetName(this.value)" />
-      ${rows.length ? rows.map(r=>`${gap(r[0].id)}<div class="fb-row">${r.map(card).join('')}</div>`).join('') + gap('') : `<div class="fb-gap fb-gap-empty" data-gap="">Drag a field here</div>`}
+      ${fbDraft.fields.some(f=>f.type==='heading') ? `<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn-ghost chip-btn" onclick="fbCollapseAll(true)">▸ Collapse all sections</button><button class="btn-ghost chip-btn" onclick="fbCollapseAll(false)">▾ Expand all</button></div>` : ''}
+      ${rows.length ? (function(){ let hide = false, out = ''; rows.forEach(r=>{ if(r[0].type==='heading'){ hide = fbCollapsed.has(r[0].id); out += `${gap(r[0].id)}<div class="fb-row">${r.map(card).join('')}</div>`; if(hide){ const n = rows.slice(rows.indexOf(r)+1).reduce((c,x)=>c, 0); out += `<div class="list-sub" style="margin:4px 0 8px;font-style:italic">__HID__${r[0].id}</div>`; } return; } if(hide) return; out += `${gap(r[0].id)}<div class="fb-row">${r.map(card).join('')}</div>`; }); out = out.replace(/__HID__([^<]*)/g, (m,id)=>{ const i = rows.findIndex(x=>x[0].id===id); let n = 0; for(let k=i+1;k<rows.length && rows[k][0].type!=='heading';k++) n += rows[k].length; return n+' field'+(n===1?'':'s')+' hidden — tap ▸ to show'; }); return out + gap(''); })() : `<div class="fb-gap fb-gap-empty" data-gap="">Drag a field here</div>`}
     </section>
     <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="fbTogglePaste()">📋 Paste a list of checkboxes</button>
-    ${fbPasteOpen ? `<div class="infoblock" style="margin-top:8px"><p class="list-sub" style="margin:0 0 6px">One item per line. Each line becomes a checkbox at the end of the form. Blank lines are skipped, and bullets or numbers in front are removed.</p><textarea id="fbPasteBox" rows="7" placeholder="Ease of starting&#10;Cold idle quality&#10;Gear selection quality" style="width:100%;font-size:14px;padding:8px"></textarea><button class="btn-primary" style="width:100%;margin-top:8px" onclick="fbAddPasted()">Add checkboxes</button></div>` : ''}
+    ${fbPasteOpen ? `<div class="infoblock" style="margin-top:8px"><p class="list-sub" style="margin:0 0 6px">One item per line. Each line becomes a checkbox at the end of the form. Blank lines are skipped, and bullets or numbers in front are removed. To add info text behind a checkbox's ⓘ, put a | after the title (like <i>Brake pads | Check for cracks</i>); lines without one just get a title.</p><label style="display:flex;align-items:center;gap:10px;margin:0 0 8px;font-size:15px;color:var(--text)"><input type="checkbox" id="fbPasteNoteToggle" style="width:22px;height:22px;flex:none" ${fbPasteNote?'checked':''} onchange="fbSetPasteNote(this.checked)"> Add a text box to the right of each checkbox</label><textarea id="fbPasteBox" rows="7" placeholder="Ease of starting&#10;Cold idle quality&#10;Gear selection quality" style="width:100%;font-size:14px;padding:8px"></textarea><button class="btn-primary" style="width:100%;margin-top:8px" onclick="fbAddPasted()">Add checkboxes</button></div>` : ''}
     <p class="list-sub" style="margin:14px 0 6px">Field types</p>
     <div class="fb-palette">
       ${Object.keys(FB_FIELD_TYPES).map(t=>`<div class="fb-chip" onpointerdown="fbDragStart(event,'new','${t}')">${FB_FIELD_TYPES[t].icon} ${FB_FIELD_TYPES[t].label}</div>`).join('')}
@@ -4404,7 +4532,8 @@ const renderers = {
       const lab = `<label style="display:block;margin-bottom:6px;color:var(--muted);font-size:13px">${label}${auto}</label>`;
       if(f.type==='blank') return `<div class="fb-field"></div>`;
       if(f.type==='heading') return `<div class="fb-field"><div style="font-weight:700;font-size:16.5px;padding:10px 0 4px;border-bottom:1px solid var(--line)">${f.label||'(untitled heading)'}</div></div>`;
-      if(f.type==='checkbox') return `<div class="fb-field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" style="width:20px;height:20px;flex:none"><span>${label}</span></div>`;
+      if(f.type==='checkbox') return fmCheckHTML({label:f.label, help:f.help});
+      if(f.type==='checkexp') return fmCheckHTML({label:f.label, help:f.help, note:true});
       if(f.type==='yesno') return `<div class="fb-field">${lab}<select style="width:100%"><option value="">—</option><option>Yes</option><option>No</option></select></div>`;
       if(f.type==='radio') return `<div class="fb-field">${lab}<div style="display:flex;flex-wrap:wrap;gap:8px 16px">${opts.length?opts.map(o=>`<label style="display:flex;align-items:center;gap:6px"><input type="radio" name="pv-${f.id}" style="width:20px;height:20px">${o}</label>`).join(''):'<span style="color:var(--muted)">(no choices added yet)</span>'}</div></div>`;
       if(f.type==='dropdown'){ const cid='pvc-'+f.id; return `<div class="fb-field">${lab}<div style="display:flex;gap:8px"><input type="text" id="${cid}" data-accombo="1" autocomplete="off" placeholder="Type, or tap ▾ to pick" style="flex:1;min-width:0" data-acopts="${JSON.stringify(opts).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"><button type="button" class="btn-ghost" style="width:46px;margin:0;padding:8px 0" onclick="acToggleAll('${cid}')" aria-label="Show the list">▾</button></div>${opts.length?'':'<span style="color:var(--muted);font-size:12px">(no choices added yet)</span>'}</div>`; }
@@ -4420,9 +4549,9 @@ const renderers = {
       <p class="kicker">Forms · Preview</p>
       <h1 class="detail-title">${fbDraft.name || '(untitled form)'}${infoTip('This is what it looks like on WorkClock, and you can try the fields out — nothing here is saved. On a narrow phone, fields that sit side by side stack on top of each other, and blank spaces disappear.')}</h1>
     </div>
-    <section class="block infoblock">
-      ${fbDraft.fields.length ? fbRows(fbDraft.fields).map(r=>`<div class="fb-prow">${r.map(f=>`<div class="fb-pcell">${cell(f)}</div>`).join('')}</div>`).join('') : `<p class="list-sub" style="margin:0">No fields added yet.</p>`}
-    </section>
+    <div style="margin-top:4px">
+      ${fbDraft.fields.length ? fmFormHTML(fbDraft.fields, fbRows, cell) : `<p class="list-sub" style="margin:0">No fields added yet.</p>`}
+    </div>
     <button class="btn-ghost" style="width:100%;margin-top:14px" onclick="goBack()">← Back to editing</button>`;
   },
 
@@ -5145,18 +5274,8 @@ const renderers = {
     </div>
     <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${d.name} — ${[d.date, d.who].filter(Boolean).join(' · ')}</p></div>
     ${d.answers && Object.keys(d.answers).length ? `
-    <div class="infoblock" style="margin-bottom:16px">
-      <div class="specs">
-        ${Object.values(d.answers).filter(a=>a.type!=='blank').map(a=>{
-          if(a.type==='heading') return `<div style="grid-column:1/-1;font-weight:700;font-size:15.5px;padding:10px 0 2px;border-bottom:1px solid var(--line)">${a.label||''}</div>`;
-          let shown;
-          if(a.type==='checkbox') shown = a.value ? 'Yes' : 'No';
-          else if(a.type==='photo') shown = a.value ? '📷 photo attached' : '— no photo taken';
-          else if(a.type==='signature') shown = a.value ? ('✒ '+a.value) : '— not signed';
-          else shown = (a.value===''||a.value==null) ? '—' : a.value;
-          return `<div><span class="spec-k">${a.label||'(untitled field)'}</span><span class="spec-v">${shown}</span></div>`;
-        }).join('')}
-      </div>
+    <div style="margin-bottom:16px">
+      ${fmViewerHTML(d.answers)}
       ${Object.values(d.answers).filter(a=>a.type==='photo' && a.value).map(a=>`<img src="${a.value}" style="width:100%;border-radius:10px;margin-top:12px;display:block">`).join('')}
     </div>` : ''}
     ${d.dataUrl
