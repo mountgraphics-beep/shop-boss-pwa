@@ -376,7 +376,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.37';
+const APP_VERSION = 'v0.38';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1242,6 +1242,54 @@ function toggleCustomListInclude(id){
   l.includeInUpdate = !l.includeInUpdate;
   persist(); render();
 }
+// Settings for the four built-in lists. show = appears in Assembly Room → Outgoing; lock = always sent, locked on there; send = the tick.
+// (Consumables keeps its tick in consumablesIncluded; your own lists keep theirs in includeInUpdate, with show/lock stored on the list itself.)
+const listCfg = {
+  tasks:{name:'Tasks', show:true, lock:true, send:true},
+  notes:{name:'Notes Helper', show:true, lock:true, send:true},
+  cons:{name:'Consumables and parts', show:true, lock:false},
+  parts:{name:'Parts used', show:true, lock:false, send:true}
+};
+function listSendFlag(key){ return key==='cons' ? consumablesIncluded : listCfg[key].send; }
+function listSent(key){ const c = listCfg[key]; return !!(c.show && (c.lock || listSendFlag(key))); }
+function customSent(l){ return l.show!==false && (!!l.lock || !!l.includeInUpdate); }
+function toggleListSend(key){ if(key==='cons') consumablesIncluded = !consumablesIncluded; else listCfg[key].send = !listCfg[key].send; persist(); render(); }
+// Every word on every list, sent to WorkClock every time so its autocomplete can suggest them anywhere — whether or not the list is ticked.
+function listLibrary(){
+  const set = new Set(); const add = w=>{ w = String(w==null?'':w).trim(); if(w) set.add(w); };
+  workTypes.forEach(t=>add(t.name)); notesHelper.forEach(t=>add(t.name)); consumables.forEach(c=>add(c.name)); billingParts.forEach(b=>add(b.name));
+  customLists.forEach(l=>safeArr(l.items).forEach(add)); forms.forEach(fm=>add(fm.name));
+  return [...set];
+}
+function listCfgTarget(key){
+  if(key.indexOf('c:')===0){ const l = customLists.find(x=>x.id===key.slice(2)); return l ? {name:l.name, show:l.show!==false, lock:!!l.lock, custom:l} : null; }
+  const c = listCfg[key]; return c ? {name:c.name, show:c.show, lock:c.lock} : null;
+}
+function openListCfg(key){
+  const t = listCfgTarget(key); if(!t) return;
+  closeListCfg();
+  const d = document.createElement('div'); d.id = 'listCfgPop';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.onclick = e=>{ if(e.target===d) closeListCfg(); };
+  d.innerHTML = `<div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(400px,100%)">
+    <h3 style="margin:0 0 12px">List settings</h3>
+    <label style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px">Name</label>
+    <input class="search-input" id="lcName" value="${escH(t.name)}" style="margin-bottom:14px">
+    <label class="hrep-chk"><input type="checkbox" id="lcShow" ${t.show?'checked':''} onchange="document.getElementById('lcLock').disabled=!this.checked"> Show in the Assembly Room</label>
+    <label class="hrep-chk"><input type="checkbox" id="lcLock" ${t.lock?'checked':''} ${t.show?'':'disabled'}> Always send — locked on in the Assembly Room</label>
+    <p class="list-sub" style="margin:8px 0 14px">If it isn't shown in the Assembly Room, the list never gets its own box on WorkClock (its words still go over for autocomplete).</p>
+    <div style="display:flex;gap:8px"><button class="btn-primary" style="flex:1;margin:0" onclick="saveListCfg('${key}')">Save</button><button class="btn-ghost" style="flex:1;margin:0" onclick="closeListCfg()">Cancel</button></div></div>`;
+  document.body.appendChild(d);
+}
+function closeListCfg(){ const d = document.getElementById('listCfgPop'); if(d) d.remove(); }
+function saveListCfg(key){
+  const t = listCfgTarget(key); if(!t) return;
+  const name = (document.getElementById('lcName').value||'').trim() || t.name;
+  const show = document.getElementById('lcShow').checked, lock = show && document.getElementById('lcLock').checked;
+  if(t.custom){ t.custom.name = name; t.custom.show = show; t.custom.lock = lock; }
+  else { listCfg[key].name = name; listCfg[key].show = show; listCfg[key].lock = lock; }
+  closeListCfg(); persist(); render();
+}
 function toggleConsumablesIncluded(){ consumablesIncluded = !consumablesIncluded; persist(); render(); }
 function deleteCustomList(id){
   const l = customLists.find(x=>x.id===id);
@@ -1330,7 +1378,7 @@ function jsStr(s){
 function isAsmSubView(t){ return t==='assembly' || t==='receipts' || t==='receiptsCar' || t==='shopExpenses'; }
 function nav(view){ fltReset(); stack.push(view); render(); }
 function navReplace(view){ stack[stack.length-1] = view; render(); }
-function goBack(){ fltReset(); if(stack.length>1) stack.pop(); if(!isAsmSubView(stack[stack.length-1].type)) outSnap = null; render(); }
+function goBack(){ if(guardBack()) return; fltReset(); if(stack.length>1) stack.pop(); if(!isAsmSubView(stack[stack.length-1].type)) outSnap = null; render(); }
 // ---- Android/iOS hardware & gesture back button ----
 // A browser tab with no history behind it just exits on a back press — that's the bug being fixed
 // here. We keep one harmless "trap" history entry armed at all times; a back press consumes it and
@@ -1338,8 +1386,37 @@ function goBack(){ fltReset(); if(stack.length>1) stack.pop(); if(!isAsmSubView(
 // our own on-screen Back button (pop one screen off our stack) and immediately re-arm the trap so
 // the NEXT back press is caught too — except once we're already at the home screen, where we let it
 // go through on purpose, so back-from-home still really exits.
+// ---- Back-button guard: on a screen with a Save button, if anything was typed/changed, ask first ----
+let bgDirty = false, bgKey = '';
+function bgViewKey(){ try{ const t = stack[stack.length-1]; return JSON.stringify(typeof t==='string'?t:t); }catch(e){ return ''; } }
+function bgSaveBtn(){
+  const app = document.getElementById('app'); if(!app) return null;
+  return Array.from(app.querySelectorAll('button')).find(b => /^Save/.test(b.textContent.trim()) && !/accountant/i.test(b.textContent)) || null;
+}
+['input','change'].forEach(ev => document.addEventListener(ev, function(e){
+  const app = document.getElementById('app');
+  if(app && app.contains(e.target) && bgSaveBtn()){ const k = bgViewKey(); if(k !== bgKey){ bgKey = k; bgDirty = false; } bgDirty = true; }
+}, true));
+function guardBack(){
+  const k = bgViewKey(); if(k !== bgKey){ bgKey = k; bgDirty = false; }
+  if(!bgDirty || !bgSaveBtn() || document.getElementById('bgPop')) return false;
+  const d = document.createElement('div');
+  d.id = 'bgPop';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML = '<div class="card" style="width:min(380px,100%)"><h3 style="margin:0 0 8px">Save your changes?</h3><p class="sub" style="margin:0 0 14px">You changed something on this screen.</p>'
+    + '<button class="btn-primary" id="bgSave">Save</button>'
+    + '<button class="btn-ghost" id="bgLeave" style="margin-top:8px">Leave without saving</button>'
+    + '<button class="btn-ghost" id="bgKeep" style="margin-top:8px">Keep editing</button></div>';
+  document.body.appendChild(d);
+  const close = () => d.remove();
+  document.getElementById('bgKeep').onclick = close;
+  document.getElementById('bgLeave').onclick = () => { close(); bgDirty = false; goBack(); };
+  document.getElementById('bgSave').onclick = () => { const b = bgSaveBtn(); close(); bgDirty = false; if(b) b.click(); };
+  return true;
+}
 function armBackTrap(){ try{ history.pushState({__backTrap:true}, ''); }catch(e){} }
 window.addEventListener('popstate', function(){
+  if(stack.length>1 && guardBack()){ armBackTrap(); return; }
   if(stack.length>1 && stack[stack.length-1].type==='assembly' && outChangeCount()>0){ armBackTrap(); exitAssembly(); return; }
   if(stack.length>1){
     fltReset();
@@ -1658,13 +1735,14 @@ function outgoingChangesSinceSent(){ return diffOutgoing(lastSentState, outgoing
 // The Outgoing tab as it is right now, so leaving can ask whether to keep what changed there. Cars-page changes are not part of it.
 function outSnapTake(){
   outSnap = {forms:outgoingForms.slice(), reqs:outgoingPhotoReqs.slice(), notes:outgoingNotes.slice(), pics:outgoingPhotos.slice(), hist:outgoingHistoryRestore.slice(),
-    cons:consumablesIncluded, lists:customLists.map(l=>[l.id,!!l.includeInUpdate])};
+    cons:consumablesIncluded, lists:customLists.map(l=>[l.id,!!l.includeInUpdate]), sends:{tasks:listCfg.tasks.send, notes:listCfg.notes.send, parts:listCfg.parts.send}};
 }
 function outChangeCount(){
   if(!outSnap) return 0;
   const idsDiff = (a,b)=>{ const ia = new Set(a.map(x=>x.id||x)), ib = new Set(b.map(x=>x.id||x)); let n = 0; ib.forEach(i=>{ if(!ia.has(i)) n++; }); ia.forEach(i=>{ if(!ib.has(i)) n++; }); return n; };
   let n = idsDiff(outSnap.forms,outgoingForms)+idsDiff(outSnap.reqs,outgoingPhotoReqs)+idsDiff(outSnap.notes,outgoingNotes)+idsDiff(outSnap.pics,outgoingPhotos)+idsDiff(outSnap.hist,outgoingHistoryRestore);
   if(outSnap.cons!==consumablesIncluded) n++;
+  Object.keys(outSnap.sends||{}).forEach(k=>{ if(outSnap.sends[k]!==listCfg[k].send) n++; });
   outSnap.lists.forEach(([id,inc])=>{ const l = customLists.find(x=>x.id===id); if(l && !!l.includeInUpdate!==inc) n++; });
   return n;
 }
@@ -1672,6 +1750,7 @@ function outDiscardChanges(){
   if(!outSnap) return;
   outgoingForms = outSnap.forms.slice(); outgoingPhotoReqs = outSnap.reqs.slice(); outgoingNotes = outSnap.notes.slice(); outgoingPhotos = outSnap.pics.slice(); outgoingHistoryRestore = outSnap.hist.slice();
   consumablesIncluded = outSnap.cons;
+  Object.keys(outSnap.sends||{}).forEach(k=>{ listCfg[k].send = outSnap.sends[k]; });
   outSnap.lists.forEach(([id,inc])=>{ const l = customLists.find(x=>x.id===id); if(l) l.includeInUpdate = inc; });
   persist();
 }
@@ -1707,11 +1786,15 @@ async function outgoingSend(){
     // Whether each of these whole lists goes out at all, and whether it's required, is now set as
     // ONE pair of toggles per list in Assembly Room → Outgoing → "Lists going out" — not per item.
     // Tasks and the Notes Helper always go out; nothing is ever "required" except the Task itself.
-    workTypes: workTypes.map(t=>t.name),
-    notesHelper: notesHelper.map(t=>t.name),
+    // The Task box is always on WorkClock; its pick button only has words when the Tasks list is sent. The Notes box only shows when the Notes Helper list is sent.
+    workTypes: listSent('tasks') ? workTypes.map(t=>t.name) : [],
+    notesHelper: listSent('notes') ? notesHelper.map(t=>t.name) : [],
+    showNotes: listSent('notes'),
+    // Every word on every list, always, for autocomplete.
+    library: listLibrary(),
     // Darryl's own custom lists — only the ones currently marked "Included." WorkClock auto-renders
     // one dropdown per list here, so a brand-new list just works the next time this goes out.
-    pickLists: [].concat([{id:'billingparts', name:'Parts used', items:billingParts.map(b=>b.name)}], consumablesIncluded ? [{id:'consumables', name:'Consumables and parts', items:consumables.map(c=>c.name)}] : [], customLists.filter(l=>l.includeInUpdate).map(l=>({id:l.id, name:l.name, items:l.items}))),
+    pickLists: [].concat(listSent('parts') ? [{id:'billingparts', name:listCfg.parts.name, items:billingParts.map(b=>b.name)}] : [], listSent('cons') ? [{id:'consumables', name:listCfg.cons.name, items:consumables.map(c=>c.name)}] : [], customLists.filter(customSent).map(l=>({id:l.id, name:l.name, items:l.items}))),
     documents: outgoingForms.map(f=>({
       name:f.name,
       employeeId:f.employeeId||null,
@@ -3020,7 +3103,7 @@ function histNeedsAttention(){ return openHistoryAlerts().length>0; }
 // ---- Real, persistent storage (this device only — no cloud, no internet needed) ----
 const SB_STORE_KEY = 'sb-shop-data-v2';
 function persist(){
-  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({billingParts, cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded, clockRecs, lastSentState, shopExpenses})); }catch(e){}
+  try{ localStorage.setItem(SB_STORE_KEY, JSON.stringify({billingParts, cars, owners, employees, entries, trash, historyWeeks, asm, outgoingForms, outgoingPhotoReqs, outgoingHistoryRestore, listCfg, outgoingNotes, outgoingPhotos, employeeAliases, consumables, workTypes, notesHelper, forms, customLists, completedDocs, unmatchedPhotos, receipts, incomingProcessedFiles, importedSubmissionFingerprints, listOrderCustomized, consumablesIncluded, clockRecs, lastSentState, shopExpenses})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -3043,6 +3126,7 @@ function loadPersisted(){
     if(Array.isArray(d.consumables)){ consumables.length=0; consumables.push(...d.consumables); }
     if(Array.isArray(d.workTypes)){ workTypes.length=0; workTypes.push(...d.workTypes); }
     if(typeof d.consumablesIncluded==='boolean') consumablesIncluded = d.consumablesIncluded;
+    if(d.listCfg && typeof d.listCfg==='object') Object.keys(listCfg).forEach(k=>{ if(d.listCfg[k] && typeof d.listCfg[k]==='object') Object.assign(listCfg[k], d.listCfg[k]); });
     if(Array.isArray(d.billingParts)){ billingParts.length=0; billingParts.push(...d.billingParts); }
     if(Array.isArray(d.notesHelper)){ notesHelper.length=0; notesHelper.push(...d.notesHelper); }
     if(Array.isArray(d.forms)){ forms.length=0; forms.push(...d.forms); }
@@ -3080,7 +3164,7 @@ function buildBackupPayload(){
     app:'Shop Boss', version:1, savedAt: new Date().toISOString(),
     data: {
       cars, owners, employees, entries, trash, historyWeeks, asm, consumables, workTypes, forms, customLists, completedDocs, unmatchedPhotos, receipts, listOrderCustomized, clockRecs, lastSentState, shopExpenses,
-      consumablesIncluded, notesHelper, billingParts,
+      consumablesIncluded, listCfg, notesHelper, billingParts,
       settings: {
         themeAccent: (function(){try{return localStorage.getItem('sb-theme-accent');}catch(e){return null;}})(),
         themeIncoming: (function(){try{return localStorage.getItem('sb-theme-incoming');}catch(e){return null;}})(),
@@ -4469,7 +4553,7 @@ function entryExtras(l){
   if(l.pickListAnswers) Object.keys(l.pickListAnswers).forEach(listId=>{
     const val = l.pickListAnswers[listId];
     if(!val) return;
-    const list = listId==='consumables' ? {name:'Consumables and parts'} : customLists.find(x=>x.id===listId);
+    const list = listId==='consumables' ? {name:listCfg.cons.name} : customLists.find(x=>x.id===listId);
     out += `<div class="entry-extra">${list?list.name:'List'}: ${val}</div>`;
   });
   if(l.photos) out += `<div class="entry-extra">📷 ${l.photos} photo${l.photos===1?'':'s'}</div>`;
@@ -4635,6 +4719,7 @@ const renderers = {
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Billing parts"})'>
       <div><div class="row-title">Billing parts</div><div class="row-meta">Parts and prices for customer billing</div></div>
+      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('parts')">⚙</button>
       <span class="badge">${billingParts.length}</span>
       <div class="chev">${icon("chev")}</div>
     </div>
@@ -4753,21 +4838,25 @@ const renderers = {
       <h1 class="detail-title">Task lists</h1>
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Work Types"})'>
-      <div><div class="row-title">Tasks</div><div class="row-meta">Common jobs, like "oil change" — always sent to WorkClock</div></div>
+      <div><div class="row-title">${listCfg.tasks.name}</div><div class="row-meta">Common jobs, like "oil change"${listCfg.tasks.lock?' — always sent to WorkClock':''}</div></div>
+      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('tasks')">⚙</button>
       <div class="chev">${icon("chev")}</div>
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Notes Helper"})'>
-      <div><div class="row-title">Notes Helper</div><div class="row-meta">Quick words employees can add to their Notes — always sent, can be empty</div></div>
+      <div><div class="row-title">${listCfg.notes.name}</div><div class="row-meta">Quick words employees can add to their Notes${listCfg.notes.lock?' — always sent':''}</div></div>
+      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('notes')">⚙</button>
       <div class="chev">${icon("chev")}</div>
     </div>
     <div class="row" onclick='nav({type:"catalog",which:"Consumables"})'>
-      <div><div class="row-title">Consumables and parts</div><div class="row-meta">Glue, filler, paint — things used up on a job</div></div>
+      <div><div class="row-title">${listCfg.cons.name}</div><div class="row-meta">Glue, filler, paint — things used up on a job</div></div>
+      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('cons')">⚙</button>
       <div class="chev">${icon("chev")}</div>
     </div>
     ${customLists.length ? `<p class="list-sub" style="margin-top:18px">Your own lists</p>` : ''}
     ${customLists.map(l=>`
       <div class="row" onclick='nav({type:"customList",id:"${l.id}"})'>
-        <div><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}</div></div>
+        <div><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}${l.lock?' · always sent':''}</div></div>
+        <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('c:${l.id}')">⚙</button>
         <div class="chev">${icon("chev")}</div>
       </div>`).join('')}
     <div style="margin-top:18px">
@@ -5052,7 +5141,7 @@ const renderers = {
           <div style="flex:1"><div class="row-title">🖼 ${ph.caption||'Photo'}</div>${ph.carId?`<div class="row-meta">${(cars.find(c=>c.id===ph.carId)||{}).name||''}</div>`:''}</div>
           <button class="btn-ghost chip-btn" onclick="removeOutgoingPhoto('${ph.id}')">✕</button>
         </div>`;
-      const listsGoingOut = 2+(consumablesIncluded?1:0)+customLists.filter(l=>l.includeInUpdate).length;
+      const listsGoingOut = ['tasks','notes','cons','parts'].filter(listSent).length + customLists.filter(customSent).length;
       const pillHead = (key, title, count, tip)=>`
         <div class="assembly-group-head pill-head" onclick='outNav(${pill===key?'null':`"${key}"`}, null)'>
           <h3>${title}${tip?infoTip(tip):''}</h3>
@@ -5118,26 +5207,15 @@ const renderers = {
       <h3 style="margin:16px 0 10px;font-size:15px">Next update${infoTip('What goes out to employees next. It\'s independent of the incoming review, so you can build it even while you\'re still reviewing last week\'s logs.')}</h3>
 
       <div class="assembly-group">
-        ${pillHead('lists','Lists', listsGoingOut+' going out', 'Tasks and the Notes Helper always go out. Every other list gets its own box on WorkClock automatically — tick the box to send it.')}
+        ${pillHead('lists','Lists', listsGoingOut+' going out', 'A ticked list gets its own box on WorkClock (Tasks gives the Task box its choices). A greyed, ticked list is set to always send. Use the ⚙ next to a list in Settings → Task lists to change that.')}
         ${pill==='lists'?`
         <div>
-        <div class="row" style="cursor:default">
-          <div style="flex:1"><div class="row-title">Tasks</div><div class="row-meta">${workTypes.length} item${workTypes.length===1?'':'s'} · always sent</div></div>
-          <label style="width:60px;text-align:center"><input type="checkbox" checked disabled></label>
-        </div>
-        <div class="row" style="cursor:default">
-          <div style="flex:1"><div class="row-title">Notes Helper</div><div class="row-meta">${notesHelper.length} item${notesHelper.length===1?'':'s'} · always sent</div></div>
-          <label style="width:60px;text-align:center"><input type="checkbox" checked disabled></label>
-        </div>
-        <div class="row" style="cursor:default">
-          <div style="flex:1"><div class="row-title">Consumables and parts</div><div class="row-meta">${consumables.length} item${consumables.length===1?'':'s'}</div></div>
-          <label style="width:60px;text-align:center"><input type="checkbox" ${consumablesIncluded?'checked':''} onchange="toggleConsumablesIncluded()"></label>
-        </div>
-        ${customLists.map(l=>`
-        <div class="row" style="cursor:default">
-          <div style="flex:1"><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}</div></div>
-          <label style="width:60px;text-align:center"><input type="checkbox" ${l.includeInUpdate?'checked':''} onchange="toggleCustomListInclude('${l.id}')"></label>
-        </div>`).join('')}
+        ${(()=>{
+          const rows = [['tasks',workTypes.length],['notes',notesHelper.length],['cons',consumables.length],['parts',billingParts.length]].filter(([k])=>listCfg[k].show)
+            .map(([k,n])=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${listCfg[k].name}</div><div class="row-meta">${n} item${n===1?'':'s'}${listCfg[k].lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(listCfg[k].lock||listSendFlag(k))?'checked':''} ${listCfg[k].lock?'disabled':''} onchange="toggleListSend('${k}')"></label></div>`);
+          const cust = customLists.filter(l=>l.show!==false).map(l=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}${l.lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(l.lock||l.includeInUpdate)?'checked':''} ${l.lock?'disabled':''} onchange="toggleCustomListInclude('${l.id}')"></label></div>`);
+          return rows.concat(cust).join('') || '<p class="list-sub">No lists are set to show here. Use the ⚙ next to a list in Settings → Task lists.</p>';
+        })()}
         </div>`:''}
       </div>
 
