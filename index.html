@@ -381,7 +381,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.39';
+const APP_VERSION = 'v0.40';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -500,9 +500,12 @@ let consumablesIncluded = true;
 // be switched off or deleted as lists — only their items are editable. No list has a "Required" option.
 const billingParts = []; // [{name, price}] — Shop Boss only: parts Daren bills customers for, with the last price used
 const notesHelper = []; // [{name}] — quick words employees can pick to build up their Notes
+const COMMA_MSG = "Names can't have a comma — WorkClock uses commas to separate items. Use a space or a dash instead.";
+function noCommaName(n){ return String(n==null?'':n).replace(/\s*,+\s*/g,' ').replace(/\s{2,}/g,' ').trim(); }
 function addNotesHelperItem(name){
   name = (name||'').trim();
   if(!name) return;
+  if(name.indexOf(',')>=0){ alert(COMMA_MSG); return; }
   if(notesHelper.some(t=>t.name.toLowerCase()===name.toLowerCase())){ alert('"'+name+'" is already on the list.'); return; }
   insertSortedOrPush(notesHelper, {name}, 'notesHelper', t=>t.name);
   persist(); render();
@@ -517,6 +520,7 @@ function removeNotesHelperItem(name){
 function addWorkType(name){
   name = (name||'').trim();
   if(!name) return;
+  if(name.indexOf(',')>=0){ alert(COMMA_MSG); return; }
   if(workTypes.some(t=>t.name.toLowerCase()===name.toLowerCase())){ alert('"'+name+'" is already on the list.'); return; }
   insertSortedOrPush(workTypes, {name, includeInUpdate:true}, 'workTypes', t=>t.name);
   persist();
@@ -537,6 +541,7 @@ function toggleWorkTypeInclude(name){
 function addConsumable(name){
   name = (name||'').trim();
   if(!name) return;
+  if(name.indexOf(',')>=0){ alert(COMMA_MSG); return; }
   if(consumables.some(c=>c.name.toLowerCase()===name.toLowerCase())){ alert('"'+name+'" is already on the list.'); return; }
   insertSortedOrPush(consumables, {name, includeInUpdate:true}, 'consumables', c=>c.name);
   persist();
@@ -1111,7 +1116,8 @@ function carHandleDown(ev, idx, kind){
   if(ev.button!==undefined && ev.button!==0) return;
   ev.preventDefault(); ev.stopPropagation();
   const handle = ev.currentTarget, rowEl = handle.closest('.car-row');
-  const rows = [...document.querySelectorAll('.car-row')];
+  const zone = handle.closest('[data-dz]') || document;
+  const rows = [...zone.querySelectorAll('.car-row')];
   carDrag = {kind:kind||'cars', idx, handle, rowEl, rows, startY:ev.clientY, active:false, target:idx, h:rowEl.offsetHeight,
              mids: rows.map(r=>{ const b=r.getBoundingClientRect(); return b.top+window.scrollY+b.height/2; }), startScroll:window.scrollY};
   try{ handle.setPointerCapture(ev.pointerId); }catch(e){}
@@ -1154,6 +1160,11 @@ function carHandleUp(ev){
     else if(d.kind==='workTypes'){ arr = workTypes; key = 'workTypes'; }
     else if(d.kind==='consumables'){ arr = consumables; key = 'consumables'; }
     else if(String(d.kind).indexOf('c:')===0){ const cl = customLists.find(x=>x.id===d.kind.slice(2)); if(cl){ arr = cl.items; listOrderCustomized.customLists[cl.id] = true; key = null; } }
+    if(String(d.kind).indexOf('todo:')===0){
+      const tc = cars.find(x=>x.id===d.kind.slice(5));
+      if(tc){ const open = carTodos(tc).filter(t=>!t.done); const it2 = open.splice(d.idx,1)[0]; open.splice(d.target,0,it2); todoRebuild(tc, open); persist(); render(); }
+      return;
+    }
     const it = arr.splice(d.idx,1)[0];
     arr.splice(d.target,0,it);
     if(key) listOrderCustomized[key] = true;
@@ -1260,8 +1271,57 @@ const listCfg = {
   tasks:{name:'Tasks', show:true, lock:true, send:true},
   notes:{name:'Notes Helper', show:true, lock:true, send:true},
   cons:{name:'Consumables and parts', show:true, lock:false},
-  parts:{name:'Parts used', show:true, lock:false, send:true}
+  parts:{name:'Parts used', show:true, lock:false, send:true},
+  todo:{name:'To-do list', show:true, lock:false, send:false}
 };
+// ---- Per-car to-do jobs ("what's next") ----
+function carTodos(c){ if(!Array.isArray(c.todos)) c.todos = []; return c.todos; }
+function todoCarsOut(){ return cars.filter(c=>c.todoSend!==false && carTodos(c).some(t=>!t.done)); }
+function todoRebuild(c, open){ c.todos = open.concat(carTodos(c).filter(t=>t.done)); }
+function addCarTodo(carId, text){
+  text = String(text||'').trim(); if(!text) return;
+  const c = cars.find(x=>x.id===carId); if(!c) return;
+  const open = carTodos(c).filter(t=>!t.done);
+  open.push({id:'td'+Date.now()+Math.random().toString(36).slice(2,6), text, done:false});
+  todoRebuild(c, open); persist(); render();
+}
+function removeCarTodo(carId, id){
+  const c = cars.find(x=>x.id===carId); if(!c) return;
+  const t = carTodos(c).find(x=>x.id===id); if(!t) return;
+  if(!confirm('Remove "'+t.text+'" from the to-do list?')) return;
+  c.todos = carTodos(c).filter(x=>x.id!==id); persist(); render();
+}
+function toggleCarTodo(carId, id){
+  const c = cars.find(x=>x.id===carId); if(!c) return;
+  const t = carTodos(c).find(x=>x.id===id); if(!t) return;
+  if(!t.done){ t.done = true; t.doneBy = ''; t.doneDate = isoToShopBossDate(isoOfDate(new Date())); t.entryId = null; }
+  else { t.done = false; delete t.doneBy; delete t.doneDate; t.entryId = null;
+    c.todos = carTodos(c).filter(x=>x!==t && !x.done).concat([t], carTodos(c).filter(x=>x!==t && x.done)); }
+  persist(); render();
+}
+function toggleCarTodoSend(carId){ const c = cars.find(x=>x.id===carId); if(!c) return; c.todoSend = c.todoSend===false ? true : false; persist(); render(); }
+// An imported work entry that came from a to-do job ticks that job off. Deleting the entry puts the job back.
+function tickTodoFromEntry(ne){
+  if(!ne.todoId) return;
+  const c = cars.find(x=>x.id===ne.car); if(!c) return;
+  const t = carTodos(c).find(x=>x.id===ne.todoId); if(!t) return;
+  t.done = true; t.doneBy = ne.who||''; t.doneDate = ne.date||''; t.entryId = ne.id;
+}
+function untickTodoForEntry(l){
+  if(!l || !l.todoId) return;
+  const c = cars.find(x=>x.id===l.car); if(!c) return;
+  const t = carTodos(c).find(x=>x.id===l.todoId); if(!t || t.entryId!==l.id) return;
+  t.done = false; delete t.doneBy; delete t.doneDate; t.entryId = null;
+}
+function carTodoSectionHTML(c){
+  const open = carTodos(c).filter(t=>!t.done), done = carTodos(c).filter(t=>t.done);
+  return `<section class="block no-print" data-dz="1">
+    <p class="block-title">To do <span class="static-tag">${open.length} open — most important at the top</span></p>
+    ${open.map((t,i)=>`<div class="row car-row lst-row" style="cursor:default">${listHandleHTML('todo:'+c.id, i)}<input type="checkbox" onchange="toggleCarTodo('${c.id}','${t.id}')" title="Mark done"><div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal">${escH(t.text)}</div></div><button class="btn-ghost chip-btn x-sm" onclick="removeCarTodo('${c.id}','${t.id}')">✕</button></div>`).join('') || '<p class="list-sub">Nothing to do yet.</p>'}
+    <div style="display:flex;gap:8px;margin-top:8px"><input class="search-input" id="newTodo-${c.id}" style="margin:0;flex:1" placeholder="Add a job…" onkeydown="if(event.key==='Enter'){addCarTodo('${c.id}', this.value);}"><button class="btn-ghost" style="width:46px;margin:0;font-size:20px" onclick="addCarTodo('${c.id}', document.getElementById('newTodo-${c.id}').value)">+</button></div>
+    ${done.length?`<p class="list-sub" style="margin:14px 0 4px">Done</p>${done.map(t=>`<div class="row lst-row" style="cursor:default;opacity:.75"><input type="checkbox" checked onchange="toggleCarTodo('${c.id}','${t.id}')" title="Untick to put it back on the list"><div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal;text-decoration:line-through">${escH(t.text)}</div><div class="row-meta">${t.doneBy?'Done — '+escH(t.doneBy)+(t.doneDate?', '+escH(t.doneDate):''):'Ticked by you'+(t.doneDate?', '+escH(t.doneDate):'')}</div></div></div>`).join('')}`:''}
+  </section>`;
+}
 function listSendFlag(key){ return key==='cons' ? consumablesIncluded : listCfg[key].send; }
 function listSent(key){ const c = listCfg[key]; return !!(c.show && (c.lock || listSendFlag(key))); }
 function customSent(l){ return l.show!==false && (!!l.lock || !!l.includeInUpdate); }
@@ -1316,6 +1376,7 @@ function deleteCustomList(id){
 function addCustomListItem(id, text){
   text = (text||'').trim();
   if(!text) return;
+  if(text.indexOf(',')>=0){ alert(COMMA_MSG); return; }
   const l = customLists.find(x=>x.id===id);
   if(!l) return;
   if(listOrderCustomized.customLists[id]){ l.items.push(text); }
@@ -1343,7 +1404,7 @@ function pasteListAdd(kind, id, taId){
   }[kind];
   if(!has) return;
   rows.forEach(r=>{
-    let name = r, price = '';
+    let name = noCommaName(r), price = '';
     if(kind==='bill'){ const p = r.split(/\s*[|\t]\s*/); name = (p[0]||'').trim(); price = (p[1]||'').replace(/[^0-9.]/g,''); }
     if(!name || has(name.toLowerCase())){ skipped++; return; }
     if(kind==='notes') insertSortedOrPush(notesHelper, {name}, 'notesHelper', t=>t.name);
@@ -1747,7 +1808,7 @@ function outgoingChangesSinceSent(){ return diffOutgoing(lastSentState, outgoing
 // The Outgoing tab as it is right now, so leaving can ask whether to keep what changed there. Cars-page changes are not part of it.
 function outSnapTake(){
   outSnap = {forms:outgoingForms.slice(), reqs:outgoingPhotoReqs.slice(), notes:outgoingNotes.slice(), pics:outgoingPhotos.slice(), hist:outgoingHistoryRestore.slice(),
-    cons:consumablesIncluded, lists:customLists.map(l=>[l.id,!!l.includeInUpdate]), sends:{tasks:listCfg.tasks.send, notes:listCfg.notes.send, parts:listCfg.parts.send}};
+    cons:consumablesIncluded, lists:customLists.map(l=>[l.id,!!l.includeInUpdate]), sends:{tasks:listCfg.tasks.send, notes:listCfg.notes.send, parts:listCfg.parts.send, todo:listCfg.todo.send}};
 }
 function outChangeCount(){
   if(!outSnap) return 0;
@@ -1807,6 +1868,8 @@ async function outgoingSend(){
     // Darryl's own custom lists — only the ones currently marked "Included." WorkClock auto-renders
     // one dropdown per list here, so a brand-new list just works the next time this goes out.
     pickLists: [].concat(listSent('cons') ? [{id:'consumables', name:listCfg.cons.name, items:consumables.map(c=>c.name)}] : [], customLists.filter(customSent).map(l=>({id:l.id, name:l.name, items:l.items}))),
+    // What's next: each ticked car's open to-do jobs, in the order you set. Only goes out when the To-do list is ticked in Outgoing.
+    todos: listSent('todo') ? todoCarsOut().map(c=>({carId:c.id, carName:c.name, jobs:safeArr(c.todos).filter(t=>!t.done).map(t=>({id:t.id, text:t.text}))})) : [],
     documents: outgoingForms.map(f=>({
       name:f.name,
       employeeId:f.employeeId||null,
@@ -2720,7 +2783,7 @@ function applyWorkClockSubmissionCore(payload){
       desc: newFormat ? (String(pe.task||'').trim() || '(no task)') : ([pe.task, pe.desc].filter(Boolean).join(' — ') || '(no description)'),
       notes: notesText || null, lists: newFormat,
       flag: flagParts.length ? flagParts.join(' · ') : null, flagDone:false,
-      consumables: pe.consumables || null, photos:0, docs:[],
+      consumables: pe.consumables || null, photos:0, docs:[], todoId: pe.todoId||null,
       pickListAnswers: ans
     };
     if(wcParts && wcParts.length) ne.parts = wcParts;
@@ -2820,6 +2883,7 @@ function applyWorkClockSubmissionCore(payload){
   if(payload.submittedAt) importedSubmissionFingerprints.push(importFingerprint);
   if(clocksChanged){ clockRecs = clockRecs.filter(c=>!(c.who===whoName && clockWks.has(c.wk))); clockRecs.push(...incomingClocks); }
   entries.push(...newEntries, ...flaggedAttachmentEntries);
+  newEntries.forEach(tickTodoFromEntry);
   // Log completed documents and photos against the matching car so they show up on its page,
   // same as work logged directly in Shop Boss.
   docsIn.forEach(d=>{
@@ -4161,6 +4225,7 @@ function wrRemove(s, kind, name, extraSnap){
   const subs = new Set([...s.entries, ...s.docs, ...s.photos.map(x=>x.photo), ...s.loose].map(x=>x.sub).filter(Boolean));
   const eset = new Set(s.entries);
   for(let i=entries.length-1;i>=0;i--) if(eset.has(entries[i])) entries.splice(i,1);
+  s.entries.forEach(untickTodoForEntry);
   const cset = new Set(s.clocks); clockRecs = clockRecs.filter(c=>!cset.has(c));
   s.docs.forEach(d=>{
     const i = completedDocs.indexOf(d); if(i>=0) completedDocs.splice(i,1);
@@ -4865,6 +4930,11 @@ const renderers = {
       <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('cons')">⚙</button>
       <div class="chev">${icon("chev")}</div>
     </div>
+    <div class="row" onclick='nav({type:"catalog",which:"Todo"})'>
+      <div><div class="row-title">${escH(listCfg.todo.name)}</div><div class="row-meta">Jobs to do on each car — shows on WorkClock as "What's next"${listCfg.todo.lock?' — always sent':''}</div></div>
+      <button class="btn-ghost chip-btn" title="List settings" onclick="event.stopPropagation();openListCfg('todo')">⚙</button>
+      <div class="chev">${icon("chev")}</div>
+    </div>
     ${customLists.length ? `<p class="list-sub" style="margin-top:18px">Your own lists</p>` : ''}
     ${customLists.map(l=>`
       <div class="row" onclick='nav({type:"customList",id:"${l.id}"})'>
@@ -4936,6 +5006,15 @@ const renderers = {
         <input class="search-input" id="newBillingPart" style="margin-top:14px" placeholder="e.g. Brake pad set">
         <button class="btn-primary" style="width:100%" onclick="addBillingPart(document.getElementById('newBillingPart').value)">+ Add new</button>
         ${pasteListHTML('bill')}`;
+    }
+    if(v.which==='Todo'){
+      return `
+        <div class="detail-head">
+          <p class="kicker">Settings · Task lists</p>
+          <h1 class="detail-title">${escH(listCfg.todo.name)}</h1>
+        </div>
+        <p class="list-sub">Tick the cars whose to-do jobs should go out to WorkClock. The jobs themselves are added on each car's page. Whether this whole list goes out is set in Assembly Room → Outgoing → Lists, or use the ⚙ to always send it.</p>
+        ${cars.map(c=>{ const n = carTodos(c).filter(t=>!t.done).length; return `<div class="row lst-row" style="cursor:default"><label style="display:flex;align-items:center;gap:10px;flex:1;min-width:0"><input type="checkbox" ${c.todoSend!==false?'checked':''} onchange="toggleCarTodoSend('${c.id}')"><span class="row-title">${escH(c.name)}</span></label><span class="row-meta">${n} open</span></div>`; }).join('') || '<p class="list-sub">No cars yet.</p>'}`;
     }
     if(v.which==='Notes Helper'){
       return `
@@ -5154,7 +5233,7 @@ const renderers = {
           <div style="flex:1"><div class="row-title">🖼 ${ph.caption||'Photo'}</div>${ph.carId?`<div class="row-meta">${(cars.find(c=>c.id===ph.carId)||{}).name||''}</div>`:''}</div>
           <button class="btn-ghost chip-btn" onclick="removeOutgoingPhoto('${ph.id}')">✕</button>
         </div>`;
-      const listsGoingOut = ['tasks','notes','cons'].filter(listSent).length + customLists.filter(customSent).length;
+      const listsGoingOut = ['tasks','notes','cons','todo'].filter(listSent).length + customLists.filter(customSent).length;
       const pillHead = (key, title, count, tip)=>`
         <div class="assembly-group-head pill-head" onclick='outNav(${pill===key?'null':`"${key}"`}, null)'>
           <h3>${title}${tip?infoTip(tip):''}</h3>
@@ -5224,8 +5303,8 @@ const renderers = {
         ${pill==='lists'?`
         <div>
         ${(()=>{
-          const rows = [['tasks',workTypes.length],['notes',notesHelper.length],['cons',consumables.length]].filter(([k])=>listCfg[k].show)
-            .map(([k,n])=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${listCfg[k].name}</div><div class="row-meta">${n} item${n===1?'':'s'}${listCfg[k].lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(listCfg[k].lock||listSendFlag(k))?'checked':''} ${listCfg[k].lock?'disabled':''} onchange="toggleListSend('${k}')"></label></div>`);
+          const rows = [['tasks',workTypes.length],['notes',notesHelper.length],['cons',consumables.length],['todo',todoCarsOut().length]].filter(([k])=>listCfg[k].show)
+            .map(([k,n])=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${listCfg[k].name}</div><div class="row-meta">${n} ${k==='todo'?'car':'item'}${n===1?'':'s'}${listCfg[k].lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(listCfg[k].lock||listSendFlag(k))?'checked':''} ${listCfg[k].lock?'disabled':''} onchange="toggleListSend('${k}')"></label></div>`);
           const cust = customLists.filter(l=>l.show!==false).map(l=>`<div class="row" style="cursor:default"><div style="flex:1"><div class="row-title">${l.name}</div><div class="row-meta">${l.items.length} item${l.items.length===1?'':'s'}${l.lock?' · always sent':''}</div></div><label style="width:60px;text-align:center"><input type="checkbox" ${(l.lock||l.includeInUpdate)?'checked':''} ${l.lock?'disabled':''} onchange="toggleCustomListInclude('${l.id}')"></label></div>`);
           return rows.concat(cust).join('') || '<p class="list-sub">No lists are set to show here. Use the ⚙ next to a list in Settings → Task lists.</p>';
         })()}
@@ -5542,6 +5621,7 @@ const renderers = {
       </section>
       ${c.notes.length?`<div class="print-only"><p class="block-title">Notes</p>${c.notes.map(n=>`<div class="entry"><div class="entry-desc">${n}</div></div>`).join('')}</div>`:''}
       ${c.docs.length?`<div class="print-only"><p class="block-title">Documents on file</p>${c.docs.map(d=>`<div class="entry"><div class="entry-desc">📄 ${d}</div></div>`).join('')}</div>`:''}
+      ${carTodoSectionHTML(c)}
       <section class="block">
         <p class="block-title">Employees who've worked on this car</p>
         <div class="chips">${emps.map(e=>`<div class="chip" onclick='nav({type:"intersection",emp:"${e.id}",car:"${c.id}"})'><span class="dot"></span>${e.name}</div>`).join('')}</div>
@@ -5979,6 +6059,10 @@ loadPersisted();
 // catches data that was written in no particular order — on first run (nothing
 // customized yet) everything snaps to A–Z immediately rather than only after the next edit.
 normalizeListItems(consumables);
+(function(){ // one-time cleanup: commas in list item names would split items on WorkClock
+  [workTypes, notesHelper, consumables, billingParts].forEach(a=>a.forEach(x=>{ if(x && typeof x.name==='string' && x.name.indexOf(',')>=0) x.name = noCommaName(x.name); }));
+  customLists.forEach(l=>{ l.items = safeArr(l.items).map(noCommaName); });
+})();
 normalizeListItems(workTypes);
 if(!listOrderCustomized.cars) sortArrayAlphaInPlace(cars, c=>c.name);
 if(!listOrderCustomized.employees) sortArrayAlphaInPlace(employees, e=>e.name);
