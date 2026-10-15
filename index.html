@@ -341,6 +341,23 @@
     .entry{padding:4px 8px !important;margin:4px 0 !important}
     .detail-head{margin-bottom:6px !important}
   }
+  .hrep-row{display:flex;gap:8px}.hrep-row .hrep-dd{flex:1;min-width:0}
+  .hrep-dd{background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
+  .hrep-dd summary{padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-size:14px;list-style:none}
+  .hrep-dd summary::-webkit-details-marker{display:none}.hrep-dd summary small{color:var(--muted)}
+  .hrep-dd-body{padding:4px 12px 12px;max-height:260px;overflow:auto}
+  .hrep-chk{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14.5px}.hrep-chk input{width:20px;height:20px}
+  .hrep-title{font-family:var(--display);font-size:26px;margin-top:6px}
+  .hrep-filters{color:var(--muted);font-size:13px;margin:4px 0 14px;padding-bottom:10px;border-bottom:3px solid var(--accent)}
+  .hrep-car{margin-top:16px}.hrep-carhead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-top:2px solid var(--line);padding-top:8px;flex-wrap:wrap}
+  .hrep-carhead b{font-family:var(--display);font-size:20px;color:var(--accent)}.hrep-carhead span{color:var(--muted);font-size:13px}
+  .hrep-entry{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;break-inside:avoid}
+  .hrep-top{display:flex;justify-content:space-between;gap:10px}.hrep-hrs{white-space:nowrap;color:var(--muted)}
+  .hrep-sub{display:flex;justify-content:space-between;padding:3px 0 0 14px;font-size:13.5px;color:var(--muted)}
+  .hrep-note{padding:3px 0 0 14px;font-size:13px;color:var(--muted)}
+  .hrep-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.hrep-photos img{width:120px;height:90px;object-fit:cover;border-radius:6px}
+  .hrep-grand{display:flex;justify-content:space-between;gap:10px;border-top:2px solid var(--text);margin-top:18px;padding-top:8px;font-weight:700}
+  @media print{ .hrep-sheet,.hrep-sheet *{color:#000 !important;border-color:#999 !important} .hrep-carhead b{color:#a01420 !important} .hrep-filters{border-bottom-color:#a01420 !important} .hrep-grand{border-top-color:#000 !important} .hrep-car{break-inside:auto} }
   @media print{ .no-print{display:none !important} .print-only{display:block !important;margin-bottom:12px;color:#000} .flag-btn, .exit-btn{display:none !important} .reveal-panel{display:none !important} .print-head{font-size:11px;color:#555 !important;margin-bottom:10px} }
 </style>
 </head>
@@ -359,7 +376,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.36';
+const APP_VERSION = 'v0.37';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -1694,7 +1711,7 @@ async function outgoingSend(){
     notesHelper: notesHelper.map(t=>t.name),
     // Darryl's own custom lists — only the ones currently marked "Included." WorkClock auto-renders
     // one dropdown per list here, so a brand-new list just works the next time this goes out.
-    pickLists: [].concat(consumablesIncluded ? [{id:'consumables', name:'Consumables and parts', items:consumables.map(c=>c.name)}] : [], customLists.filter(l=>l.includeInUpdate).map(l=>({id:l.id, name:l.name, items:l.items}))),
+    pickLists: [].concat([{id:'billingparts', name:'Parts used', items:billingParts.map(b=>b.name)}], consumablesIncluded ? [{id:'consumables', name:'Consumables and parts', items:consumables.map(c=>c.name)}] : [], customLists.filter(l=>l.includeInUpdate).map(l=>({id:l.id, name:l.name, items:l.items}))),
     documents: outgoingForms.map(f=>({
       name:f.name,
       employeeId:f.employeeId||null,
@@ -2498,7 +2515,14 @@ function mergeOntoOld(ne, old){
     else ne[f] = old[f];
   });
   ne.billable = old.billable;
-  if(old.parts) ne.parts = JSON.parse(JSON.stringify(old.parts));
+  if(old.parts){
+    const oldParts = JSON.parse(JSON.stringify(old.parts));
+    if(ne.parts && ne.parts.length){
+      // the employee's latest picks win, but a price Darren already typed stays with its part, and parts Darren added himself are kept
+      ne.parts.forEach(p=>{ const m = oldParts.find(o=>o.name && o.name.toLowerCase()===p.name.toLowerCase()); if(m && String(m.price||'')!=='') p.price = m.price; });
+      oldParts.filter(o=>o.src!=='wc').forEach(o=>{ if(!ne.parts.some(p=>p.name.toLowerCase()===String(o.name||'').toLowerCase())) ne.parts.push(o); });
+    } else ne.parts = oldParts.filter(o=>o.src!=='wc');
+  }
   if(!diffs.some(d=>d.f==='notes'||d.f==='consumables')){ ne.flag = old.flag; ne.flagDone = old.flagDone; }
   return diffs;
 }
@@ -2581,7 +2605,13 @@ function applyWorkClockSubmissionCore(payload){
     if(notesText) flagParts.push(notesText);
     if(pe.lowSupply) flagParts.push('Running low: '+pe.lowSupply);
     if(pe.flagNote) flagParts.push(pe.flagNote);
-    const ans = pe.pickListAnswers && typeof pe.pickListAnswers==='object' ? pe.pickListAnswers : null;
+    let ans = pe.pickListAnswers && typeof pe.pickListAnswers==='object' ? pe.pickListAnswers : null;
+    // Parts the employee picked on WorkClock become this entry's parts (price left for Darren, filled from the last price used when there is one).
+    let wcParts = null;
+    if(ans && ans.billingparts){
+      wcParts = String(ans.billingparts).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const saved = billingParts.find(b=>b.name.toLowerCase()===n.toLowerCase()); return {name: saved?saved.name:n, price: saved&&saved.price!=null?String(saved.price):'', custom: !saved, src:'wc'}; });
+      ans = Object.assign({}, ans); delete ans.billingparts; if(!Object.keys(ans).length) ans = null;
+    }
     const ne = {
       id: newEntryId(), sub: importFingerprint, ch: importHash, wcId: pe.id||null,
       iso: pe.date||null, wk: wkForIso(pe.date, payload.weekOf), empId: emp?emp.id:null, startedAt: pe.startedAt||null, endedAt: pe.endedAt||null,
@@ -2597,6 +2627,7 @@ function applyWorkClockSubmissionCore(payload){
       consumables: pe.consumables || (ans && ans.consumables) || null, photos:0, docs:[],
       pickListAnswers: ans
     };
+    if(wcParts && wcParts.length) ne.parts = wcParts;
     ne.orig = entryOrig(ne);
     return ne;
   });
@@ -2628,13 +2659,21 @@ function applyWorkClockSubmissionCore(payload){
   });
   // ---- Match against what Shop Boss already has for these days (current listings and History) ----
   let sameCount = 0;
+  let partsUpdated = 0;
   const currentReplacements = []; // {ne, old}: a day that already exists in Incoming and has changed
   const keptNew = [];
   newEntries.forEach(ne=>{
     const old = ne.wcId ? entries.find(x=>x.wcId===ne.wcId && x.who===whoName) : null;
     if(!old){ if(ne.wk && historyWeeks.some(h=>h.wk===ne.wk)) ne.late = true; keptNew.push(ne); return; }
     const diffs = mergeOntoOld(ne, old);
-    if(!diffs.length){ sameCount++; old.startedAt = ne.startedAt; old.endedAt = ne.endedAt; return; }
+    if(!diffs.length){
+      // nothing else changed — but the employee may have added or removed parts since the last send
+      const wcNames = arr=>safeArr(arr).filter(p=>p.src==='wc').map(p=>String(p.name||'').toLowerCase()).sort().join('|');
+      const partsChanged = wcNames(ne.parts)!==wcNames(old.parts);
+      old.startedAt = ne.startedAt; old.endedAt = ne.endedAt;
+      if(partsChanged){ old.parts = ne.parts; partsUpdated++; } else sameCount++;
+      return;
+    }
     ne.replaces = old.id; ne.chg = diffs;
     if(old.historyWeekId){ ne.fromHistory = true; keptNew.push(ne); }
     else currentReplacements.push({ne, old});
@@ -2642,6 +2681,7 @@ function applyWorkClockSubmissionCore(payload){
   newEntries.length = 0; newEntries.push(...keptNew);
   const docsIn = (Array.isArray(payload.completedDocuments) ? payload.completedDocuments : []).filter(d=>!(d.id && completedDocs.some(x=>x.wcId===d.id)));
   const photosIn = (Array.isArray(payload.photos) ? payload.photos : []).filter(p=>!(p.id && (unmatchedPhotos.some(x=>x.wcId===p.id) || cars.some(c=>safeArr(c.photos).some(x=>x.wcId===p.id)))));
+  if(!newEntries.length && !currentReplacements.length && !flaggedAttachmentEntries.length && !docsIn.length && !photosIn.length && !clocksChanged && partsUpdated){ persist(); alert('Updated the parts on '+partsUpdated+' entr'+(partsUpdated===1?'y':'ies')+'. Nothing else changed.'); render(); return; }
   if(!newEntries.length && !currentReplacements.length && !flaggedAttachmentEntries.length && !docsIn.length && !photosIn.length && !clocksChanged){
     alert('Shop Boss already has everything in this submission. Nothing was changed.');
     return;
@@ -2854,7 +2894,7 @@ function partsEditorHTML(l, idx){
   <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--line)" onclick="event.stopPropagation()">
     <div class="hours-k" style="margin-bottom:4px">Parts used${parts.length?` · ${fmtMoney(entryPartsTotal(l))}`:''}</div>
     ${parts.map((p,pi)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
-      ${p.custom ? `<input class="search-input" style="flex:1;min-width:0;margin:0" placeholder="Part name" onchange="asmSetPartName(${idx},${pi},this.value)">` : `<select style="flex:1;min-width:0" onchange="asmSetPartName(${idx},${pi},this.value)">${opts(p.name)}</select>`}
+      ${p.custom ? `<input class="search-input" style="flex:1;min-width:0;margin:0" placeholder="Part name" value="${escH(p.name||'')}" onchange="asmSetPartName(${idx},${pi},this.value)">` : `<select style="flex:1;min-width:0" onchange="asmSetPartName(${idx},${pi},this.value)">${opts(p.name)}</select>`}
       <span>$</span><input class="hours-input-inline" style="width:76px" type="number" inputmode="decimal" step="0.01" min="0" value="${(p.price==null?'':String(p.price)).replace(/"/g,'')}" onchange="asmSetPartPrice(${idx},${pi},this.value)">
       <button class="btn-ghost chip-btn" onclick="asmRemovePart(${idx},${pi})" title="Remove this part">✕</button></div>`).join('')}
     <button class="btn-ghost" style="width:auto;padding:4px 12px;font-size:12.5px" onclick="asmAddPart(${idx})">+ Add part</button>
@@ -3967,7 +4007,7 @@ async function asmReleaseToHistory(){
   persist();
   if(!released.length && !lastLabel){ render(); return; }
   alert('Released — '+released.length+' entr'+(released.length===1?'y':'ies')+' moved into History as "'+lastLabel+'".'+(kept.length?'\n\nStill in Incoming because you chose Cancel: '+kept.join('; ')+'.':' Incoming is clear for next week.'));
-  navReplace({type:'history'});
+  navReplace({type:'history',view:'list'});
 }
 // Pulls an archived week's entries back into Incoming, editable again — for a correction after
 // the fact. The history record itself is removed since those entries are live again, not archived.
@@ -4066,7 +4106,7 @@ async function deleteHistoryWeek(wid){
   if(!ok) return;
   s.wholeWeek = w;
   wrRemove(s, 'HistoryWeek', w.label+' (entire week)');
-  navReplace({type:'history'});
+  navReplace({type:'history',view:'list'});
 }
 async function deleteWorkDay(iso, who){
   const es = entries.filter(l=>entryIso(l)===iso && (!who || l.who===who));
@@ -4240,34 +4280,36 @@ function historyCalendarHTML(monthOffset){
 }
 let rep = {range:'all', from:'', to:'', emps:[], cars:[], open:false};
 function fltReset(){ rep = {range:'all', from:'', to:'', emps:[], cars:[], open:false}; }
-function repRange(){
+function repRange(o){
+  o = o || rep;
   const {wkStart, wkEnd} = workWeekRange();
   const T = sbToday();
   const add = (d,n)=>new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
-  switch(rep.range){
+  switch(o.range){
     case 'week': return {a:wkStart, b:wkEnd};
     case 'lastweek': return {a:add(wkStart,-7), b:add(wkEnd,-7)};
     case '30': return {a:add(T,-29), b:T};
     case 'month': return {a:new Date(T.getFullYear(),T.getMonth(),1), b:new Date(T.getFullYear(),T.getMonth()+1,0)};
     case 'lastmonth': return {a:new Date(T.getFullYear(),T.getMonth()-1,1), b:new Date(T.getFullYear(),T.getMonth(),0)};
-    case 'custom': return {a: rep.from ? new Date(rep.from+'T00:00') : null, b: rep.to ? new Date(rep.to+'T00:00') : null};
+    case 'custom': return {a: o.from ? new Date(o.from+'T00:00') : null, b: o.to ? new Date(o.to+'T00:00') : null};
     default: return {a:null, b:null};
   }
 }
 function repSet(k,v){ rep[k]=v; render(); }
 function repCustom(k,v){ rep[k]=v; rep.range='custom'; render(); }
 function repToggle(k,id){ const i=rep[k].indexOf(id); if(i>=0) rep[k].splice(i,1); else rep[k].push(id); render(); }
-function applyFlt(list){
-  const {a,b} = repRange();
+function applyFlt(list, o){
+  o = o || rep;
+  const {a,b} = repRange(o);
   return list.filter(l=>{
     const d = entryDate(l);
     if(a && d<a) return false;
     if(b && d>b) return false;
-    if(rep.emps.length){
+    if(o.emps.length){
       const whoEmp = employees.find(e=>e.name===l.who);
-      if(!whoEmp || !rep.emps.includes(whoEmp.id)) return false;
+      if(!whoEmp || !o.emps.includes(whoEmp.id)) return false;
     }
-    if(rep.cars.length && !rep.cars.includes(l.car)) return false;
+    if(o.cars.length && !o.cars.includes(l.car)) return false;
     return true;
   });
 }
@@ -4321,6 +4363,92 @@ function filterBar(dims){
     <div class="flt-wrap"><button class="flt-btn ${on?'on':''}" onclick="repOpen()" aria-label="Filter">${funnel}${on?'<span class="flt-dot"></span>':''}</button></div>
     ${panel}
     ${on?`<div class="flt-strip"><span>Filtered: ${fltSummary()}</span><span class="flt-clear" onclick="repClear()">Clear ✕</span></div>`:''}
+  </div>`;
+}
+// ---- History report builder: pick employees, cars, dates and what to show; read it here or print it ----
+let hrep = null;
+function hrepReset(carIds, all){
+  hrep = {emps:[], cars:(carIds||[]).slice(), range:'all', from:'', to:'', open:{emps:false,cars:false,dates:false},
+          show:{work:true, hours:true, parts:true, forms:!!all, photos:!!all, notes:!!all}};
+}
+hrepReset();
+function hrepOpenCar(carId){ hrepReset([carId], true); navReplace({type:'history', view:'report'}); }
+function hrepToggle(k,id){ const i=hrep[k].indexOf(id); if(i>=0) hrep[k].splice(i,1); else hrep[k].push(id); render(); }
+function hrepSet(k,v){ hrep[k]=v; render(); }
+function hrepCustom(k,v){ hrep[k]=v; hrep.range='custom'; render(); }
+function hrepShow(k){ hrep.show[k] = !hrep.show[k]; render(); }
+function hrepClear(){ hrepReset(); render(); }
+function hrepDocOk(d){
+  const iso = d.iso || ''; const dt = iso ? new Date(iso+'T00:00:00') : null; const {a,b} = repRange(hrep);
+  if((a||b) && !dt) return false; if(a && dt<a) return false; if(b && dt>b) return false;
+  if(hrep.emps.length){ const e = employees.find(x=>x.name===d.who); if(!e || !hrep.emps.includes(e.id)) return false; }
+  if(hrep.cars.length && !hrep.cars.includes(d.carId)) return false;
+  return true;
+}
+function hrepPhotoOk(c, ph){
+  const iso = entryIso({date:ph.date}); const dt = iso ? new Date(iso+'T00:00:00') : null; const {a,b} = repRange(hrep);
+  if((a||b) && !dt) return false; if(a && dt<a) return false; if(b && dt>b) return false;
+  if(hrep.emps.length){ const e = employees.find(x=>x.name===ph.empName); if(!e || !hrep.emps.includes(e.id)) return false; }
+  if(hrep.cars.length && !hrep.cars.includes(c.id)) return false;
+  return true;
+}
+function hrepSummary(){
+  const dateTxt = hrep.range==='custom' ? (()=>{ const {a,b}=repRange(hrep); const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); return (a?f(a):'start')+' – '+(b?f(b):'now'); })() : ((FLT_PRESETS.find(x=>x[0]===hrep.range)||[0,'All time'])[1]);
+  const nm = (k,list,none)=>hrep[k].length ? hrep[k].map(id=>(list.find(x=>x.id===id)||{name:'(deleted)'}).name).join(', ') : none;
+  const shown = [['work','Work done'],['hours','Hours'],['parts','Parts'],['forms','Forms'],['photos','Photos'],['notes','Notes']].filter(x=>hrep.show[x[0]]).map(x=>x[1]).join(', ') || 'Nothing selected';
+  return {line1: nm('cars',cars,'All cars')+' · '+nm('emps',employees,'All employees')+' · '+dateTxt, line2: 'Showing: '+shown};
+}
+function hrepReportHTML(){
+  const s = hrep.show, E = escH;
+  const hasParts = l=>safeArr(l.parts).length>0;
+  const es = applyFlt(entries, hrep).filter(l=> (s.work||s.hours||s.notes) ? true : (s.parts && hasParts(l)));
+  const groups = new Map();
+  const grp = (key,name)=>{ if(!groups.has(key)) groups.set(key,{name, es:[], docs:[], photos:[]}); return groups.get(key); };
+  es.forEach(l=>grp(l.car||('t:'+(l.carTyped||'')), carNameForEntry(l)).es.push(l));
+  if(s.forms) completedDocs.filter(hrepDocOk).forEach(d=>{ const c = cars.find(x=>x.id===d.carId); grp(d.carId||('t:'+(d.carTyped||'')), c?c.name:(d.carTyped?'⚠ "'+d.carTyped+'" (unmatched)':'(no car)')).docs.push(d); });
+  if(s.photos) cars.forEach(c=>safeArr(c.photos).filter(ph=>hrepPhotoOk(c,ph)).forEach(ph=>grp(c.id,c.name).photos.push(ph)));
+  const list = [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name));
+  if(!list.length) return '<p class="list-sub">Nothing matches these filters.</p>';
+  const money = n=>'$'+(Math.round(n*100)/100).toFixed(2);
+  let gH=0, gB=0, gP=0, gMissing=0;
+  const body = list.map(g=>{
+    g.es.sort((a,b)=>(entryIso(a)||'').localeCompare(entryIso(b)||'')||((a.startedAt||0)-(b.startedAt||0)));
+    const H = sumBy(g.es,'hours'), B = sumBy(g.es,'billable');
+    let P = 0, miss = 0; g.es.forEach(l=>safeArr(l.parts).forEach(p=>{ P += partNum(p.price); if(String(p.price==null?'':p.price).trim()==='') miss++; }));
+    gH+=H; gB+=B; gP+=P; gMissing+=miss;
+    const tot = [s.hours?fmtHrsMin(H)+(B?' ('+fmtHrsMin(B)+' billable)':''):'', s.parts?money(P)+' parts'+(miss?' + '+miss+' no price yet':''):''].filter(Boolean).join(' · ');
+    return `<div class="hrep-car"><div class="hrep-carhead"><b>${E(g.name)}</b><span>${tot}</span></div>
+      ${g.es.map(l=>`<div class="hrep-entry">
+        <div class="hrep-top"><span><b>${E(entryDateLong(l))}</b> · ${E(l.who||'')}${s.work?' · '+E(descHTML(l)||''):''}</span>${s.hours?`<span class="hrep-hrs">${fmtHrsMin(l.hours)}${(parseFloat(l.billable)||0)?' / '+fmtHrsMin(l.billable)+' billable':''}</span>`:''}</div>
+        ${s.parts&&hasParts(l)?safeArr(l.parts).map(p=>`<div class="hrep-sub"><span>${E(p.name||'(unnamed part)')}</span><span>${String(p.price==null?'':p.price).trim()===''?'$ —':money(partNum(p.price))}</span></div>`).join(''):''}
+        ${s.notes?[l.notes?'Notes: '+l.notes:'', l.flag&&!l.notes?'Flag: '+l.flag:'', (l.consumables&&!(l.pickListAnswers&&l.pickListAnswers.consumables))?'Consumables: '+l.consumables:''].filter(Boolean).map(t=>`<div class="hrep-note">${E(t)}</div>`).join(''):''}
+      </div>`).join('')}
+      ${g.docs.map(d=>`<div class="hrep-entry"><div class="hrep-top"><span><b>📄 ${E(d.name||'Form')}</b> · ${E(d.who||'')} · ${E(d.date||'')}</span></div>${d.answers?`<div class="hrep-note" style="white-space:pre-wrap">${E(formAnswersText(d).split('\n').slice(2).join('\n').trim())}</div>`:''}</div>`).join('')}
+      ${g.photos.length?`<div class="hrep-photos">${g.photos.map(ph=>ph.dataUrl?`<img src="${ph.dataUrl}" alt="">`:'').join('')}</div>`:''}
+    </div>`;
+  }).join('');
+  const grand = [s.hours?fmtHrsMin(gH)+(gB?' ('+fmtHrsMin(gB)+' billable)':''):'', s.parts?money(gP)+' parts'+(gMissing?' + '+gMissing+' with no price yet':''):''].filter(Boolean).join(' · ');
+  return body + (grand ? `<div class="hrep-grand"><span>Total</span><span>${grand}</span></div>` : '');
+}
+function hrepHTML(){
+  const sm = hrepSummary();
+  const multi = (key,label,list)=>`<details class="hrep-dd" ${hrep.open[key]?'open':''} ontoggle="hrep.open.${key}=this.open"><summary>${label} <small>${hrep[key].length?hrep[key].length+' selected':'All'}</small></summary>
+    <div class="hrep-dd-body">${list.map(x=>`<label class="hrep-chk"><input type="checkbox" ${hrep[key].includes(x.id)?'checked':''} onchange="hrepToggle('${key}','${x.id}')"> ${escH(x.name)}</label>`).join('') || '<span class="list-sub">None yet</span>'}</div></details>`;
+  const showChip = (k,l)=>`<div class="chip ${hrep.show[k]?'on':''}" onclick="hrepShow('${k}')">${hrep.show[k]?'✓ ':''}${l}</div>`;
+  return `
+  <div class="no-print">
+    <div class="hrep-row">${multi('emps','Employees',employees)}${multi('cars','Cars',cars)}</div>
+    <details class="hrep-dd" ${hrep.open.dates?'open':''} ontoggle="hrep.open.dates=this.open" style="margin-top:8px"><summary>Dates <small>${escH(hrepSummary().line1.split(' · ').pop())}</small></summary>
+      <div class="hrep-dd-body"><div class="chips" style="margin-bottom:8px">${FLT_PRESETS.map(p=>`<div class="chip ${hrep.range===p[0]?'on':''}" onclick="hrepSet('range','${p[0]}')">${p[1]}</div>`).join('')}</div>
+      <div class="rep-dates"><input type="date" value="${hrep.from}" onchange="hrepCustom('from',this.value)"><span class="hours-unit">to</span><input type="date" value="${hrep.to}" onchange="hrepCustom('to',this.value)"></div></div></details>
+    <p class="block-title" style="margin-top:14px">Show</p>
+    <div class="chips">${showChip('work','Work done')}${showChip('hours','Hours')}${showChip('parts','Parts')}${showChip('forms','Forms')}${showChip('photos','Photos')}${showChip('notes','Notes')}</div>
+    <div style="display:flex;gap:8px;margin:12px 0"><button class="btn-primary" style="flex:1;margin:0" onclick="window.print()">🖨 Print / Save PDF</button><button class="btn-ghost" style="width:auto;margin:0" onclick="hrepClear()">Clear</button></div>
+  </div>
+  <div class="hrep-sheet">
+    <div class="hrep-title">Work Report</div>
+    <div class="hrep-filters">${escH(sm.line1)}<br>${escH(sm.line2)}</div>
+    ${hrepReportHTML()}
   </div>`;
 }
 function printBlock(groups){
@@ -4446,12 +4574,21 @@ const renderers = {
     </div>`,
 
   history: (v)=>{
-    const view = (v&&v.view) || 'list';
+    const view = (v&&v.view) || 'report';
     const monthOffset = (v&&v.month) || 0;
+    if(view==='report') return `
+    <h2 class="list-title no-print">History</h2>
+    <div class="assembly-tabs no-print">
+      <button class="assembly-tab active" onclick='navReplace({type:"history",view:"report"})'>Report</button>
+      <button class="assembly-tab" onclick='navReplace({type:"history",view:"list"})'>List</button>
+      <button class="assembly-tab" onclick='navReplace({type:"history",view:"cal",month:0})'>Calendar</button>
+    </div>
+    ${hrepHTML()}`;
     return `
     <h2 class="list-title">History</h2>
     <p class="list-sub">Every week already sent to the accountant — reopen one if it needs a correction</p>
     <div class="assembly-tabs no-print">
+      <button class="assembly-tab" onclick='navReplace({type:"history",view:"report"})'>Report</button>
       <button class="assembly-tab ${view==='list'?'active':''}" onclick='navReplace({type:"history",view:"list"})'>List</button>
       <button class="assembly-tab ${view==='cal'?'active':''}" onclick='navReplace({type:"history",view:"cal",month:0})'>Calendar</button>
     </div>
@@ -5273,6 +5410,7 @@ const renderers = {
       </div>
       ${filterBar(['dates','emps'])}
       <div class="print-only" style="margin:-4px 0 12px"><p class="list-sub">${logs.length} entr${logs.length===1?'y':'ies'} · ${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours · ${totalPhotos} photo${totalPhotos===1?'':'s'} · ${allDocs.length} document${allDocs.length===1?'':'s'} (listed by name — attached separately)</p></div>
+      <button class="btn-ghost no-print" style="width:100%;margin:8px 0" onclick="hrepOpenCar('${c.id}')">📄 Full history — work, parts, employees (print)</button>
       <div class="stat-pills no-print">
         <span class="pill tap-reveal" onclick="focusWorklog(this)">${logs.length} entr${logs.length===1?'y':'ies'}</span>
         <span class="pill tap-reveal" onclick="togglePanel('car-hours-panel', this)">${fmtHrsMin(logs.reduce((s,l)=>s+(parseFloat(l.hours)||0),0))} task hours</span>
