@@ -381,7 +381,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.41';
+const APP_VERSION = 'v0.42';
 document.title = 'Shop Boss ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 const cars = [];
@@ -2744,10 +2744,13 @@ function applyWorkClockSubmissionCore(payload){
   // Employee hours (clock-in to clock-out), one record per clock-in. A resent week replaces what Shop Boss had for that employee and week.
   const incomingClocks = Array.isArray(payload.clocks) ? payload.clocks.filter(c=>c && c.date && c.clockedInAt).map(c=>({
     id:'ck'+Date.now()+Math.random().toString(36).slice(2,7), wcId:c.id||null, empId:emp?emp.id:null, who:whoName, date:c.date,
-    wk:wkForIso(c.date, payload.weekOf), inAt:Number(c.clockedInAt), outAt:c.clockedOutAt==null?null:Number(c.clockedOutAt), ch:importHash, sub:importFingerprint})) : [];
+    wk:wkForIso(c.date, payload.weekOf), inAt:Number(c.clockedInAt), outAt:c.clockedOutAt==null?null:Number(c.clockedOutAt), ch:importHash, sub:importFingerprint, dev:payload.deviceId||''})) : [];
   const clockWks = new Set(incomingClocks.map(c=>c.wk)); if(Array.isArray(payload.clocks) && payload.weekOf) clockWks.add(payload.weekOf);
   const clockSigOf = list=>JSON.stringify(list.map(c=>[c.wcId||'',c.date,c.inAt,c.outAt]).sort());
-  const oldClocks = clockRecs.filter(c=>c.who===whoName && clockWks.has(c.wk));
+  // A resent week replaces only what came from the SAME device (or the very same clock records). Another device's clock-ins for that week are kept, so a phone and a shop tablet can each send their own days.
+  const incomingClockIds = new Set(incomingClocks.map(c=>c.wcId).filter(Boolean));
+  const clockIsReplaced = c=> c.who===whoName && clockWks.has(c.wk) && ((c.dev||'')===(payload.deviceId||'') || (c.wcId && incomingClockIds.has(c.wcId)));
+  const oldClocks = clockRecs.filter(clockIsReplaced);
   const clocksChanged = Array.isArray(payload.clocks) && clockSigOf(oldClocks)!==clockSigOf(incomingClocks);
   let unmatchedCars = 0;
   const newEntries = payload.entries.map(pe=>{
@@ -2881,7 +2884,7 @@ function applyWorkClockSubmissionCore(payload){
     }
   });
   if(payload.submittedAt) importedSubmissionFingerprints.push(importFingerprint);
-  if(clocksChanged){ clockRecs = clockRecs.filter(c=>!(c.who===whoName && clockWks.has(c.wk))); clockRecs.push(...incomingClocks); }
+  if(clocksChanged){ clockRecs = clockRecs.filter(c=>!clockIsReplaced(c)); clockRecs.push(...incomingClocks); }
   entries.push(...newEntries, ...flaggedAttachmentEntries);
   newEntries.forEach(tickTodoFromEntry);
   // Log completed documents and photos against the matching car so they show up on its page,
