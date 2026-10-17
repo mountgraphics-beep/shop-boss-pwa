@@ -273,7 +273,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.26';
+const APP_VERSION = 'v0.28';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -1669,7 +1669,7 @@ async function doSubmitOne(toSend, docsToSend, photosToSend, returnView, widArg)
   // nothing here — the person already saw the confirm dialog and the share sheet, landed back
   // on Home, and had every reason to think it went through. Nothing was actually sent or marked
   // submitted, so they need to be told plainly, not left to find out later that hours are missing.
-  if(result==='declined' && !wroteCopy){ showToast('Not sent — you closed the share sheet without sending it. Nothing was submitted; try again when ready.', true); return; }
+  if(result==='declined'){ showToast('Not sent — you closed the send menu without sending. Nothing was submitted; try again when ready.', true); return; }
   if(result==='unavailable' && !wroteCopy){
     showToast('Couldn\'t save that file on this device. Try again — if it keeps happening, check that your browser allows downloads.', true);
     return;
@@ -1678,8 +1678,8 @@ async function doSubmitOne(toSend, docsToSend, photosToSend, returnView, widArg)
   docsToSend.forEach(d=>{ d.submitted=true; });
   photosToSend.forEach(p=>{ p.submitted=true; });
   clocksToSend.forEach(c=>{ c.submitted=true; });
-  maybeOpenEmailToDarren(fname, (emp?emp.name+"'s":'Weekly')+' hours for Shop Boss');
-  const msg = result==='shared' ? 'Sent.' : (result==='saved' ? 'Submitted.' : 'Submitted — nothing was shared or saved generally, but a copy landed in your Submitted Weeks folder.');
+  if(result!=='mailbox') maybeOpenEmailToDarren(fname, (emp?emp.name+"'s":'Weekly')+' hours for Shop Boss');
+  const msg = result==='mailbox' ? ((window.__mbLast && window.__mbLast.state==='waiting') ? 'Saved to send later. It goes out by itself when the shop mailbox is found.' : 'Sent to the shop mailbox. Waiting for Shop Boss to pick it up.') : result==='shared' ? 'Sent.' : (result==='saved' ? 'Submitted.' : 'Submitted — nothing was shared or saved generally, but a copy landed in your Submitted Weeks folder.');
   showToast(wroteCopy && result!=='unavailable' ? msg + ' A copy is also in '+submittedFolderName+'.' : msg);
   render();
 }
@@ -3561,7 +3561,550 @@ function acAppSource(el){
 })();
 </script>
 <script>
-if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+// ===== PIN helpers (identical in Shop Boss and WorkClock) =====
+// Not real security: a 4-digit PIN only stops accidents. The PIN is stored scrambled (hashed) wherever it is sent or compared.
+function pinHash(p){
+  let h1=0xdeadbeef, h2=0x41c6ce57; const s='shopboss-pin-v1:'+String(p);
+  for(let i=0,ch;i<s.length;i++){ ch=s.charCodeAt(i); h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677); }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+// Developer PIN (scrambled). TEST VALUE for now — replaced with the developer's real PIN before real use.
+const DEV_PIN_HASH = '1rq01qf4qkm';
+function pinIsDev(p){ return pinHash(p)===DEV_PIN_HASH; }
+// A small PIN window. onOk(pin) returns true to close it, or a text to show as an error.
+// opts: {noCancel:true, extraLabel, onExtra}
+function pinAsk(title, msg, onOk, opts){
+  opts = opts||{};
+  const old = document.getElementById('pinOverlay'+(opts.noCancel?'Lock':'')); if(old) old.remove();
+  const d = document.createElement('div');
+  d.id = 'pinOverlay'+(opts.noCancel?'Lock':'');
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,'+(opts.noCancel?'.94':'.75')+');z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML = '<div class="card" style="width:min(380px,100%)"><h3 style="margin:0 0 8px">'+title+'</h3>'
+    + (msg?'<p class="sub" style="margin:0 0 12px">'+msg+'</p>':'')
+    + '<input id="pinBox" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="4-digit PIN" style="width:100%;box-sizing:border-box;font-size:28px;letter-spacing:10px;text-align:center;padding:12px;border-radius:12px;border:1px solid var(--line,#444);background:transparent;color:inherit">'
+    + '<p id="pinErr" class="hint" style="color:#e05a5a;min-height:20px;margin:6px 0 0"></p>'
+    + '<button class="btn-primary" id="pinOk" style="margin-top:8px">OK</button>'
+    + (opts.extraLabel?'<button class="btn-ghost" id="pinExtra" style="margin-top:8px">'+opts.extraLabel+'</button>':'')
+    + (opts.noCancel?'':'<button class="btn-ghost" id="pinCancel" style="margin-top:8px">Cancel</button>')+'</div>';
+  document.body.appendChild(d);
+  const box = d.querySelector('#pinBox'), err = d.querySelector('#pinErr');
+  const close = ()=>{ d.remove(); };
+  const submit = ()=>{
+    const v = box.value.trim();
+    if(!/^\d{4}$/.test(v)){ err.textContent = 'Enter 4 digits.'; return; }
+    const r = onOk(v);
+    if(r===true) close(); else { err.textContent = (typeof r==='string'&&r)?r:'That did not work.'; box.value=''; box.focus(); }
+  };
+  d.querySelector('#pinOk').onclick = submit;
+  box.addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+  box.addEventListener('input', ()=>{ box.value = box.value.replace(/\D/g,'').slice(0,4); err.textContent=''; });
+  const c = d.querySelector('#pinCancel'); if(c) c.onclick = close;
+  const x = d.querySelector('#pinExtra'); if(x) x.onclick = ()=>{ close(); if(opts.onExtra) opts.onExtra(); };
+  setTimeout(()=>box.focus(), 50);
+  return {close};
+}
+// Make a new PIN: asks twice. cb(pin) once both match.
+function pinCreate(title, msg, cb, opts){
+  opts = opts||{};
+  pinAsk(title, msg, p1=>{
+    setTimeout(()=>pinAsk('Enter it again', 'Type the same 4 digits to confirm.', p2=>{
+      if(p2!==p1){ setTimeout(()=>pinCreate(title, 'Those did not match. Try again.', cb, opts), 30); return true; }
+      cb(p1); return true;
+    }, {noCancel:opts.noCancel}), 30);
+    return true;
+  }, opts);
+}
+
+// ===== Shared tablet mode, employee codes, big name (WorkClock) =====
+// All of this lives in its own saved box so it never touches the main WorkClock data.
+const WC_SHARED_KEY = 'wc-shared-v1';
+let sharedState = {sharedTablet:false, empCodes:{}, shopOwnerPin:null};
+try{ const raw = localStorage.getItem(WC_SHARED_KEY); if(raw) sharedState = Object.assign(sharedState, JSON.parse(raw)); }catch(e){}
+function saveShared(){ try{ localStorage.setItem(WC_SHARED_KEY, JSON.stringify(sharedState)); }catch(e){} }
+function ownerOrDevOk(p){ return pinIsDev(p) || (!!sharedState.shopOwnerPin && pinHash(p)===sharedState.shopOwnerPin); }
+function empCodeHash(empId, code){ return pinHash('emp:'+empId+':'+code); }
+
+// The owner PIN travels inside the Shop Boss update (scrambled).
+const _applyShopUpdate = applyShopUpdate;
+applyShopUpdate = function(payload){
+  try{ if(payload && typeof payload==='object' && payload.ownerPin){ sharedState.shopOwnerPin = payload.ownerPin; saveShared(); } }catch(e){}
+  return _applyShopUpdate.apply(this, arguments);
+};
+
+// ---- signing out of the shared tablet ----
+function signOutShared(msg){
+  if(!sharedState.sharedTablet || !currentEmp) return;
+  currentEmp = null; homeClockExpanded = false; homeTaskExpanded = false;
+  stack = [{type:'who'}];
+  const o = document.getElementById('pinOverlay'); if(o) o.remove();
+  render();
+  if(msg) showToast(msg);
+}
+const _clockIn = clockIn, _clockOut = clockOut;
+clockIn = function(){ const r = _clockIn.apply(this, arguments); setTimeout(()=>signOutShared('Clocked in — signed out for the next person.'), 400); return r; };
+clockOut = function(){ const r = _clockOut.apply(this, arguments); setTimeout(()=>signOutShared('Clocked out — signed out for the next person.'), 400); return r; };
+let lastTouch = Date.now(), hiddenAt = 0, graceUntil = 0;
+['pointerdown','keydown','scroll','input'].forEach(ev=>document.addEventListener(ev, ()=>{ lastTouch = Date.now(); }, true));
+// picking a file / taking a photo sends WorkClock to the background for a moment — don't sign out for that
+document.addEventListener('click', e=>{ const t = e.target; if(t && t.tagName==='INPUT' && t.type==='file') graceUntil = Date.now()+180000; }, true);
+setInterval(()=>{ if(sharedState.sharedTablet && currentEmp && Date.now()-lastTouch > 120000) signOutShared('Signed out after 2 minutes with no use.'); }, 5000);
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='hidden'){ hiddenAt = Date.now(); return; }
+  if(sharedState.sharedTablet && currentEmp && hiddenAt && Date.now()-hiddenAt > 60000 && Date.now() > graceUntil) signOutShared();
+  lastTouch = Date.now();
+});
+
+// ---- picking a name on the shared tablet needs that person's code ----
+const _pickEmployee = pickEmployee;
+function askEmpCode(id){
+  const e = employees.find(x=>x.id===id); if(!e) return;
+  pinAsk('Hi '+escText(e.name), 'Enter your 4-digit code.', p=>{
+    if(empCodeHash(id,p)!==sharedState.empCodes[id]) return 'Wrong code. Try again.';
+    _pickEmployee(id); return true;
+  }, {extraLabel:'Forgot my code', onExtra:()=>{
+    pinAsk('Owner PIN needed', 'Ask the shop owner to enter the owner PIN to reset your code.', op=>{
+      if(!ownerOrDevOk(op)) return 'Wrong PIN.';
+      setTimeout(()=>makeEmpCode(id), 30); return true;
+    });
+  }});
+}
+function makeEmpCode(id){
+  const e = employees.find(x=>x.id===id); if(!e) return;
+  pinCreate('Make your code, '+escText(e.name), 'Pick 4 digits you will remember. You will use it to sign in on this tablet.', code=>{
+    sharedState.empCodes[id] = empCodeHash(id, code); saveShared();
+    _pickEmployee(id); showToast('Code saved. You are signed in.');
+  });
+}
+pickEmployee = function(id){
+  if(!sharedState.sharedTablet) return _pickEmployee(id);
+  if(sharedState.empCodes[id]) askEmpCode(id); else makeEmpCode(id);
+};
+// a brand-new name typed or tapped on the "Who's clocking in?" screen also gets a code
+const _addEmployee = addEmployee;
+addEmployee = function(){
+  const r = _addEmployee.apply(this, arguments);
+  if(sharedState.sharedTablet && currentEmp){ const id = currentEmp; currentEmp = null; stack = [{type:'who'}]; render(); makeEmpCode(id); }
+  return r;
+};
+
+// ---- settings: turn shared tablet mode on or off ----
+function toggleSharedTablet(){
+  const turningOn = !sharedState.sharedTablet;
+  const note = sharedState.shopOwnerPin ? '' : ' (No update from Shop Boss has been imported yet, so only the developer PIN works for now.)';
+  pinAsk('Owner PIN', 'Enter the owner PIN to turn shared tablet mode '+(turningOn?'on':'off')+'.'+note, p=>{
+    if(!ownerOrDevOk(p)) return 'Wrong PIN.';
+    sharedState.sharedTablet = turningOn; saveShared();
+    if(turningOn){ currentEmp = null; stack = [{type:'who'}]; render(); showToast('Shared tablet mode is ON. Everyone signs in with their own code.'); }
+    else { render(); showToast('Shared tablet mode is off.'); }
+    return true;
+  });
+}
+const _settings = renderers.settings;
+renderers.settings = function(){
+  return _settings.apply(this, arguments) + `
+    <div class="card">
+      <p class="theme-subhead" style="margin:0">Shared tablet mode</p>
+      <p class="sub" style="margin:6px 0 12px">For a tablet that several people use. WorkClock shows the list of names every time it opens, each person signs in with their own 4-digit code, and it signs them out after they clock in or out, after 2 minutes of no use, or after the app has been away for a minute. Needs the owner PIN to turn on or off. Currently: <strong>${sharedState.sharedTablet?'ON':'off'}</strong></p>
+      <button class="btn-ghost" style="margin-top:0" onclick="toggleSharedTablet()">${sharedState.sharedTablet?'Turn off shared tablet mode':'Turn on shared tablet mode'}</button>
+    </div>`;
+};
+
+// ---- big "who is this" name on the home screen ----
+const _home = renderers.home;
+renderers.home = function(){
+  const me = employees.find(e=>e.id===currentEmp) || {};
+  return `<div style="text-align:center;margin:2px 0 10px"><div class="hint" style="margin:0">Working as</div><div style="font-family:var(--display);font-size:34px;line-height:1.1;color:var(--accent)">${escText(me.name||'')}</div></div>` + _home.apply(this, arguments);
+};
+
+// ---- My picture: take one, not just choose one ----
+const _myPicture = renderers.myPicture;
+renderers.myPicture = function(){
+  let h = _myPicture.apply(this, arguments);
+  const me = employees.find(e=>e.id===currentEmp) || {};
+  const cam = `<input type="file" id="myPicCam" accept="image/*" capture="user" style="display:none" onchange="setEmployeePicture('${currentEmp}', this.files[0])">
+    <button class="btn-ghost" onclick="document.getElementById('myPicCam').click()">Take a picture</button>`;
+  return h.replace('<button class="btn-ghost" onclick="goBack()">Done</button>', cam + '<button class="btn-ghost" onclick="goBack()">Done</button>');
+};
+
+// ---- start-up: on a shared tablet nobody stays signed in ----
+if(sharedState.sharedTablet){ currentEmp = null; stack = [{type:'who'}]; render(); }
+
 </script>
+<!--MB-BEGIN-->
+<script>
+// ===== Shop mailbox (wireless) - shared by Shop Boss and WorkClock =====
+// The mailbox is a small program on a computer in the shop (later a Raspberry Pi). The apps drop
+// messages in it and pick messages up from it. Nothing here needs the internet, only the shop Wi-Fi.
+window.MB = (function(){
+  const K_ADDR='mb-addr', K_OUT='mb-outbox', K_SEEN='mb-seen', K_DEV='mb-device', K_BAK='mb-last-backup';
+  const st = { role:'', peerLabel:'', nameFn:function(){return '';}, online:null, lastOk:0, lastErr:'', pending:[], busy:false, onChange:function(){} };
+  const lsGet=(k,d)=>{ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } };
+  const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+  const esc = s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const isNative = ()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+
+  function deviceId(){ let d=lsGet(K_DEV,''); if(!d){ d='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); lsSet(K_DEV,d); } return d; }
+  function addr(){ return lsGet(K_ADDR,'').trim(); }
+  function setAddr(a){ lsSet(K_ADDR, String(a||'').trim()); st.online=null; st.lastErr=''; }
+  function base(){
+    let a = addr(); if(!a) return '';
+    if(!/^https?:\/\//i.test(a)) a = 'http://'+a;
+    if(!/:\d+(\/|$)/.test(a.replace(/^https?:\/\//i,''))) a = a.replace(/\/+$/,'')+':8765';
+    return a.replace(/\/+$/,'');
+  }
+  // The hosted iPhone page is a secure (https) page, which the phone will not let talk to a plain shop address.
+  function unsupported(){ return location.protocol==='https:' && !isNative(); }
+
+  async function req(method, path, body, ms){
+    if(unsupported()) throw {code:'unsupported'};
+    const b = base(); if(!b) throw {code:'noaddr'};
+    const ctl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+    const t = setTimeout(()=>{ try{ ctl && ctl.abort(); }catch(e){} }, ms||8000);
+    try{
+      const opt = {method, cache:'no-store'};
+      if(ctl) opt.signal = ctl.signal;
+      if(body!==undefined){ opt.body = JSON.stringify(body); opt.headers = {'Content-Type':'text/plain'}; }
+      const r = await fetch(b+path, opt);
+      let j = null; try{ j = await r.json(); }catch(e){}
+      if(!r.ok || !j || j.ok===false) throw {code:'bad', status:r.status, error:(j&&j.error)||''};
+      st.online = true; st.lastOk = Date.now(); st.lastErr = '';
+      return j;
+    }catch(e){
+      if(e && e.code){ if(e.code!=='bad') st.online=false; throw e; }
+      st.online = false; st.lastErr = String((e&&e.message)||e);
+      throw {code:'offline', error:st.lastErr};
+    }finally{ clearTimeout(t); }
+  }
+
+  // ---- stored payloads (can be large) live in IndexedDB; the small list lives in localStorage ----
+  const memStore = {};
+  function idb(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open('mb-data',1); r.onupgradeneeded=()=>r.result.createObjectStore('p'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
+  async function putP(k,v){ try{ const db=await idb(); await new Promise((res,rej)=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }catch(e){ memStore[k]=v; } }
+  async function getP(k){ try{ const db=await idb(); return await new Promise((res,rej)=>{ const tx=db.transaction('p','readonly'); const q=tx.objectStore('p').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }catch(e){ return memStore[k]; } }
+  async function delP(k){ try{ const db=await idb(); await new Promise((res,rej)=>{ const tx=db.transaction('p','readwrite'); tx.objectStore('p').delete(k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }catch(e){} delete memStore[k]; }
+
+  function outbox(){ try{ return JSON.parse(lsGet(K_OUT,'[]'))||[]; }catch(e){ return []; } }
+  function saveOut(l){ lsSet(K_OUT, JSON.stringify(l.slice(-200))); }
+  function seen(){ try{ return JSON.parse(lsGet(K_SEEN,'[]'))||[]; }catch(e){ return []; } }
+  function markSeen(id){ const l=seen(); if(!l.includes(id)){ l.push(id); lsSet(K_SEEN, JSON.stringify(l.slice(-500))); } }
+  function isSeen(id){ return seen().includes(id); }
+
+  async function queue(kind, to, name, text, label, meta){
+    const id = 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+    await putP('msg:'+id, text);
+    const l = outbox();
+    const it = {id, kind, to, name, label:label||name, createdAt:new Date().toISOString(), status:'waiting', sentAt:null, ackedBy:[], meta:meta||{}};
+    l.push(it); saveOut(l);
+    return it;
+  }
+  function removeItem(id){ saveOut(outbox().filter(x=>x.id!==id)); delP('msg:'+id); }
+
+  // Try to send everything that is waiting. Stops at the first "can't reach it".
+  async function flush(){
+    if(st.busy) return {sent:0, waiting:outbox().filter(x=>x.status==='waiting').length};
+    st.busy = true; let sent = 0;
+    try{
+      for(;;){
+        const l = outbox(); const it = l.find(x=>x.status==='waiting'); if(!it) break;
+        const text = await getP('msg:'+it.id);
+        if(typeof text!=='string'){ it.status='sent'; it.error='lost'; saveOut(l); continue; }
+        try{
+          await req('POST','/send',{id:it.id, to:it.to, kind:it.kind, from:deviceId(), fromName:st.nameFn(), device:deviceId(), name:it.name, data:text, sentAt:it.createdAt, meta:it.meta}, 180000);
+        }catch(e){ if(e&&e.code==='bad'){ it.error=e.error||'rejected'; it.status='failed'; saveOut(l); continue; } break; }
+        const l2 = outbox(); const j = l2.find(x=>x.id===it.id);
+        if(j){ j.status='sent'; j.sentAt=new Date().toISOString(); saveOut(l2); }
+        delP('msg:'+it.id); sent++;
+      }
+      await flushBackup();
+    }finally{ st.busy = false; }
+    st.onChange();
+    return {sent, waiting:outbox().filter(x=>x.status==='waiting').length};
+  }
+
+  // Backups go straight to the server's backup folder. Only the newest one that could not go is kept for later.
+  async function backup(app, name, who, text){
+    if(unsupported() || !base()) return false;
+    const b = {app, name, who:who||'', device:deviceId(), savedAt:new Date().toISOString(), data:text};
+    try{ await req('POST','/backup', b, 180000); lsSet(K_BAK, b.savedAt); await delP('bak:'+app+':'+name); st.onChange(); return true; }
+    catch(e){ await putP('bak:'+app+':'+name, b); const keys = JSON.parse(lsGet('mb-bak-keys','[]')); if(!keys.includes('bak:'+app+':'+name)){ keys.push('bak:'+app+':'+name); lsSet('mb-bak-keys', JSON.stringify(keys.slice(-6))); } return false; }
+  }
+  async function flushBackup(){
+    let keys = []; try{ keys = JSON.parse(lsGet('mb-bak-keys','[]')); }catch(e){}
+    const left = [];
+    for(const k of keys){
+      const b = await getP(k); if(!b) continue;
+      try{ await req('POST','/backup', b, 180000); lsSet(K_BAK, new Date().toISOString()); await delP(k); }catch(e){ left.push(k); if(e&&e.code!=='bad') { left.push(...keys.slice(keys.indexOf(k)+1)); break; } }
+    }
+    lsSet('mb-bak-keys', JSON.stringify([...new Set(left)]));
+  }
+
+  // Which of the messages I sent has the other side picked up and imported?
+  async function checkSent(){
+    const l = outbox(); const ids = l.filter(x=>x.status==='sent' || x.status==='received').filter(x=>x.kind!=='backup').map(x=>x.id).slice(-60);
+    if(!ids.length) return;
+    let r; try{ r = await req('GET','/status?ids='+ids.join(',')); }catch(e){ return; }
+    let changed = false; const l2 = outbox();
+    l2.forEach(it=>{
+      const s = r.status && r.status[it.id]; if(!s || !s.have) return;
+      const names = Object.keys(s.acks||{}).map(k=>s.acks[k].name||'').filter(Boolean);
+      const n = Object.keys(s.acks||{}).length;
+      if(n && (it.status!=='received' || (it.ackedBy||[]).length!==n)){ it.status='received'; it.ackedBy = names.length?names:new Array(n).fill(''); changed = true; }
+    });
+    if(changed){ saveOut(l2); st.onChange(); }
+  }
+
+  async function ping(){ const j = await req('GET','/ping', undefined, 4000); return j; }
+  async function inbox(){
+    const j = await req('GET','/inbox?to='+encodeURIComponent(st.role)+'&device='+encodeURIComponent(deviceId()));
+    st.pending = (j.items||[]).filter(x=>!isSeen(x.id)); return st.pending;
+  }
+  async function message(id){ const j = await req('GET','/message?id='+encodeURIComponent(id), undefined, 120000); return j.message; }
+  async function ack(id, name){ try{ await req('POST','/ack',{id, device:deviceId(), name:name||st.nameFn()}); return true; }catch(e){ return false; } }
+
+  // ---- small screens: toast, banner, sheet ----
+  let toastEl = null, toastT = 0;
+  function toast(msg){
+    if(!toastEl){ toastEl = document.createElement('div'); toastEl.style.cssText='position:fixed;left:12px;right:12px;bottom:24px;z-index:100001;background:#222;color:#fff;padding:12px 14px;border-radius:12px;font-size:14px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.5)'; document.body.appendChild(toastEl); }
+    toastEl.textContent = msg; toastEl.style.display='block'; clearTimeout(toastT); toastT = setTimeout(()=>{ toastEl.style.display='none'; }, 5000);
+  }
+  function banner(key, text, label, fn){
+    let d = document.getElementById('mbBanner');
+    if(!text){ if(d) d.remove(); return; }
+    if(!d){ d = document.createElement('div'); d.id='mbBanner'; d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9000;background:var(--accent,#2a7);color:#fff;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.5)'; document.body.appendChild(d); }
+    d.dataset.key = key;
+    d.innerHTML = '<span style="flex:1">'+esc(text)+'</span><button id="mbBannerGo" style="background:#fff;color:#000;border:0;border-radius:8px;padding:8px 12px;font-weight:700">'+esc(label)+'</button><button id="mbBannerX" aria-label="Hide" style="background:transparent;color:#fff;border:0;font-size:20px;padding:4px 8px">×</button>';
+    d.querySelector('#mbBannerGo').onclick = ()=>{ fn(); };
+    d.querySelector('#mbBannerX').onclick = ()=>{ d.remove(); };
+  }
+  let sheetEl = null, sheetRes = null;
+  function closeSheet(){ if(!sheetEl) return false; const r=sheetRes; sheetEl.remove(); sheetEl=null; sheetRes=null; if(r) r(null); return true; }
+  function sheet(o){
+    closeSheet();
+    return new Promise(res=>{
+      const d = document.createElement('div'); d.id='mbSheet';
+      d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+      let h = '<div class="card" style="width:min(400px,100%);max-height:90vh;overflow:auto"><h3 style="margin:0 0 6px">'+esc(o.title||'')+'</h3>';
+      if(o.notice) h += '<p style="margin:0 0 10px;padding:10px;border-radius:10px;background:rgba(224,90,90,.15);color:#ffb4b4;font-size:14px">'+esc(o.notice)+'</p>';
+      if(o.sub) h += '<p class="sub" style="margin:0 0 12px">'+esc(o.sub)+'</p>';
+      (o.buttons||[]).forEach((b,i)=>{ h += '<button class="'+(b.primary?'btn-primary':'btn-ghost')+'" data-i="'+i+'" style="margin-top:8px;width:100%">'+esc(b.label)+'</button>'; });
+      if(o.cancel!==false) h += '<button class="btn-ghost" data-i="-1" style="margin-top:8px;width:100%">'+esc(o.cancelLabel||'Cancel')+'</button>';
+      h += '</div>'; d.innerHTML = h;
+      const done = v=>{ if(sheetEl===d){ sheetEl=null; sheetRes=null; } d.remove(); res(v); };
+      d.addEventListener('click', ev=>{ const b = ev.target.closest && ev.target.closest('button'); if(!b){ if(ev.target===d) done(null); return; } const i=+b.getAttribute('data-i'); done(i<0?null:o.buttons[i].value); });
+      sheetEl = d; sheetRes = res; document.body.appendChild(d);
+    });
+  }
+
+  // ---- "send straight" from a Send menu. Returns {ok:true,state} or {ok:false,message} ----
+  async function trySend(kind, to, name, text, label, meta){
+    if(unsupported()) return {ok:false, message:'Sending straight to the mailbox is not available on this device (the iPhone web version). Use Share or Save instead.'};
+    if(!base()) return {ok:false, message:'No mailbox server is set up yet. Try another way.'};
+    const it = await queue(kind, to, name, text, label, meta);
+    const r = await flush();
+    const now = outbox().find(x=>x.id===it.id);
+    if(now && now.status!=='waiting') return {ok:true, state:'sent', item:now};
+    const c = await sheet({title:"Can't find the mailbox server", sub:'Are you on the shop Wi-Fi? You can keep this waiting. It goes out by itself when the server is found again. Or go back and try another way.',
+      buttons:[{label:'Keep it waiting', value:'wait', primary:true}], cancelLabel:'Try another way'});
+    if(c==='wait') return {ok:true, state:'waiting', item:now||it};
+    removeItem(it.id);
+    return {ok:false, message:"Can't find the mailbox server. Try another way."};
+  }
+
+  // ---- text for the status lists ----
+  function statusText(it){
+    if(it.kind==='backup') return 'Backed up to the mailbox server';
+    if(it.status==='waiting') return 'Waiting. Not sent yet, goes out when the server is found';
+    if(it.status==='failed') return 'The server did not accept it';
+    if(it.status==='received'){
+      const names = (it.ackedBy||[]).filter(Boolean);
+      return 'Received by '+(names.length?names.join(', '):st.peerLabel);
+    }
+    return 'Sent. Waiting for '+st.peerLabel;
+  }
+  function outboxHTML(){
+    const l = outbox().filter(x=>x.kind!=='backup').slice(-12).reverse();
+    if(!l.length) return '<p class="list-sub" style="margin:4px 0 0">Nothing sent through the mailbox yet.</p>';
+    return l.map(it=>'<div class="row" style="cursor:default"><div><div class="row-title">'+esc(it.label)+'</div><div class="row-meta">'+esc(statusText(it))+' · '+esc(new Date(it.createdAt).toLocaleString())+'</div></div></div>').join('');
+  }
+  function connText(){
+    if(unsupported()) return 'Not available on this device (iPhone web version)';
+    if(!base()) return 'Not set up';
+    if(st.online===true) return 'Server found';
+    if(st.online===false) return "Can't find the server";
+    return 'Not checked yet';
+  }
+  async function uiTest(){
+    const el = document.getElementById('mbAddr'); if(el) setAddr(el.value);
+    if(unsupported() || !base()){ toast(unsupported()?'Not available on this device.':'Type the mailbox address first.'); st.onChange(); return; }
+    toast('Looking for the mailbox server...');
+    try{ await ping(); toast('Server found.'); flush(); }catch(e){ toast("Can't find the server."); }
+    st.onChange();
+  }
+  function uiSave(){ const el = document.getElementById('mbAddr'); if(el){ setAddr(el.value); toast(el.value.trim()?'Mailbox address saved.':'Mailbox address cleared.'); st.onChange(); } }
+  function addrCardHTML(){
+    return '<p class="list-sub" style="margin:4px 0 10px">The mailbox is a small program on a computer in the shop. Type its address here, like 192.168.1.50 (the program prints it when it starts). Your '+(st.role==='wc'?'phone':'tablet')+' must be on the shop Wi-Fi.</p>'
+      +'<input id="mbAddr" class="search-input" placeholder="Mailbox address" value="'+esc(addr())+'" inputmode="url" autocapitalize="off" autocomplete="off" onchange="MB.setAddr(this.value)" style="width:100%;box-sizing:border-box">'
+      +'<p class="list-sub" style="margin:8px 0">Status: <b>'+esc(connText())+'</b></p>'
+      +'<button class="btn-ghost" style="width:100%" onclick="MB.uiSave()">Set address</button>'
+      +'<button class="btn-primary" style="width:100%;margin-top:8px" onclick="MB.uiTest()">Test connection</button>';
+  }
+
+  let timer = 0;
+  function init(o){
+    st.role = o.role; st.peerLabel = o.peerLabel; st.nameFn = o.nameFn || st.nameFn; st.onChange = o.onChange || st.onChange; st.onPoll = o.onPoll || function(){};
+  }
+  async function cycle(){
+    if(unsupported() || !base()) return;
+    try{ await flush(); await checkSent(); const items = await inbox(); await st.onPoll(items); }catch(e){}
+    st.onChange();
+  }
+  function start(){
+    setTimeout(cycle, 2500);
+    clearInterval(timer); timer = setInterval(()=>{ if(!document.hidden) cycle(); }, 30000);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) setTimeout(cycle, 600); });
+    window.addEventListener('online', ()=>setTimeout(cycle, 600));
+  }
+
+  return {st, init, start, cycle, addr, setAddr, base, unsupported, req, ping, inbox, message, ack, markSeen, isSeen, queue, flush, backup, checkSent, trySend,
+          outbox, removeItem, sheet, closeSheet, banner, toast, outboxHTML, addrCardHTML, connText, statusText, uiTest, uiSave, deviceId, esc, isNative,
+          lastBackup:()=>lsGet(K_BAK,'')};
+})();
+
+</script>
+<script>
+// ===== Shop mailbox + Home Screen tip (WorkClock) =====
+function wcMbWho(){ const n = employees.map(e=>e.name).filter(Boolean); return n.length>3 ? n.slice(0,3).join(', ')+'...' : n.join(', '); }
+function wcMbAckName(){
+  if(employees.length===1) return employees[0].name;
+  if(typeof sharedState!=='undefined' && sharedState.sharedTablet) return 'the shop tablet';
+  const e = employees.find(x=>x.id===currentEmp); return e ? e.name : 'a phone';
+}
+let wcMbSig = '';
+function wcMbRefresh(force){
+  try{
+    const sig = JSON.stringify([MB.outbox().map(x=>x.id+x.status+(x.ackedBy||[]).length), MB.st.online, MB.st.pending.length, MB.addr()]);
+    if(!force && sig===wcMbSig) return; wcMbSig = sig;
+    const a = document.activeElement; if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')) return;
+    const t = (stack[stack.length-1]||{}).type;
+    if(t==='settings' || t==='home') render();
+  }catch(e){}
+}
+function wcMbOnPoll(items){
+  const ups = items.filter(i=>i.kind==='update');
+  if(!ups.length){ if(document.getElementById('mbBanner') && document.getElementById('mbBanner').dataset.key==='upd') MB.banner('','',''); return; }
+  MB.banner('upd', ups.length===1 ? 'New update from Shop Boss.' : ups.length+' new updates from Shop Boss.', 'Import', wcMbImportUpdates);
+}
+async function wcMbImportUpdates(){
+  const ups = MB.st.pending.filter(i=>i.kind==='update'); let n = 0;
+  for(const it of ups){
+    try{
+      const m = await MB.message(it.id); const payload = JSON.parse(m.data);
+      applyShopUpdate(payload);
+      await MB.ack(it.id); MB.markSeen(it.id); n++;
+    }catch(e){ MB.toast("Couldn't get the update. Try again when the shop mailbox is found."); break; }
+  }
+  MB.st.pending = MB.st.pending.filter(i=>!MB.isSeen(i.id));
+  if(!MB.st.pending.some(i=>i.kind==='update')) MB.banner('','','');
+  wcMbRefresh(true);
+}
+MB.init({role:'wc', peerLabel:'Shop Boss', nameFn:wcMbAckName, onChange:()=>wcMbRefresh(false), onPoll:wcMbOnPoll});
+
+// ---- the send menu: "Send straight to Shop Boss (mailbox)" next to the old ways ----
+window.mbRoutable = function(fname){
+  return (/^workclock-.*\.json$/.test(fname) && !/backup/i.test(fname)) ? {kind:'week', to:'shopboss', target:'Shop Boss'} : null;
+};
+window.mbDoSend = async function(fname, text){
+  let label = fname, meta = {};
+  try{ const p = JSON.parse(text); label = 'Hours: '+(p.employee||'')+', week of '+(p.weekOf||''); meta = {employee:p.employee||'', weekOf:p.weekOf||''}; }catch(e){}
+  return MB.trySend('week','shopboss',fname,text,label,meta);
+};
+const _wcMbShare = shareOrSaveFile;
+shareOrSaveFile = async function(fname, jsonText, shareTitle, shareText){
+  if(!window.mbRoutable(fname)) return _wcMbShare.apply(this, arguments);
+  let notice = '';
+  for(;;){
+    const v = await MB.sheet({title:'Send your hours', sub:'Pick how to get this week to Shop Boss.', notice,
+      buttons:[{label:'Send straight to Shop Boss (mailbox)', value:'mailbox', primary:true}, {label:'Share or save a file...', value:'file'}]});
+    if(v===null) return 'declined';
+    if(v==='file') return _wcMbShare(fname, jsonText, shareTitle, shareText);
+    const r = await window.mbDoSend(fname, jsonText);
+    if(r.ok){ window.__mbLast = r; return 'mailbox'; }
+    notice = r.message;
+  }
+};
+
+// ---- backups also go to the mailbox server (when there is one) ----
+function wcMbBackupName(){
+  const who = (employees[0] ? employees[0].name : 'phone').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'phone';
+  return 'workclock-'+who+'_'+MB.deviceId().slice(-6)+'-'+todayISO()+'.json';
+}
+let wcMbLastBak = 0;
+window.__mbBackupMade = function(name, text, force){
+  if(!force && Date.now()-wcMbLastBak < 15*60*1000) return;
+  wcMbLastBak = Date.now();
+  MB.backup('wc', wcMbBackupName(), wcMbWho(), text);
+};
+const _wcMbQB = quickBackup;
+quickBackup = async function(){
+  const r = await _wcMbQB.apply(this, arguments);
+  try{ if(!MB.isNative()){ window.__mbBackupMade('', JSON.stringify({app:'WorkClock', kind:'backup', version:1, savedAt:new Date().toISOString(), data:{employees, dayClocks, entries, documents, completedDocs, photos, photoRequests}}, null, 2), true); } }catch(e){}
+  return r;
+};
+
+// ---- Home Screen tip for iPhone / iPad (only when it is open in Safari and not yet on the Home Screen) ----
+function wcIosTipNeeded(){
+  const ua = navigator.userAgent||'';
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1);
+  const standalone = window.navigator.standalone===true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  return ios && !standalone && !MB.isNative();
+}
+function wcIosTipHidden(){ try{ return localStorage.getItem('wc-ios-tip-hide')==='1'; }catch(e){ return false; } }
+function wcIosTipHide(){ try{ localStorage.setItem('wc-ios-tip-hide','1'); }catch(e){} render(); }
+function wcIosTipHTML(withHide){
+  return `<div class="card" style="border-color:var(--accent)">
+    <p class="theme-subhead" style="margin:0">Add WorkClock to your Home Screen</p>
+    <p class="sub" style="margin:6px 0 8px">Do this once, so your hours stay safe on this phone:</p>
+    <ol class="sub" style="margin:0 0 10px 18px;padding:0;line-height:1.5">
+      <li>Open this page in <b>Safari</b> (not inside another app).</li>
+      <li>Tap the <b>Share</b> button (the square with an arrow pointing up).</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>, then tap <b>Add</b>.</li>
+      <li>From now on, open WorkClock from the new icon on your Home Screen.</li>
+    </ol>
+    <p class="sub" style="margin:0 0 6px"><b>Why:</b> Safari can erase a website's saved data after about a week of not opening it, unless it is on your Home Screen. The icon also opens WorkClock like a normal app, even with no internet.</p>
+    <p class="sub" style="margin:0 0 10px">Still tap <b>Back up now</b> in Settings once in a while.</p>
+    ${withHide?'<button class="btn-ghost" style="margin-top:0" onclick="wcIosTipHide()">Hide this tip</button>':''}
+  </div>`;
+}
+
+// ---- screens ----
+const _wcMbSettings = renderers.settings;
+renderers.settings = function(){
+  let h = _wcMbSettings.apply(this, arguments);
+  h += `<div class="card">
+      <p class="theme-subhead" style="margin:0">Shop mailbox</p>
+      ${MB.addrCardHTML()}
+      <p class="theme-subhead" style="margin:16px 0 6px">Sent through the mailbox</p>
+      ${MB.outboxHTML()}
+      <p class="list-sub" style="margin:10px 0 0">Last backup copied to the mailbox server: <b>${MB.lastBackup()?new Date(MB.lastBackup()).toLocaleString():'none yet'}</b></p>
+    </div>`;
+  if(wcIosTipNeeded()) h += wcIosTipHTML(false);
+  return h;
+};
+const _wcMbHome = renderers.home;
+renderers.home = function(){
+  let extra = '';
+  if(wcIosTipNeeded() && !wcIosTipHidden()) extra += wcIosTipHTML(true);
+  const w = MB.outbox().filter(x=>x.status==='waiting').length;
+  if(w) extra += `<div class="card" style="border-color:#c9a227"><p class="sub" style="margin:0"><b>${w} message${w===1?'':'s'} waiting to send.</b> ${w===1?'It goes':'They go'} out by itself when this phone finds the shop mailbox on the shop Wi-Fi.</p></div>`;
+  const last = MB.outbox().filter(x=>x.kind==='week').slice(-1)[0];
+  if(last && Date.now()-Date.parse(last.createdAt) < 3*86400000 && !w) extra += `<p class="hint" style="margin:0 0 8px;text-align:center">Last hours sent: ${MB.esc(MB.statusText(last))}</p>`;
+  return extra + _wcMbHome.apply(this, arguments);
+};
+MB.start();
+
+</script>
+<!--MB-END-->
 </body>
 </html>
