@@ -273,7 +273,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.28';
+const APP_VERSION = 'v0.29';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -3926,7 +3926,22 @@ window.MB = (function(){
   function outboxHTML(){
     const l = outbox().filter(x=>x.kind!=='backup').slice(-12).reverse();
     if(!l.length) return '<p class="list-sub" style="margin:4px 0 0">Nothing sent through the mailbox yet.</p>';
-    return l.map(it=>'<div class="row" style="cursor:default"><div><div class="row-title">'+esc(it.label)+'</div><div class="row-meta">'+esc(statusText(it))+' · '+esc(new Date(it.createdAt).toLocaleString())+'</div></div></div>').join('');
+    return l.map(it=>'<div class="row" style="cursor:default"><div style="flex:1;min-width:0"><div class="row-title">'+esc(it.label)+'</div><div class="row-meta">'+esc(statusText(it))+' · '+esc(new Date(it.createdAt).toLocaleString())+'</div></div><button class="btn-ghost chip-btn" style="flex:none" aria-label="Remove" onclick="MB.askRemove(\''+esc(it.id)+'\')">Remove</button></div>').join('');
+  }
+  // Remove an item from the list. A waiting item will never be sent once removed.
+  async function askRemove(id){
+    const it = outbox().find(x=>x.id===id); if(!it) return;
+    let sub;
+    if(it.status==='waiting' || it.status==='failed'){
+      sub = st.role==='wc'
+        ? 'This has NOT been sent and will not be sent. The hours in it will not reach Shop Boss unless you send them another way.'
+        : 'This has NOT been sent and will not be sent. Employees will not get it. Send a new update when you are ready.';
+    } else {
+      sub = 'This only removes it from this list. It does not take back anything that was already sent.';
+    }
+    const v = await sheet({title:'Remove this?', sub: it.label+'. '+sub, buttons:[{label:'Yes, remove it', value:'yes', primary:true}], cancelLabel:'Keep it'});
+    if(v!=='yes') return;
+    removeItem(id); toast('Removed.'); st.onChange();
   }
   function connText(){
     if(unsupported()) return 'Not available on this device (iPhone web version)';
@@ -3968,7 +3983,7 @@ window.MB = (function(){
   }
 
   return {st, init, start, cycle, addr, setAddr, base, unsupported, req, ping, inbox, message, ack, markSeen, isSeen, queue, flush, backup, checkSent, trySend,
-          outbox, removeItem, sheet, closeSheet, banner, toast, outboxHTML, addrCardHTML, connText, statusText, uiTest, uiSave, deviceId, esc, isNative,
+          outbox, removeItem, askRemove, sheet, closeSheet, banner, toast, outboxHTML, addrCardHTML, connText, statusText, uiTest, uiSave, deviceId, esc, isNative,
           lastBackup:()=>lsGet(K_BAK,'')};
 })();
 
