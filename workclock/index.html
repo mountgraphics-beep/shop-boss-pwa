@@ -156,6 +156,69 @@
   .fm-vv{font-size:16px;white-space:pre-wrap}
   @media (max-width:560px){ .fm-row:not(.fm-row-blank) .fm-blank{display:none} .fm-check.on .fm-left{flex:1 0 100%} .fm-hdr-grid{grid-template-columns:1fr} }
   @media print{ .fm-combo button{display:none} .fm-body{display:block!important} .fm-chev{display:none} .fm-sec-head{border-bottom-color:#000!important;color:#000} .fm-title,.fm-hdr-car{color:#000!important} .fm-line,.fm-hdr{border-color:#000!important;background:#000} .fm-hdr{background:none} .fm-badge{display:none} .fm-sec{break-inside:auto} .fm-vnote,.fm-vk,.fm-hdr-k,.fm-hdr-date{color:#333} }
+/* FMX-CSS-BEGIN */
+  /* ---- FMX: form layout, new field types, photo field (shared by Shop Boss, WorkClock and the Form maker) ---- */
+  .fm-row.fmx-rowx{gap:0}
+  .fmx-rowx > .fm-cell{box-sizing:border-box;padding-left:8px;padding-right:8px;flex-wrap:nowrap}
+  .fmx-rowx > .fm-cell:first-child{padding-left:0}
+  .fmx-rowx > .fm-cell:last-child{padding-right:0}
+  .fmx-al-center{text-align:center}.fmx-al-right{text-align:right}
+  .fmx-al-center input[type=text],.fmx-al-center input[type=number],.fmx-al-center textarea{text-align:center}
+  .fmx-al-right input[type=text],.fmx-al-right input[type=number],.fmx-al-right textarea{text-align:right}
+  .fmx-al-center .fm-check,.fmx-al-center .fmx-pf,.fmx-al-center .fmx-un{justify-content:center}
+  .fmx-al-right .fm-check,.fmx-al-right .fmx-pf,.fmx-al-right .fmx-un{justify-content:flex-end}
+  .fmx-line{height:0;border-top:2px solid var(--text);margin:4px 0}
+  .fmx-lnw{padding:0}
+  .fmx-pb{height:0;border-top:2px dashed var(--line);margin:12px 0;position:relative}
+  .fmx-pb::after{content:'page break (print)';position:absolute;right:0;top:-9px;background:var(--bg,#111);color:var(--muted);font-size:11px;padding:0 6px}
+  .fmx-label{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text)}
+  .fmx-img{display:block;max-width:100%;height:auto}
+  .fmx-al-center .fmx-img{margin:0 auto}.fmx-al-right .fmx-img{margin-left:auto}
+  .fmx-req > .field > label::after,.fmx-req > .fb-field > label::after{content:' *';color:var(--accent);font-weight:700}
+  .fmx-req .fm-ct span::after{content:' *';color:var(--accent);font-weight:700}
+  .fmx-missing{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+  .fmx-look input[type=text],.fmx-look input[type=number],.fmx-look input[type=date],.fmx-look select,.fmx-look textarea{border-radius:var(--fmx-r,8px)!important;border-width:var(--fmx-bw,1px)!important;background:var(--fmx-bg,var(--surface-2))!important;font-size:var(--fmx-fs,15px)!important;font-weight:var(--fmx-fw,400)!important}
+  .fmx-look label{font-size:var(--fmx-fs,13px);font-weight:var(--fmx-fw,600)}
+  .fmx-pf{display:flex;gap:8px;flex-wrap:wrap}
+  .fmx-pf button{flex:1 1 70px;min-height:44px;border:2px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--fmx-r,10px);font:700 16px var(--sans);cursor:pointer}
+  .fmx-pf button.on[data-v="Pass"]{background:#2EA85B;border-color:#2EA85B;color:#fff}
+  .fmx-pf button.on[data-v="Fail"]{background:#d23a3a;border-color:#d23a3a;color:#fff}
+  .fmx-pf button.on[data-v="N/A"]{background:#6b7280;border-color:#6b7280;color:#fff}
+  .fmx-un{display:flex;align-items:center;gap:8px}
+  .fmx-un input{flex:1 1 auto;min-width:0}
+  .fmx-unit{flex:none;color:var(--muted);font-size:15px;font-weight:600}
+  .fmx-photo-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .fmx-photo-btns button{flex:1 1 140px;min-height:44px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:10px;font:600 15px var(--sans);cursor:pointer}
+  .fmx-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .fmx-tw{position:relative}
+  .fmx-th{width:88px;height:88px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;cursor:pointer}
+  .fmx-tx{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:none;background:#d23a3a;color:#fff;font-size:14px;line-height:24px;padding:0;cursor:pointer}
+  .fmx-vthumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .fmx-vthumbs img{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+  .fmx-full{display:none}
+  .fmx-ov{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px}
+  .fmx-ov img{max-width:100%;max-height:100%;object-fit:contain}
+  .fmx-ov button{position:absolute;top:12px;right:12px;width:44px;height:44px;border-radius:50%;border:none;background:#fff;color:#000;font-size:22px;cursor:pointer}
+  .fmx-ppsel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  .fmx-ppsel button{border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:16px;padding:6px 12px;font:600 13.5px var(--sans);cursor:pointer}
+  .fmx-ppsel button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .fmx-note-smart{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  @media (max-width:560px){ .fmx-rowx > .fm-cell.fmx-small{flex:0 0 100%!important;max-width:100%!important;padding-left:0;padding-right:0} }
+  .fmx-narrow .fmx-rowx > .fm-cell.fmx-small{flex:0 0 100%!important;max-width:100%!important;padding-left:0;padding-right:0}
+  .fmx-narrow .fm-row:not(.fm-row-blank) .fm-blank{display:none}
+  .fmx-narrow .fm-check.on .fm-left{flex:1 0 100%}
+  .fmx-narrow .fm-hdr-grid{grid-template-columns:1fr}
+  @media print{
+    .fmx-pp-none .fmx-vthumbs,.fmx-pp-none .fmx-full{display:none!important}
+    .fmx-pp-thumb .fmx-full{display:none!important}
+    .fmx-pp-full .fmx-vthumbs{display:none!important}
+    .fmx-pp-full .fmx-full{display:block!important;break-before:page;text-align:center}
+    .fmx-pp-full .fmx-full img{max-width:100%;max-height:250mm;object-fit:contain}
+    .fmx-ppsel,.fmx-pf button:not(.on){}
+    .fmx-pb{border:none;break-after:page;margin:0}.fmx-pb::after{display:none}
+    .fmx-photo-btns,.fmx-tx{display:none!important}
+  }
+  /* FMX-CSS-END */
   .cp-btn{width:100%;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--text);font:inherit;text-align:left;cursor:pointer}
   .cp-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp-list{margin-top:6px;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-height:340px;overflow-y:auto}
@@ -279,7 +342,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.30';
+const APP_VERSION = 'v0.31';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -469,8 +532,15 @@ function confirmNo(){ pendingConfirm=null; goBack(); }
 
 // ---- persistence: autosave to this device, same pattern as Shop Boss ----
 const WC_KEY = 'wc-data-v2';
+let wcPersistWarned = false;
+function wcPersistWarn(e){
+  if(wcPersistWarned) return;
+  if(!e || !(e.name==='QuotaExceededError' || /quota/i.test(String(e.message||e)))) return;
+  wcPersistWarned = true;
+  try{ alert('WorkClock could not save everything on this device: its storage is full (photos take the most room).\n\nSend your work to the shop now, and remove photos that were already sent.'); }catch(x){}
+}
 function persist(){
-  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, active, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){}
+  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, active, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){ wcPersistWarn(e); }
 }
 function loadPersisted(){
   try{
@@ -2080,16 +2150,273 @@ function saveFilledDocument(templateId, car, fileInputEl, flagNote){
 // Separate from the legacy "attach a scanned file" flow above — this one renders an actual input
 // per field and stamps the completed record with today's date, this employee, and the car, the
 // same way markDocFilled does, but keeps each field's own answer instead of just a file.
-let fbFillPhotos = {}; // {fieldId: dataUrl} — scratch storage while a structured form is open on screen; cleared on submit
+let fbFillPhotos = {}; // (old, no longer used: photos live in fmxPhotoStore) // {fieldId: dataUrl} — scratch storage while a structured form is open on screen; cleared on submit
 // ---- Forms: shared look and behaviour (same code in Shop Boss and WorkClock). A NAMED heading starts a SECTION: the fields after it
 // belong to it until its end marker (or the next named heading). Fields after an end marker stand on their own. A heading with
 // no name is just a line. Sections show as bold bars; tapping one opens it and closes the one that was open. A badge on each bar
 // counts the checkboxes not yet checked. Nothing here ever blocks submitting a form. ----
+// ===== FMX-BEGIN (shared forms module: layout, new field types, photo field, paper sheet. Source: scratchpad/fmx/fmx.js) =====
+const FMX_NEW_TYPES = {
+  passfail:{icon:'✔✖', label:'Pass / Fail / N/A'},
+  units:{icon:'#u', label:'Number with units'},
+  image:{icon:'🖼', label:'Image / logo'},
+  line:{icon:'―', label:'Line'},
+  label:{icon:'T', label:'Text label'},
+  pagebreak:{icon:'⏎', label:'Page break (print)'}
+};
+(function(){ try{ if(typeof FB_FIELD_TYPES!=='undefined') Object.keys(FMX_NEW_TYPES).forEach(k=>{ if(!FB_FIELD_TYPES[k]) FB_FIELD_TYPES[k] = {icon:FMX_NEW_TYPES[k].icon, label:FMX_NEW_TYPES[k].label, hasOptions:false, allowAutoFill:false, hidden:true}; }); }catch(e){} })();
+const FMX_STATIC = ['blank','note','endsec','heading','formheader','image','line','label','pagebreak'];
+function fmxIsStatic(t){ return FMX_STATIC.indexOf(t)>=0; }
+const FMX_SPACE_TYPES = ['text','number','date','checkbox','checkexp','yesno','dropdown','radio','passfail','units','signature'];
+const fmxPhotoStore = {};   // field id -> [dataUrl, ...] while a form is open
+function fmxN(v,d){ const n = parseFloat(v); return isFinite(n) ? n : d; }
+function fmxColor(c){ return /^#[0-9a-fA-F]{3,8}$/.test(String(c||'')) ? c : ''; }
+function fmxE(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmxPhotos(a){ const v = a && a.value; return Array.isArray(v) ? v.filter(Boolean) : (typeof v==='string' && v ? [v] : []); }
+// ---- cell wrapper: width / alignment / look / extra space / required ----
+function fmxCellAttrs(f, lay){
+  let st = '', cls = '';
+  const w = fmxN(f.w,0);
+  if(lay){ if(w>0){ st += 'flex:0 0 '+w+'%;max-width:'+w+'%;'; if(w<50) cls += ' fmx-small'; } else st += 'flex:1 1 0;'; }
+  if(f.align==='center' || f.align==='right') cls += ' fmx-al-'+f.align;
+  const L = f.look || {};
+  let hasLook = false;
+  if(L.radius!=null && L.radius!==''){ st += '--fmx-r:'+fmxN(L.radius,8)+'px;'; hasLook = true; }
+  if(L.outline===false){ st += '--fmx-bw:0px;'; hasLook = true; }
+  else if(L.thick){ st += '--fmx-bw:'+fmxN(L.thick,1)+'px;'; hasLook = true; }
+  if(fmxColor(L.fill)){ st += '--fmx-bg:'+fmxColor(L.fill)+';'; hasLook = true; }
+  if(L.size){ st += '--fmx-fs:'+fmxN(L.size,15)+'px;'; hasLook = true; }
+  if(L.bold){ st += '--fmx-fw:700;'; hasLook = true; }
+  if(hasLook) cls += ' fmx-look';
+  const h = fmxN(f.h,0);
+  if(h>0 && FMX_SPACE_TYPES.indexOf(f.type)>=0) st += 'padding-top:'+(11+h/2)+'px;padding-bottom:'+(11+h/2)+'px;';
+  if(f.required && !fmxIsStatic(f.type)) cls += ' fmx-req';
+  return {cls, st};
+}
+function fmxLineHTML(f){
+  const w = fmxN(f.w,0), th = fmxN(f.thick,2), pad = fmxN(f.pad,4);
+  const al = f.align==='center' ? 'margin-left:auto;margin-right:auto;' : (f.align==='right' ? 'margin-left:auto;' : '');
+  return '<div class="fmx-lnw"><div class="fmx-line" style="border-top-width:'+th+'px;margin-top:'+pad+'px;margin-bottom:'+pad+'px;'+(w>0&&w<100?'width:'+w+'%;':'')+al+'"></div></div>';
+}
+function fmxRowStyle(r){
+  if(!r.every(f=>fmxN(f.w,0)>0)) return '';
+  const a = r[0].align; return a==='center' ? 'justify-content:center;' : (a==='right' ? 'justify-content:flex-end;' : '');
+}
+// ---- full-screen look at one picture ----
+function fmxOpenImg(src){
+  const ov = document.createElement('div'); ov.className = 'fmx-ov';
+  ov.innerHTML = '<img alt=""><button type="button" aria-label="Close">✕</button>'; ov.querySelector('img').src = src;
+  ov.onclick = ()=>ov.remove(); document.body.appendChild(ov);
+}
+// ---- the Photo field: several pictures, camera + gallery buttons, thumbnails ----
+function fmxPhotoFieldHTML(f, fid, label){
+  const n = (fmxPhotoStore[f.id]||[]).length;
+  return '<div class="field"><label>'+label+'</label>'
+    +'<div class="fmx-thumbs" id="'+fid+'-th">'+fmxThumbsInner(f.id)+'</div>'
+    +'<div class="fmx-photo-btns"><button type="button" onclick="fmxPickPhoto(\''+f.id+'\',\'cam\')">📷 '+(n?'Add another':'Take a picture')+'</button><button type="button" onclick="fmxPickPhoto(\''+f.id+'\',\'gal\')">🖼 Choose from gallery</button></div>'
+    +'<input type="file" accept="image/*" capture="environment" id="'+fid+'-cam" style="display:none" onchange="fmxGotPhotos(event,\''+f.id+'\')">'
+    +'<input type="file" accept="image/*" multiple id="'+fid+'-gal" style="display:none" onchange="fmxGotPhotos(event,\''+f.id+'\')"></div>';
+}
+function fmxThumbsInner(fieldId){
+  return (fmxPhotoStore[fieldId]||[]).map((u,i)=>'<div class="fmx-tw"><img class="fmx-th" src="'+u+'" onclick="fmxOpenImg(this.src)" alt="photo '+(i+1)+'"><button type="button" class="fmx-tx" aria-label="Remove this picture" onclick="fmxRemovePhoto(\''+fieldId+'\','+i+')">✕</button></div>').join('');
+}
+function fmxRefreshPhotos(fieldId){
+  const th = document.getElementById('ff-'+fieldId+'-th') || document.getElementById('pv-'+fieldId+'-th');
+  if(th) th.innerHTML = fmxThumbsInner(fieldId);
+  const n = (fmxPhotoStore[fieldId]||[]).length;
+  document.querySelectorAll('[id$="-th"]').forEach(x=>{ if(x===th){ const b = x.parentNode.querySelector('.fmx-photo-btns button'); if(b) b.textContent = '📷 '+(n?'Add another':'Take a picture'); } });
+}
+function fmxPickPhoto(fieldId, kind){
+  const el = document.getElementById('ff-'+fieldId+'-'+kind) || document.getElementById('pv-'+fieldId+'-'+kind);
+  if(el) el.click();
+}
+function fmxGotPhotos(evt, fieldId){
+  const files = Array.prototype.slice.call((evt.target && evt.target.files) || []);
+  if(!files.length) return;
+  let left = files.length;
+  files.forEach(file=>{
+    const rd = new FileReader();
+    rd.onload = ()=>{ (fmxPhotoStore[fieldId] = fmxPhotoStore[fieldId] || []).push(rd.result); if(--left===0){ fmxRefreshPhotos(fieldId); try{ evt.target.value = ''; }catch(e){} fmxTouched(evt.target); } };
+    rd.onerror = ()=>{ if(--left===0) fmxRefreshPhotos(fieldId); try{ if(typeof showToast==='function') showToast('Couldn\'t read that photo.', true); }catch(e){} };
+    rd.readAsDataURL(file);
+  });
+}
+function fmxRemovePhoto(fieldId, i){ const a = fmxPhotoStore[fieldId]; if(a){ a.splice(i,1); fmxRefreshPhotos(fieldId); } }
+// ---- Pass / Fail / N/A ----
+function fmxPf(btn){
+  const box = btn.parentNode, was = btn.classList.contains('on');
+  Array.prototype.forEach.call(box.children, b=>b.classList.remove('on'));
+  if(!was){ btn.classList.add('on'); box.setAttribute('data-val', btn.getAttribute('data-v')); } else box.setAttribute('data-val','');
+  fmxTouched(box);
+}
+// ---- auto date: fills in when the person first types or ticks something ----
+function fmxStamp(kind){
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  const iso = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  if(kind!=='datetime') return iso;
+  let h = d.getHours(), ap = h>=12?'PM':'AM'; h = h%12||12;
+  return iso+' '+h+':'+p(d.getMinutes())+' '+ap;
+}
+function fmxTouched(target){
+  const form = target && target.closest ? target.closest('.fm-form') : null;
+  if(!form || form.getAttribute('data-fmx-fill')!=='1') return;
+  if(target.closest && target.closest('[data-fmx-auto]')) return;
+  if(target.closest && target.closest('.fm-hdr')) return;
+  form.querySelectorAll('[data-fmx-auto]').forEach(el=>{ if(!el.value) el.value = fmxStamp(el.getAttribute('data-fmx-auto')); });
+}
+document.addEventListener('input', e=>fmxTouched(e.target), true);
+document.addEventListener('change', e=>fmxTouched(e.target), true);
+// ---- the cell for the new types and the new behaviours. mode 'fill' (WorkClock) or 'preview'. Returns null for the older types. ----
+function fmxCell(f, mode, pfx){
+  pfx = pfx || (mode==='fill' ? 'ff-' : 'pv-');
+  const fid = pfx+f.id, label = fmxE((f.label||'').trim() || '(untitled field)');
+  const h = fmxN(f.h,0);
+  switch(f.type){
+    case 'passfail':
+      return '<div class="field"><label>'+label+'</label><div class="fmx-pf" id="'+fid+'" data-val="">'+['Pass','Fail','N/A'].map(v=>'<button type="button" data-v="'+v+'" onclick="fmxPf(this)">'+v+'</button>').join('')+'</div></div>';
+    case 'units':
+      return '<div class="field"><label>'+label+'</label><div class="fmx-un"><input type="number" inputmode="decimal" id="'+fid+'" data-unit="'+fmxE(f.unit||'')+'"><span class="fmx-unit">'+fmxE(f.unit||'')+'</span></div></div>';
+    case 'image':
+      return f.src ? '<img class="fmx-img" alt="" src="'+f.src+'" style="'+(fmxN(f.iw,0)?'width:'+fmxN(f.iw,0)+'px;':'')+(fmxN(f.ih,0)?'height:'+fmxN(f.ih,0)+'px;object-fit:contain;':'')+'">' : '<div class="fmx-label" style="color:var(--muted)">(image missing)</div>';
+    case 'line': return fmxLineHTML(Object.assign({}, f, {w:0, align:null}));
+    case 'label':
+      return '<div class="fmx-label" style="font-size:'+fmxN(f.size,16)+'px;'+(f.bold?'font-weight:700;':'')+(h>0?'min-height:'+h+'px;':'')+'">'+fmxE(f.label||'')+'</div>';
+    case 'pagebreak': return '<div class="fmx-pb"></div>';
+    case 'photo': return fmxPhotoFieldHTML(f, fid, label);
+    case 'longtext': if(h>0) return '<div class="field"><label>'+label+'</label><textarea id="'+fid+'" style="height:'+h+'px;min-height:'+h+'px"></textarea></div>'; return null;
+    case 'date':
+      if(!f.autoDate || f.autoDate==='open') return null;
+      if(f.autoDate==='edit') return '<div class="field"><label>'+label+'</label><input type="date" id="'+fid+'" data-fmx-auto="date"></div>';
+      return '<div class="field"><label>'+label+'</label><input type="text" id="'+fid+'" readonly data-fmx-auto="'+(f.autoDate==='datetime'?'datetime':'date')+'" placeholder="Fills in when you start" style="color:var(--muted)"></div>';
+  }
+  return null;
+}
+// What the person entered in a field of the new kinds. Returns an answer object, or null so the caller uses its own code.
+function fmxReadAnswer(f, pfx){
+  pfx = pfx || 'ff-';
+  const el = document.getElementById(pfx+f.id), lab = f.label||'';
+  if(f.type==='passfail') return {label:lab, type:'passfail', value: el ? (el.getAttribute('data-val')||'') : ''};
+  if(f.type==='units'){ const v = el ? String(el.value||'').trim() : ''; return {label:lab, type:'units', value: v ? v+(f.unit?' '+f.unit:'') : ''}; }
+  if(f.type==='photo') return {label:lab, type:'photo', value: (fmxPhotoStore[f.id]||[]).slice()};
+  return null;
+}
+// Required fields that are still empty -> list of {id,label}. Checks the on-screen controls.
+function fmxMissing(fields, pfx){
+  pfx = pfx || 'ff-';
+  const out = [];
+  (fields||[]).forEach(f=>{
+    if(!f.required || fmxIsStatic(f.type)) return;
+    const el = document.getElementById(pfx+f.id); let ok;
+    if(f.type==='photo') ok = (fmxPhotoStore[f.id]||[]).length>0;
+    else if(f.type==='passfail') ok = !!(el && el.getAttribute('data-val'));
+    else if(f.type==='radio') ok = !!document.querySelector('input[name="ffr-'+f.id+'"]:checked');
+    else if(f.type==='checkbox' || f.type==='checkexp') ok = !!(el && el.checked);
+    else ok = !!(el && String(el.value||'').trim());
+    if(!ok) out.push({id:f.id, label:(f.label||'').trim() || '(untitled field)'});
+  });
+  return out;
+}
+function fmxShowMissing(miss, pfx){
+  pfx = pfx || 'ff-';
+  document.querySelectorAll('.fmx-missing').forEach(x=>x.classList.remove('fmx-missing'));
+  let first = null;
+  miss.forEach(m=>{ const el = document.getElementById(pfx+m.id); const c = el && el.closest ? el.closest('.fm-cell') : null; if(c){ c.classList.add('fmx-missing'); if(!first) first = c; const sec = c.closest('.fm-sec'); if(sec && !sec.classList.contains('open')) sec.classList.add('open'); } });
+  if(first){ try{ first.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){} }
+}
+// ---- the completed-form viewer: photo thumbnails + the print choice ----
+function fmxViewerPhotos(a){
+  const ph = fmxPhotos(a);
+  if(!ph.length) return '— no photo taken';
+  return '\u0000HTML'+'<div class="fmx-vthumbs">'+ph.map((u,i)=>'<img src="'+u+'" alt="photo '+(i+1)+'" onclick="fmxOpenImg(this.src)">').join('')+'</div>'
+    +'<div class="fmx-full">'+ph.map(u=>'<img src="'+u+'" alt="">').join('<div style="break-after:page"></div>')+'</div>';
+}
+let fmxPPMode = 'thumb';
+try{ const v = localStorage.getItem('fmx-pp'); if(v==='none'||v==='thumb'||v==='full') fmxPPMode = v; }catch(e){}
+function fmxPPSelectorHTML(){
+  return '<div class="fmx-ppsel no-print"><span style="color:var(--muted);font-size:13px">Print photos:</span>'
+    +[['none','No photos'],['thumb','Thumbnails'],['full','Full size, extra pages']].map(p=>'<button type="button" class="'+(fmxPPMode===p[0]?'on':'')+'" onclick="fmxSetPP(\''+p[0]+'\',this)">'+p[1]+'</button>').join('')+'</div>';
+}
+function fmxSetPP(m, btn){
+  fmxPPMode = m; try{ localStorage.setItem('fmx-pp', m); }catch(e){}
+  const w = document.querySelector('.fmx-ppwrap'); if(w){ w.className = w.className.replace(/fmx-pp-\w+/,'fmx-pp-'+m); }
+  Array.prototype.forEach.call(btn.parentNode.querySelectorAll('button'), b=>b.classList.toggle('on', b===btn));
+}
+// ---- the paper sheet (print / PDF): the same code draws it in Shop Boss and in the Form maker ----
+function fmxPaperHTML(f, o){
+  o = o || {};
+  const E = fmxE, line = (h)=>'<div style="border-bottom:1px solid #000;height:'+(h||26)+'px"></div>';
+  const box = ()=>'<span style="display:inline-block;width:16px;height:16px;border:1.5px solid #000;border-radius:2px;vertical-align:-3px;margin-right:8px;flex:none"></span>';
+  const lab = (t, fd)=>'<div style="font-size:'+(fd&&fd.look&&fd.look.size?Math.max(9,fmxN(fd.look.size,15)-2.5):12.5)+'px;font-weight:'+(fd&&fd.look&&fd.look.bold?800:700)+';margin-bottom:2px;color:#000">'+E(t||'')+'</div>';
+  const opts = o.opts || (fd=>fd.options||[]);
+  const pp = o.pp || 'thumb';
+  const entry = (fd, inner)=>{ const hh = fmxN(fd.h,0); const extra = (hh>0 && FMX_SPACE_TYPES.indexOf(fd.type)>=0) ? hh/2 : 0; return '<div style="margin:'+(7+extra)+'px 0;color:#000;break-inside:avoid">'+inner+'</div>'; };
+  const boxed = (fd, hgt)=>{ const L = fd.look||{}; const bw = L.outline===false ? 0 : fmxN(L.thick,1.5); return '<div style="border:'+bw+'px solid #000;border-radius:'+fmxN(L.radius,0)+'px;height:'+hgt+'px;'+(fmxColor(L.fill)?'background:'+fmxColor(L.fill)+';':'')+'"></div>'; };
+  const hasLook = fd=>{ const L = fd.look||{}; return L.radius!=null&&L.radius!=='' || L.outline===false || L.thick || fmxColor(L.fill); };
+  const entryLine = fd=> hasLook(fd) ? boxed(fd, 30) : line(26);
+  const sample = (fd)=>{ const n = fmxN(fd.sampleCount,1); let s = ''; for(let i=0;i<n;i++) s += '<div style="width:70px;height:70px;background:#ddd;border:1px solid #999;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#666;margin:0 6px 6px 0">photo</div>'; return s; };
+  const cell = (fd)=>{
+    const t = fd.type, label = fd.label || '';
+    if(t==='blank' || t==='endsec') return '<div style="height:'+(fmxN(fd.h,0)>0?fmxN(fd.h,0):14)+'px"></div>';
+    if(t==='note') return '<div style="font-size:12.5px;color:#333;margin:4px 0">'+E(label)+'</div>';
+    if(t==='heading') return String(label).trim() ? '<div style="font-size:16px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #000;margin:14px 0 6px;padding-bottom:2px;color:#000">'+E(label)+'</div>' : '<div style="border-bottom:1px solid #000;margin:8px 0"></div>';
+    if(t==='formheader') return '';
+    if(t==='line'){ const w = fmxN(fd.w,0); return '<div style="border-top:'+fmxN(fd.thick,2)+'px solid #000;margin:'+fmxN(fd.pad,4)+'px 0"></div>'; }
+    if(t==='label') return '<div style="font-size:'+fmxN(fd.size,16)+'px;'+(fd.bold?'font-weight:700;':'')+'white-space:pre-wrap;color:#000;margin:2px 0;text-align:'+(fd.align||'left')+'">'+E(label)+'</div>';
+    if(t==='pagebreak') return '<div style="break-after:page;height:0"></div>';
+    if(t==='image') return fd.src ? '<div style="text-align:'+(fd.align||'left')+'"><img src="'+fd.src+'" alt="" style="'+(fmxN(fd.iw,0)?'width:'+fmxN(fd.iw,0)+'px;':'')+(fmxN(fd.ih,0)?'height:'+fmxN(fd.ih,0)+'px;object-fit:contain;':'')+'max-width:100%"></div>' : '';
+    if(t==='checkbox') return '<div style="display:flex;align-items:flex-start;font-size:14px;margin:'+(7+(fmxN(fd.h,0)/2))+'px 0;color:#000;break-inside:avoid">'+box()+'<span>'+E(label)+'</span></div>';
+    if(t==='checkexp') return entry(fd, '<div style="display:flex;align-items:flex-start;font-size:14px">'+box()+'<span>'+E(label)+'</span></div><div style="margin-left:24px;font-size:11.5px;color:#444">Note:</div><div style="margin-left:24px">'+line(22)+'</div>');
+    if(t==='yesno') return entry(fd, lab(label,fd)+'<div style="font-size:14px">'+box()+'Yes &nbsp;&nbsp;&nbsp; '+box()+'No</div>');
+    if(t==='passfail') return entry(fd, lab(label,fd)+'<div style="font-size:14px">'+box()+'Pass &nbsp;&nbsp; '+box()+'Fail &nbsp;&nbsp; '+box()+'N/A</div>');
+    if(t==='units') return entry(fd, lab(label,fd)+'<div style="display:flex;align-items:flex-end;gap:8px"><div style="flex:1">'+entryLine(fd)+'</div><div style="font-size:14px;padding-bottom:3px">'+E(fd.unit||'')+'</div></div>');
+    if(t==='radio' || t==='dropdown'){ const op = opts(fd); return entry(fd, lab(label,fd)+(op.length?op.map(x=>'<div style="font-size:14px;margin:2px 0">'+box()+E(x)+'</div>').join(''):entryLine(fd))); }
+    if(t==='longtext'){ const hh = fmxN(fd.h,0); return entry(fd, lab(label,fd)+(hasLook(fd) ? boxed(fd, hh>0?hh:104) : (hh>0 ? Array.apply(null,Array(Math.max(1,Math.round(hh/26)))).map(()=>line(26)).join('') : line(26)+line(26)+line(26)+line(26)))); }
+    if(t==='photo'){
+      const hh = fmxN(fd.h,0)>0 ? fmxN(fd.h,0) : 110;
+      if(o.filled) return entry(fd, lab(label,fd)+(pp==='none' ? '' : sample(fd)));
+      return entry(fd, lab(label,fd)+'<div style="border:1.5px solid #000;height:'+hh+'px;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px">Photo</div>');
+    }
+    if(t==='signature') return '<div style="margin:12px 0 7px;color:#000;break-inside:avoid">'+lab(label,fd)+'<div style="display:flex;gap:18px;align-items:flex-end"><div style="flex:1">'+line(34)+'</div><div style="flex:0 0 28%"><div style="font-size:11px;color:#444">Date</div>'+line(22)+'</div></div></div>';
+    if(t==='date' && fd.autoDate && fd.autoDate!=='open') return entry(fd, lab(label,fd)+'<div style="font-size:12px;color:#666">'+(fd.autoDate==='datetime'?'date and time':'date')+' — filled in when the form is started</div>'+line(20));
+    return entry(fd, lab(label,fd)+entryLine(fd));
+  };
+  const hdr = f.fields.find(x=>x.type==='formheader');
+  const hdrLines = hdr ? fmHdrLines(hdr) : [];
+  const items = hdr ? (Array.isArray(hdr.items)?hdr.items:['car','date']) : [];
+  const rows = (o.fbRows || fbRows)(f.fields.filter(x=>x.type!=='formheader'));
+  const PR = f.print || {};
+  const rowHTML = r=>{
+    const lay = r.some(fd=>fmxN(fd.w,0)>0);
+    if(r.length===1 && !lay) return cell(r[0]);
+    if(!lay) return '<div style="display:flex;gap:18px">'+r.map(fd=>'<div style="flex:1;min-width:0">'+cell(fd)+'</div>').join('')+'</div>';
+    const rs = fmxRowStyle(r);
+    return '<div style="display:flex;'+rs+'">'+r.map(fd=>{ const w = fmxN(fd.w,0); const al = fd.align||'left'; return '<div style="'+(w>0?'flex:0 0 '+w+'%;max-width:'+w+'%;':'flex:1 1 0;')+'min-width:0;box-sizing:border-box;padding:0 8px;text-align:'+al+'">'+cell(fd)+'</div>'; }).join('')+'</div>';
+  };
+  return '<div style="background:#fff;color:#000;border-radius:10px;padding:18px" class="bf-sheet">'
+    +(PR.pageNumbers ? '<style>@media print{@page{@bottom-center{content:"Page " counter(page) " of " counter(pages);font-size:10pt}}}</style>' : '')
+    +(PR.header ? '<div style="font-size:11px;color:#444;text-align:center;border-bottom:1px solid #999;margin-bottom:8px;padding-bottom:3px">'+E(PR.header)+'</div>' : '')
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><div style="font-size:24px;font-weight:700">'+E(f.name||'(untitled form)')+'</div>'+(!hdr||items.indexOf('date')>=0?'<div style="font-size:13px;white-space:nowrap">Date: ______________</div>':'')+'</div>'
+    +(!hdr||items.indexOf('car')>=0?'<div style="margin:10px 0 4px">'+lab('Car')+line(28)+'</div>':'')
+    +(hdrLines.length?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px">'+hdrLines.map(l=>'<div style="margin:6px 0">'+lab(l.label)+line(24)+'</div>').join('')+'</div>':'')
+    +'<div style="margin:10px 0"><div style="border-bottom:2px solid #000"></div></div>'
+    +rows.map(rowHTML).join('')
+    +(PR.footer ? '<div style="font-size:11px;color:#444;text-align:center;border-top:1px solid #999;margin-top:12px;padding-top:3px">'+E(PR.footer)+'</div>' : '')
+    +'</div>';
+}
+// ---- reading a form file made by the Form maker ----
+function fmxParseFormFile(text){
+  let j; try{ j = JSON.parse(text); }catch(e){ return {error:'That file is not a form file (it could not be read).'}; }
+  if(!j || j.kind!=='shop-form' || !Array.isArray(j.fields)) return {error:'That file is not a form made by the Form maker.'};
+  const ok = {}; Object.keys(FB_FIELD_TYPES||{}).forEach(k=>ok[k]=1);
+  const fields = j.fields.filter(x=>x && typeof x==='object' && x.type && (!Object.keys(ok).length || ok[x.type]));
+  return {name: String(j.name||'').trim() || 'Imported form', fields, print: j.print||null, count: fields.length};
+}
+// ===== FMX-END =====
 function fmEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 const FM_HDR_AUTO = [['yearmake','Year / make'],['vin','VIN'],['ownername','Owner'],['ownerphone','Phone']];
 const FM_HDR_TYPED = [['email','Email'],['address','Address']];
 function fmNamedHeading(f){ return !!(f && f.type==='heading' && String(f.label||'').trim()); }
-function fmBlankPx(f){ return f && f.size==='l' ? 56 : (f && f.size==='m' ? 28 : 12); }
+function fmBlankPx(f){ const hh = parseFloat(f && f.h); if(hh>0) return hh; return f && f.size==='l' ? 56 : (f && f.size==='m' ? 28 : 12); }
 // The header's lines in their fixed order: [{key,label,auto}]. "auto" lines are filled in by Shop Boss from the car and owner records.
 function wcHdrAutoVal(carName, key){
   const nm = String(carName||'').trim().toLowerCase(); if(!nm) return '';
@@ -2140,11 +2467,14 @@ function fmRowHTML(r, cellFn){
   if(f0 && f0.type==='heading' && !fmNamedHeading(f0) && r.length===1) return '<div class="fm-line"></div>';
   if(r.every(f=>f.type==='blank')){ const px = Math.max.apply(null, r.map(fmBlankPx)); return '<div class="fm-row fm-row-blank"><div class="fm-cell fm-blank" style="height:'+px+'px"></div></div>'; }
   if(r.length===1 && r[0].type==='formheader') return '<div class="fm-row fm-row-blank"><div class="fm-cell" style="padding:8px 0 0">'+cellFn(r[0])+'</div></div>';
-  return '<div class="fm-row">'+r.map(f=>'<div class="fm-cell'+(f.type==='blank'?' fm-blank':'')+'">'+cellFn(f)+'</div>').join('')+'</div>';
+  if(r.length===1 && f0.type==='line' && !(parseFloat(f0.w)>0)) return fmxLineHTML(f0);
+  if(r.length===1 && f0.type==='pagebreak') return '<div class="fmx-pb"></div>';
+  const lay = r.some(f=>parseFloat(f.w)>0), rs = fmxRowStyle(r);
+  return '<div class="fm-row'+(lay?' fmx-rowx':'')+'"'+(rs?' style="'+rs+'"':'')+'>'+r.map(f=>{ const a = fmxCellAttrs(f, lay); return '<div class="fm-cell'+(f.type==='blank'?' fm-blank':'')+a.cls+'"'+(a.st?' style="'+a.st+'"':'')+'>'+cellFn(f)+'</div>'; }).join('')+'</div>';
 }
-function fmFormHTML(fields, rowsFn, cellFn){
+function fmFormHTML(fields, rowsFn, cellFn, attrs){
   let firstSec = true;
-  return '<div class="fm-form">'+fmBlocks(fields, rowsFn).map(b=>{
+  return '<div class="fm-form"'+(attrs||'')+'>'+fmBlocks(fields, rowsFn).map(b=>{
     if(b.kind==='rows') return b.rows.map(r=>fmRowHTML(r, cellFn)).join('');
     const total = b.rows.reduce((n,r)=>n+r.filter(fmIsCheck).length, 0);
     const open = firstSec; firstSec = false;
@@ -2159,7 +2489,7 @@ function fmCheckHTML(o){
 }
 function fmNoteTextHTML(f){ return '<div class="fm-notetext'+(f.hl?' hl':'')+'">'+fmEsc(f.label||'')+'</div>'; }
 function fmComboHTML(id, options, extra){
-  return '<div class="fm-combo"><input type="text" id="'+id+'" data-accombo="1" data-acmode="single" autocomplete="off" placeholder="Type, or tap ▾ to pick" data-acopts="'+fmEsc(JSON.stringify(options||[]))+'"'+(extra||'')+'><button type="button" class="sbx-arrow" onpointerdown="event.preventDefault()" onclick="acToggleAll(\''+id+'\')" aria-label="Show the list">▾</button></div>';
+  return '<div class="fm-combo"><input type="text" id="'+id+'" data-accombo="1" data-acmode="single" autocomplete="off" placeholder="Type, or tap the arrow to pick" data-acopts="'+fmEsc(JSON.stringify(options||[]))+'"'+(extra||'')+'><button type="button" class="sbx-arrow" onpointerdown="event.preventDefault()" onclick="acToggleAll(\''+id+'\')" aria-label="Show the list">▾</button></div>';
 }
 function fmHdrCarFit(el){
   if(!el || !el.parentNode) return;
@@ -2168,7 +2498,8 @@ function fmHdrCarFit(el){
   const txt = el.value || el.placeholder || 'Car name';
   const avail = Math.max(80, box.clientWidth - 44);
   let fs = 28, w;
-  for(;;){ cx.font = '700 '+fs+'px '+cs.fontFamily; w = cx.measureText(txt).width; if(w <= avail-14 || fs <= 16) break; fs -= 1; }
+  for(;;){ cx.font = '700 '+fs+'px '+cs.fontFamily; w = cx.measureText(txt).width; if(w <= avail-14 || fs <= 12) break; fs -= 1; }
+  el.style.setProperty('text-overflow', 'ellipsis');
   el.style.setProperty('font-size', fs+'px', 'important');
   el.style.setProperty('width', Math.min(avail, Math.ceil(w)+16)+'px', 'important');
 }
@@ -2223,9 +2554,9 @@ function fmViewerHTML(answers, ctx){
       return fmHdrHTML({title: ctx.title, car: items.indexOf('car')>=0 ? ctx.car : null, dateHTML: items.indexOf('date')>=0 ? fmEsc(a.date||ctx.date||'') : '', lines});
     }
     if(fmIsCheck(a)) return '<div class="fm-row"><div class="fm-cell"><div class="fm-vcheck"><span class="fm-vbox'+(a.value?' on':'')+'">'+(a.value?'✔':'')+'</span><div><div class="fm-vlabel">'+fmEsc(a.label||'(untitled checkbox)')+'</div>'+((a.note&&String(a.note).trim())?'<div class="fm-vnote">'+fmEsc(a.note)+'</div>':'')+'</div></div></div></div>';
+    if(a.type==='photo'){ const ph = fmxPhotos(a); return '<div class="fm-row"><div class="fm-cell"><div class="fm-vk">'+fmEsc(a.label||'(untitled field)')+'</div>'+(ph.length ? '<div class="fmx-vthumbs">'+ph.map((u,i)=>'<img src="'+u+'" alt="photo '+(i+1)+'" onclick="fmxOpenImg(this.src)">').join('')+'</div>' : '<div class="fm-vv">— no photo taken</div>')+'</div></div>'; }
     let shown;
-    if(a.type==='photo') shown = a.value ? '📷 photo attached' : '— no photo taken';
-    else if(a.type==='signature') shown = a.value ? '✒ '+a.value : '— not signed';
+    if(a.type==='signature') shown = a.value ? '✒ '+a.value : '— not signed';
     else shown = (a.value===''||a.value==null) ? '—' : a.value;
     return '<div class="fm-row"><div class="fm-cell"><div class="fm-vk">'+fmEsc(a.label||'(untitled field)')+'</div><div class="fm-vv">'+fmEsc(shown)+'</div></div></div>';
   };
@@ -2237,6 +2568,7 @@ function fmViewerHTML(answers, ctx){
     return '<div class="fm-sec'+(open?' open':'')+'"><button type="button" class="fm-sec-head" onclick="fmToggleSection(this)"><span class="fm-title">'+fmEsc(b.head.label)+'</span>'+fmBadgeHTML(un, checks.length)+'<span class="fm-chev">▸</span></button><div class="fm-body">'+b.items.map(item).join('')+'</div></div>';
   }).join('')+'</div>';
 }
+// ===== FMCORE-END =====
 
 function fbFillFieldHTML(f, empName, carVal){
   const fid = 'ff-'+f.id;
@@ -2247,6 +2579,7 @@ function fbFillFieldHTML(f, empName, carVal){
   if(f.autoFill==='employeeName'){
     return `<div class="field"><label>${label}</label><input type="text" id="${fid}" value="${(empName||'').replace(/"/g,'&quot;')}" readonly style="color:var(--muted)"><p class="hint" style="margin:4px 0 0">Auto-filled with your name</p></div>`;
   }
+  { const _x = fmxCell(f, 'fill'); if(_x!=null) return _x; }
   switch(f.type){
     case 'longtext':
       return `<div class="field"><label>${label}</label><textarea id="${fid}" rows="3"></textarea></div>`;
@@ -2275,13 +2608,11 @@ function fbFillFieldHTML(f, empName, carVal){
       const lines = fmHdrLines(f);
       const hasCar = items.indexOf('car')>=0;
       const lineHTML = l=>{ const v = l.auto ? wcHdrAutoVal(carVal, l.key) : ''; return `<input type="text" class="fm-hdr-in" data-key="${l.key}" ${l.auto?`data-auto="${escAttr(v)}"`:''} value="${escAttr(v)}" id="${fid}-l-${l.key.replace(':','_')}">`; };
-      const carHTML = hasCar ? fmComboHTML('carInput', knownCars(), ' oninput="wcHdrFill()" onchange="wcHdrFill()"'+(carVal?' value="'+escAttr(carVal)+'" readonly':'')).replace('Type, or tap ▾ to pick','Car name') : null;
+      const carHTML = hasCar ? fmComboHTML('carInput', knownCars(), ' oninput="wcHdrFill()" onchange="wcHdrFill()"'+(carVal?' value="'+escAttr(carVal)+'" readonly':'')).replace('Type, or tap the arrow to pick','Car name') : null;
       return fmHdrHTML({title:fmTmplName, carHTML, dateHTML: items.indexOf('date')>=0 ? `<input type="date" id="${fid}-date" value="${todayISO()}">` : '', lines: lines.map(l=>({label:l.label, html:lineHTML(l)}))});
     }
     case 'endsec':
       return '';
-    case 'photo':
-      return `<div class="field"><label>${label}</label><input type="file" accept="image/*" capture="environment" id="${fid}" onchange="handleFillPhotoField(event,'${f.id}')">${fbFillPhotos[f.id]?`<img src="${fbFillPhotos[f.id]}" style="width:100%;border-radius:10px;margin-top:8px;display:block">`:''}</div>`;
     case 'signature':
       return `<div class="field"><label>${label} <span style="text-transform:none;color:var(--muted)">(type your name to sign)</span></label><input type="text" id="${fid}" placeholder="Type your full name"></div>`;
     default:
@@ -2318,7 +2649,7 @@ function markDocFilledStructured(templateId, car, answers, flagNote){
     flagNote: (flagNote||'').trim()||null,
     submitted: false, completedAt: Date.now()
   });
-  fbFillPhotos = {};
+  fbFillPhotos = {}; Object.keys(fmxPhotoStore).forEach(k=>{ delete fmxPhotoStore[k]; });
   stack = [{type:'home'},{type:'documents'}];
   showToast('Form submitted.');
   render();
@@ -2327,14 +2658,16 @@ function submitStructuredForm(templateId){
   const tmpl = documents.find(d=>d.id===templateId);
   if(!tmpl || !Array.isArray(tmpl.fields)) return;
   const car = (document.getElementById('carInput')||{}).value || '';
+  const miss = fmxMissing(tmpl.fields);
+  if(miss.length){ fmxShowMissing(miss); showToast('Please fill in: '+miss.map(m=>m.label).slice(0,4).join(', ')+(miss.length>4?' and '+(miss.length-4)+' more':''), true); return; }
   const answers = {};
   tmpl.fields.forEach(f=>{
-    if(f.type==='blank' || f.type==='note') return;
+    if(f.type==='blank' || f.type==='note' || fmxIsStatic(f.type)&&f.type!=='heading'&&f.type!=='formheader'&&f.type!=='endsec') return;
     if(f.type==='endsec'){ answers[f.id] = {label:'', type:'endsec', value:''}; return; }
     if(f.type==='formheader'){ const dEl = document.getElementById('ff-'+f.id+'-date'); answers[f.id] = {label:'', type:'formheader', value:'', items: Array.isArray(f.items)?f.items:['car','date'], date: dEl ? dEl.value : '', lines: fmHdrLines(f).map(l=>{ const le = document.getElementById('ff-'+f.id+'-l-'+l.key.replace(':','_')); return {key:l.key, label:l.label, auto:l.auto, value: le ? (le.value||'').trim() : ''}; })}; return; }
     if(f.type==='heading'){ answers[f.id] = {label:f.label||'', type:'heading', value:''}; return; }
     const el = document.getElementById('ff-'+f.id);
-    if(f.type==='photo'){ answers[f.id] = {label:f.label||'', type:f.type, value: fbFillPhotos[f.id]||null}; return; }
+    { const _a = fmxReadAnswer(f); if(_a){ answers[f.id] = _a; return; } }
     if(f.type==='checkbox'){ answers[f.id] = {label:f.label||'', type:f.type, value: el ? !!el.checked : false}; return; }
     if(f.type==='checkexp'){ const ne = document.getElementById('ff-'+f.id+'-note'); const on = el ? !!el.checked : false; answers[f.id] = {label:f.label||'', type:f.type, value:on, note: (on && ne) ? (ne.value||'').trim() : ''}; return; }
     if(f.type==='radio'){ const r = document.querySelector('input[name="ffr-'+f.id+'"]:checked'); answers[f.id] = {label:f.label||'', type:f.type, value: r ? r.value : ''}; return; }
@@ -3301,7 +3634,7 @@ const renderers = {
         <input type="text" id="carInput" list="carList" value="${(tmpl.car||'').replace(/"/g,'&quot;')}" placeholder="Leave blank if this isn't tied to a car" ${tmpl.car?'readonly':''}>
         <datalist id="carList">${knownCars().map(c=>`<option value="${c}">`).join('')}</datalist>
       </div>`}
-      ${fmFormHTML(tmpl.fields, fbFillRows, f=>fbFillFieldHTML(f, empName, tmpl.car||''))}
+      ${fmFormHTML(tmpl.fields, fbFillRows, f=>fbFillFieldHTML(f, empName, tmpl.car||''), ' data-fmx-fill="1"')}
       ${flagFieldHTML('flagInput', null)}
       <button class="btn-primary" onclick="submitStructuredForm('${tmpl.id}')">Save form</button>
     <p class="hint" style="text-align:center;margin:6px 0 0">Goes to the shop with your next send.</p>
@@ -3557,6 +3890,21 @@ function acAppSource(el){
     if(!el.getAttribute('data-acthumb') || typeof window.acThumbHTML!=='function') return null;
     return window.acThumbHTML(s.text);
   }
+  // A mouse picks on press. A finger picks only when it lifts without having moved, so touching the list to scroll it never picks a name.
+  function bindTap(el, fn){
+    let down = false, sx = 0, sy = 0;
+    el.addEventListener('pointerdown', ev=>{
+      if(ev.pointerType!=='touch' && ev.pointerType!=='pen'){ ev.preventDefault(); ev.stopPropagation(); fn(); return; }
+      down = true; sx = ev.clientX; sy = ev.clientY;
+    });
+    el.addEventListener('pointerup', ev=>{
+      if(!down) return; down = false;
+      if(Math.abs(ev.clientX-sx) < 10 && Math.abs(ev.clientY-sy) < 10){ ev.preventDefault(); ev.stopPropagation(); fn(); }
+    });
+    el.addEventListener('pointercancel', ()=>{ down = false; });
+    el.addEventListener('pointermove', ev=>{ if(down && (Math.abs(ev.clientX-sx) > 10 || Math.abs(ev.clientY-sy) > 10)) down = false; });
+    el.addEventListener('mousedown', ev=>{ ev.preventDefault(); });   // keep the box focused while the finger lifts
+  }
   function show(el, list, autoFirst){
     if(!list.length){ hide(); return; }
     cur = el; items = list; active = autoFirst ? 0 : -1;
@@ -3569,11 +3917,11 @@ function acAppSource(el){
       const th = thumbFor(el, s);
       if(th){
         const t = document.createElement('span'); t.className = 'cp-thumb'; t.innerHTML = th;
-        t.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); if(typeof window.acThumbTap==='function') window.acThumbTap(s.text); });
+        bindTap(t, ()=>{ if(typeof window.acThumbTap==='function') window.acThumbTap(s.text); });
         d.appendChild(t);
       }
       const tx = document.createElement('span'); tx.textContent = s.text; tx.style.flex = '1'; tx.style.minWidth = '0'; d.appendChild(tx);
-      d.addEventListener('pointerdown', ev=>{ ev.preventDefault(); accept(s); });
+      bindTap(d, ()=>accept(s));
       b.appendChild(d);
     });
     b.style.display = 'block';
