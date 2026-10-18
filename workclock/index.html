@@ -79,7 +79,13 @@
   .field textarea{resize:vertical;min-height:70px}
   .field .hint{color:var(--muted);font-size:12px;margin-top:6px}
   .field-error{color:#E05A5A;font-size:13px;margin:-8px 0 16px}
-  .lf-box{resize:none;overflow:hidden;field-sizing:content;min-height:46px;line-height:1.35}
+  .lf-box{resize:none;overflow-y:auto;field-sizing:content;min-height:46px;max-height:33vh;line-height:1.35}
+  .sbx{position:relative;display:block}
+  .sbx>textarea,.sbx>input{width:100%;box-sizing:border-box}
+  .sbx.has-arrow>textarea,.sbx.has-arrow>input{padding-right:46px!important}
+  .sbx-arrow{position:absolute;right:2px;top:2px;width:42px;height:42px;margin:0!important;padding:0!important;background:none!important;border:none!important;color:var(--muted);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .sbx-car>input{padding-left:58px!important}
+  .sbx-thumb{position:absolute;left:4px;top:3px;pointer-events:none}
   .lf-select{width:100%}
   .lf-picker{margin-top:8px}
   .fb-prow{display:flex;flex-wrap:wrap;gap:0 14px}
@@ -273,7 +279,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.29';
+const APP_VERSION = 'v0.30';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -325,6 +331,7 @@ let shopCars = [];            // {id, name, thumbDataUrl}
 let shopBossEmployees = [];   // {id, name} — Shop Boss's own employee records, for matching by ID instead of fuzzy name text
 let shopNotesHelper = [];     // quick words for the Notes box's + button, sent by Shop Boss in every update (may be empty)
 let shopConsumables = [];     // ['Primer', 'Brake fluid', ...] — Darren's common-supplies list, for the "running low on" picker
+let shopTaskMode = 'multi';
 let shopWorkTypes = [];       // ['Oil change', 'Brake work', ...] — Darren's work-types list from Shop Boss; falls back to TASK_PRESETS below until the first update arrives
 let shopConsumablesMandatory = false; // no longer used — nothing is "required" except the Task
 // Darren's own custom lists (built in Shop Boss's Lists/Settings pages), sent down only when he's
@@ -463,7 +470,7 @@ function confirmNo(){ pendingConfirm=null; goBack(); }
 // ---- persistence: autosave to this device, same pattern as Shop Boss ----
 const WC_KEY = 'wc-data-v2';
 function persist(){
-  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, active, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){}
+  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, active, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){}
 }
 function loadPersisted(){
   try{
@@ -490,6 +497,7 @@ function loadPersisted(){
     if(Array.isArray(d.shopCars)){ shopCars.length=0; shopCars.push(...d.shopCars); }
     if(Array.isArray(d.shopBossEmployees)){ shopBossEmployees.length=0; shopBossEmployees.push(...d.shopBossEmployees); }
     if(Array.isArray(d.shopConsumables)){ shopConsumables.length=0; shopConsumables.push(...d.shopConsumables); }
+    if(d.shopTaskMode) shopTaskMode = d.shopTaskMode;
     if(Array.isArray(d.shopWorkTypes)){ shopWorkTypes.length=0; shopWorkTypes.push(...d.shopWorkTypes); }
     if(Array.isArray(d.shopNotesHelper)){ shopNotesHelper.length=0; shopNotesHelper.push(...d.shopNotesHelper); }
     if(Array.isArray(d.shopPickLists)){ shopPickLists.length=0; shopPickLists.push(...d.shopPickLists); }
@@ -989,7 +997,7 @@ function flagFieldHTML(id, currentValue){
   return `
     <div class="field">
       <label>Flag <span style="text-transform:none;color:var(--muted)">(optional — anything that needs a look)</span></label>
-      <input type="text" id="${id}" value="${currentValue?String(currentValue).replace(/"/g,'&quot;'):''}" placeholder="e.g. Customer changed their mind on paint color">
+      <textarea id="${id}" rows="1" class="lf-box" autocomplete="off" oninput="autoGrow(this)" placeholder="e.g. Customer changed their mind on paint color">${currentValue?escText(String(currentValue)):''}</textarea>
     </div>`;
 }
 // ---- Lists: every list (Task, any list Shop Boss sends, Notes) is a titled text box holding comma-
@@ -1023,19 +1031,24 @@ function removeEmployeePicture(empId){ const emp = employees.find(e=>e.id===empI
 function escAttr(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function escText(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 // Tidies "a,b ,, c" into "a, b, c"
-function normList(text){ return String(text||'').split(',').map(x=>x.trim()).filter(Boolean).join(', '); }
+function normList(text){ return String(text||'').replace(/\s*\n\s*/g,' ').split(',').map(x=>x.trim().replace(/\s+/g,' ')).filter(Boolean).join(', '); }
 function listFieldHTML(fid, label, value, items, opts){
   opts = opts||{};
-  lfItemsRegistry[fid] = (items||[]).map(String);
-  // Always an auto-growing text area (long picks wrap onto more lines instead of getting cut off);
-  // Enter is blocked on the single-line boxes so it can't add stray line breaks.
-  const box = `<textarea id="lf-${fid}" rows="1" class="lf-box" style="flex:1;min-width:0" ${opts.multiline?'':`onkeydown="if(event.key==='Enter')event.preventDefault()"`} oninput="autoGrow(this)" placeholder="${escAttr(opts.placeholder||'')}">${escText(value)}</textarea>`;
+  const list = (items||[]).map(String);
+  lfItemsRegistry[fid] = list;
+  // One smart box: a text area that grows as you type, with an arrow on the right when there is a list.
+  // mode: 'multi' (several picks, each adds a comma + new line), 'single' (one pick), 'listonly' (pick only, no keyboard).
+  let mode = opts.mode || 'multi';
+  const hasList = list.length>0;
+  if(opts.multiline && !hasList) mode = '';                 // Notes with no helper words: a plain box
+  const ro = (mode==='listonly') ? ' readonly inputmode="none"' : '';
+  const attrs = (mode ? ` data-acmode="${mode}" data-acopts="${escAttr(JSON.stringify(list))}"` : '') + (opts.multiline ? ' data-acnoenter="1"' : '');
+  const ph = opts.placeholder || (hasList ? 'Type, or tap the arrow to pick' : '');
+  const arrow = (hasList && mode) ? `<button type="button" class="sbx-arrow" onpointerdown="event.preventDefault()" onclick="acToggleAll('lf-${fid}')" aria-label="Show the ${escAttr(label)} list">▾</button>` : '';
   return `
     <div class="field">
       <label>${escText(label)}${opts.required?'':' <span style="text-transform:none;color:var(--muted)">(optional)</span>'}</label>
-      <div style="display:flex;gap:8px;align-items:flex-start">${box}<button type="button" class="btn-ghost" style="width:46px;margin:0;padding:10px 0;font-size:20px;flex:0 0 auto" onclick="toggleListPicker(${jsStr(fid)})" aria-label="Add from the ${escAttr(label)} list">+</button></div>
-      <div id="lfp-${fid}" class="lf-picker" hidden></div>
-      ${opts.multiline?'':`<p class="hint" style="margin:4px 0 0">${fid==='consumables'?'Separate each part with a comma.':'Separate each one with a comma.'}</p>`}
+      <div class="sbx${arrow?' has-arrow':''}"><textarea id="lf-${fid}" rows="1" class="lf-box" autocomplete="off" autocorrect="off" spellcheck="false"${attrs}${ro} oninput="autoGrow(this)" placeholder="${escAttr(ph)}">${escText(value)}</textarea>${arrow}</div>
     </div>`;
 }
 function toggleListPicker(fid){
@@ -1063,14 +1076,19 @@ function pickListItem(fid, i){
   const box = document.getElementById('lfp-'+fid);
   if(box) box.hidden = true;
 }
-function lfValue(fid){ const el = document.getElementById('lf-'+fid); return el ? (el.value||'').trim() : ''; }
-function taskFieldHTML(value){ return listFieldHTML('task', 'Task', value, currentTaskPresets(), {required:true, placeholder:'Type, or tap + to pick'}); }
+function lfValue(fid){
+  const el = document.getElementById('lf-'+fid); if(!el) return '';
+  const v = el.value||'';
+  if(el.hasAttribute('data-acnoenter')) return v.trim();                 // Notes keep their real line breaks
+  return v.replace(/\s*\n\s*/g,' ').replace(/[ \t]{2,}/g,' ').replace(/[,\s]+$/,'').trim();   // jobs: new lines count as spaces; only commas separate
+}
+function taskFieldHTML(value){ return listFieldHTML('task', 'Task', value, currentTaskPresets(), {required:true, mode:shopTaskMode, placeholder:'Type, or tap the arrow to pick'}); }
 function extraListsHTML(answers){
   answers = answers||{};
-  return shopPickLists.map(l=>listFieldHTML(l.id, l.name, answers[l.id], l.items||[], {placeholder:'Type, or tap + to pick'})).join('');
+  return shopPickLists.map(l=>listFieldHTML(l.id, l.name, answers[l.id], l.items||[], {mode:(l.mode||'multi'), placeholder:'Type, or tap the arrow to pick'})).join('');
 }
 function lfNotes(){ const el = document.getElementById('lf-notes'); return el ? el.value : ''; }
-function notesFieldHTML(value){ if(!shopShowNotes) return ''; return listFieldHTML('notes', 'Notes', value, shopNotesHelper, {multiline:true, placeholder:'Anything worth noting'}); }
+function notesFieldHTML(value){ if(!shopShowNotes) return ''; return listFieldHTML('notes', 'Notes', value, shopNotesHelper, {multiline:true, mode:'multi', placeholder:'Anything worth noting'}); }
 // What's currently typed in each of the extra lists, keyed by list id (blank ones left out).
 function collectPickListAnswers(){
   const out = {};
@@ -1086,38 +1104,38 @@ function cpThumbHTML(name){
   return t ? `<img src="${t}" alt="">` : `<span>${escText((String(name||'?').trim()[0]||'?').toUpperCase())}</span>`;
 }
 function carSelectHTML(cur, allowBlank){
-  // A custom picker: every car with its photo on the left. Tap the NAME to choose the car; tap the PHOTO to see it
-  // bigger without choosing. The real value still lives in the text box #carInput (hidden unless Other is chosen),
-  // so every save routine keeps reading carInput.
+  // The car smart box: one text box with the car's little photo on the left and an arrow on the right.
+  // Tap the box to type (the list shows only the cars that match); tap the arrow for the whole list (no keyboard).
+  // Typing a car that is not on the list is always allowed. The value lives in #carInput, as before.
   const names = knownCars();
   cpNames = names;
   const typed = (cur||'').trim();
-  const inList = typed && names.includes(typed);
-  const other = typed && !inList;
-  const label = other ? 'Other (type it in)' : (typed || (allowBlank ? 'No car' : 'Select a car…'));
-  const row = (thumb, name, fn, extra)=>`<div class="cp-row"><span class="cp-thumb" ${extra||''}>${thumb}</span><span class="cp-name" onclick="${fn}">${name}</span></div>`;
-  return `<div id="carPicker">
-    <button type="button" id="carPickBtn" class="cp-btn" onclick="toggleCarPicker()"><span class="cp-thumb" id="carPickThumb">${typed&&inList?cpThumbHTML(typed):'<span>🚗</span>'}</span><span class="cp-label" id="carPickLabel" style="${typed&&!other?'':'color:var(--muted)'}">${escText(label)}</span><span>▾</span></button>
-    <div id="carPickList" class="cp-list" style="display:none">
-      ${allowBlank ? row('<span>—</span>','No car',"pickCar(-1)") : ''}
-      ${names.map((c,i)=>row(cpThumbHTML(c), escText(c), 'pickCar('+i+')', 'onclick="event.stopPropagation();enlargeCarThumb('+i+')" title="Tap to see bigger"')).join('')}
-      ${row('<span>✎</span>','Other (type it in)',"pickCar(-2)")}
-    </div>
-  </div>
-  <input type="text" id="carInput" placeholder="Type the car" value="${escAttr(typed)}" style="${other?'':'display:none;'}margin-top:8px">`;
+  const known = typed && names.some(n=>n.toLowerCase()===typed.toLowerCase());
+  return `<div class="sbx sbx-car has-arrow">
+    <span class="cp-thumb sbx-thumb" id="carBoxThumb">${known?cpThumbHTML(typed):'<span>🚗</span>'}</span>
+    <input type="text" id="carInput" data-acmode="single" data-acthumb="1" data-acopts="${escAttr(JSON.stringify(names))}" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${allowBlank?'Leave blank if not tied to a car':'Type, or tap the arrow to pick'}" value="${escAttr(typed)}" oninput="carBoxThumb()" onchange="carBoxThumb()">
+    <button type="button" class="sbx-arrow" onpointerdown="event.preventDefault()" onclick="acToggleAll('carInput')" aria-label="Show the car list">▾</button>
+  </div>`;
 }
-function toggleCarPicker(){ const l = document.getElementById('carPickList'); if(l) l.style.display = (l.style.display==='none') ? '' : 'none'; }
-function pickCar(i){
-  const inp = document.getElementById('carInput'), list = document.getElementById('carPickList');
-  const lab = document.getElementById('carPickLabel'), th = document.getElementById('carPickThumb');
-  if(!inp) return;
-  if(i===-2){ inp.style.display=''; inp.value=''; if(lab){ lab.textContent='Other (type it in)'; lab.style.color=''; } if(th) th.innerHTML='<span>✎</span>'; if(list) list.style.display='none'; inp.focus(); return; }
-  const name = i===-1 ? '' : (cpNames[i]||'');
-  inp.style.display='none'; inp.value = name;
-  if(lab){ lab.textContent = name || 'No car'; lab.style.color = name ? '' : 'var(--muted)'; }
-  if(th) th.innerHTML = name ? cpThumbHTML(name) : '<span>—</span>';
-  if(list) list.style.display='none';
+function carBoxThumb(){
+  const inp = document.getElementById('carInput'), th = document.getElementById('carBoxThumb'); if(!inp||!th) return;
+  const v = (inp.value||'').trim();
+  const known = v && cpNames.some(n=>n.toLowerCase()===v.toLowerCase());
+  th.innerHTML = known ? cpThumbHTML(v) : '<span>🚗</span>';
 }
+window.acThumbHTML = function(name){ return cpThumbHTML(name); };
+window.acThumbTap = function(name){ enlargeCarByName(name); };
+window.acAfterPick = function(el){ if(el && el.id==='carInput') carBoxThumb(); };
+function enlargeCarByName(name){
+  const t = carThumbFor(name);
+  const ov = document.createElement('div');
+  ov.className = 'cp-pop';
+  ov.innerHTML = t ? '<img src="'+t+'" alt=""><p>'+escText(name)+'</p>' : '<div class="cp-nophoto">'+escText((String(name).trim()[0]||'?').toUpperCase())+'</div><p>'+escText(name)+' — no photo yet</p>';
+  ov.onclick = ()=>ov.remove();
+  document.body.appendChild(ov);
+}
+function toggleCarPicker(){}
+function pickCar(){}
 function enlargeCarThumb(i){
   const name = cpNames[i]; if(name==null) return;
   const t = carThumbFor(name);
@@ -1632,11 +1650,11 @@ async function doSubmitBatch(toSend, docsToSend, photosToSend, returnView, onlyW
     await doSubmitOne(toSend.filter(l=>weekIdFor(l.date)===w), docsToSend.filter(d=>weekIdFor(d.date||todayISO())===w), photosToSend.filter(p=>weekIdFor(p.date||todayISO())===w), returnView, w);
   }
 }
-async function doSubmitOne(toSend, docsToSend, photosToSend, returnView, widArg){
+async function doSubmitOne(toSend, docsToSend, photosToSend, returnView, widArg, soloItem){
   const wid = widArg || weekId();
   // The clock-in and clock-out times for this work week ride in the same file (they are what the
   // employee is paid from) - kept separate from the task entries, which are what gets billed.
-  const clocksToSend = dayClocks.filter(c=>c.empId===currentEmp && weekIdFor(c.date)===wid);
+  const clocksToSend = soloItem ? [] : dayClocks.filter(c=>c.empId===currentEmp && weekIdFor(c.date)===wid);
   if(!toSend.length && !docsToSend.length && !photosToSend.length && !clocksToSend.length){ navReplace(returnView); return; }
   const emp = employees.find(e=>e.id===currentEmp);
   const payload = {
@@ -1774,6 +1792,7 @@ function applyShopUpdate(payload){
   }
   // Tasks (always sent) drive the Task box's + button; the Notes Helper (always sent, may be empty)
   // drives the Notes box's + button.
+  shopTaskMode = (payload.taskMode==='single'||payload.taskMode==='listonly') ? payload.taskMode : 'multi';
   if(Array.isArray(payload.workTypes)){
     shopWorkTypes.length = 0;
     payload.workTypes.forEach(t=>{ if(t) shopWorkTypes.push(String(t)); });
@@ -1793,7 +1812,7 @@ function applyShopUpdate(payload){
     shopPickLists.length = 0;
     payload.pickLists.forEach(l=>{
       if(!l || !l.name) return;
-      shopPickLists.push({id: l.id||uid(), name: String(l.name), items: Array.isArray(l.items)?l.items.map(String):[]});
+      shopPickLists.push({id: l.id||uid(), name: String(l.name), items: Array.isArray(l.items)?l.items.map(String):[], mode: (l.mode==='single'||l.mode==='listonly')?l.mode:'multi'});
     });
   }
   // Anything already SUBMITTED (photos, completed documents) is cleared on every update, since
@@ -2002,8 +2021,19 @@ function completedDocRow(d){
     <div class="entry-date">${fmtDate(d.date)}${d.submitted?' · <span class="badge submitted">Sent</span>':' · <span class="badge">Not sent yet</span>'}${d.answers?(()=>{const n=Object.values(d.answers).filter(x=>x.type!=='heading').length; return ' · '+n+' field'+(n===1?'':'s')+' filled';})():''}</div>
     ${d.submitted?'<div class="entry-date">Sent — stays on this phone until the next update.</div>':''}
     ${d.dataUrl?`<button class="btn-ghost" style="margin-top:10px" onclick="saveCompletedDoc('${d.id}')">⬇ Open / save</button>`:''}
+    <button class="btn-ghost" style="margin-top:10px" onclick="sendOneDoc('${d.id}')">Send just this form</button>
     <p class="switch-link" style="color:#e05c5c;margin-top:6px" onclick="requestDeleteCompletedDoc('${d.id}')">Undo — remove "filled out"</p>
   </div>`;
+}
+// Sends one filled-out form or one photo on its own (the "forgot to send it Friday" case). Shop Boss files it under the right car and week,
+// even when that week is already finished there.
+function sendOneDoc(id){
+  const d = completedDocs.find(x=>x.id===id); if(!d) return;
+  askConfirm('Send just this form ("'+d.templateName+'"'+(d.car?' · '+d.car:'')+') to Shop Boss?', 'Send it', ()=>{ doSubmitOne([], [d], [], {type:'documents'}, weekIdFor(d.date||todayISO()), true); });
+}
+function sendOnePhoto(id){
+  const ph = photos.find(x=>x.id===id); if(!ph) return;
+  askConfirm('Send just this photo'+(ph.car?' ('+ph.car+')':'')+' to Shop Boss?', 'Send it', ()=>{ doSubmitOne([], [], [ph], {type:'documents'}, weekIdFor(ph.date||todayISO()), true); });
 }
 function requestDeleteCompletedDoc(id){
   const cd = completedDocs.find(d=>d.id===id);
@@ -2129,7 +2159,7 @@ function fmCheckHTML(o){
 }
 function fmNoteTextHTML(f){ return '<div class="fm-notetext'+(f.hl?' hl':'')+'">'+fmEsc(f.label||'')+'</div>'; }
 function fmComboHTML(id, options, extra){
-  return '<div class="fm-combo"><input type="text" id="'+id+'" data-accombo="1" autocomplete="off" placeholder="Type, or tap ▾ to pick" data-acopts="'+fmEsc(JSON.stringify(options||[]))+'"'+(extra||'')+'><button type="button" onclick="acToggleAll(\''+id+'\')" aria-label="Show the list">▾</button></div>';
+  return '<div class="fm-combo"><input type="text" id="'+id+'" data-accombo="1" data-acmode="single" autocomplete="off" placeholder="Type, or tap ▾ to pick" data-acopts="'+fmEsc(JSON.stringify(options||[]))+'"'+(extra||'')+'><button type="button" class="sbx-arrow" onpointerdown="event.preventDefault()" onclick="acToggleAll(\''+id+'\')" aria-label="Show the list">▾</button></div>';
 }
 function fmHdrCarFit(el){
   if(!el || !el.parentNode) return;
@@ -3252,6 +3282,7 @@ const renderers = {
     <h2 class="title">${escText(ph.caption||'Photo from the shop')}</h2>
     ${ph.car?`<p class="sub">${escText(ph.car)}</p>`:''}
     <img src="${ph.dataUrl}" style="width:100%;border-radius:10px;display:block;margin-bottom:14px">
+    ${shareBtn()}
     <button class="btn-ghost" onclick="goBack()">Back</button>`;
   },
 
@@ -3331,6 +3362,8 @@ const renderers = {
     return `
     <h2 class="title">Edit photo</h2>
     <img src="${photo.dataUrl}" style="width:100%;border-radius:10px;margin-bottom:16px;display:block">
+    <button class="btn-ghost" style="margin:-6px 0 14px" onclick="sendOnePhoto('${photo.id}')">Send just this photo</button>
+    ${shareBtn()}
     ${photo.submitted?'<p class="hint" style="margin:-6px 0 14px">Sent — stays on this phone until the next update. To send it again, delete it and attach it again.</p>':''}
     <div class="field">
       <label>Car</label>
@@ -3402,14 +3435,19 @@ function acAppSource(el){
   return null;
 }
 
-// ---- Autocomplete: as you type in any text box, suggests words and phrases from everything typed before in this app
-// plus your lists. Tap a suggestion, or press Enter to take the top one. Nothing is ever forced to match: whatever is
-// typed stays as typed, and a drop-down's choice just goes into the box where more text can be added. ----
+// ===== SBX-BEGIN smart box engine (shared by Shop Boss and WorkClock) =====
+// A "smart box" is a text box (input or textarea) that may carry a list.
+//   data-acmode="single"   list, pick ONE (typing allowed)      -> A
+//   data-acmode="multi"    list, pick SEVERAL (comma separated) -> B
+//   data-acmode="listonly" list, pick ONE, no typing, no keyboard -> C
+//   (no data-acmode)       no list; just word suggestions       -> D / E
+// The list comes from data-acopts (JSON) or acAppSource(el). The arrow button calls acToggleAll(id).
 (function(){
   const KEY = 'wc-autocomplete-v1';
   let db = {};
   try{ db = JSON.parse(localStorage.getItem(KEY)||'{}') || {}; }catch(e){ db = {}; }
-  let saveT = null, cur = null, items = [], active = -1, skipInput = false, box = null;
+  try{ const FL = KEY+'-fresh46'; if(!localStorage.getItem(FL)){ db = {}; localStorage.removeItem(KEY); localStorage.setItem(FL,'1'); } }catch(e){}   // new version: start the learned words clean
+  let saveT = null, cur = null, items = [], active = -1, skipInput = false, box = null, lastAccept = 0, lastEl = null;
   function persistDb(){
     clearTimeout(saveT);
     saveT = setTimeout(()=>{ try{
@@ -3427,15 +3465,18 @@ function acAppSource(el){
     if(r){ r.n++; r.u = Date.now(); r.t = t; } else db[k] = {t:t, n:1, u:Date.now()};
   }
   function learn(text){ String(text||'').split(/[\n,;]+/).forEach(learnOne); persistDb(); }
+  function reset(){ db = {}; try{ localStorage.removeItem(KEY); }catch(e){} }
+  function modeOf(el){ return (el && el.getAttribute && el.getAttribute('data-acmode')) || (el && el.getAttribute && el.getAttribute('data-accombo') ? 'single' : ''); }
   function eligible(el){
     if(!el || !el.tagName) return false;
-    if(el.readOnly || el.disabled || el.hasAttribute('data-noac')) return false;
+    if(el.disabled || el.hasAttribute('data-noac')) return false;
+    if(el.readOnly && modeOf(el)!=='listonly') return false;
     if(el.tagName==='TEXTAREA') return true;
     if(el.tagName!=='INPUT') return false;
     const t = (el.getAttribute('type')||'text').toLowerCase();
     if(t!=='text' && t!=='search') return false;
     if(el.maxLength>0 && el.maxLength<=4) return false;
-    if(/numeric|decimal|tel/.test(el.getAttribute('inputmode')||'')) return false;
+    if(/numeric|decimal|tel/.test(el.getAttribute('data-inputmode')||el.getAttribute('inputmode')||'')) return false;
     return true;
   }
   function ownOptions(el){
@@ -3443,56 +3484,79 @@ function acAppSource(el){
     const a = el.getAttribute('data-acopts');
     if(a){ try{ o = JSON.parse(a); }catch(e){} }
     if(!o && typeof acAppSource==='function'){ try{ o = acAppSource(el); }catch(e){} }
-    return Array.isArray(o) ? o : null;
+    return Array.isArray(o) ? o.map(x=>String(x==null?'':(typeof x==='object'?(x.name||''):x))).filter(Boolean) : null;
   }
-  function pool(el){
+  function pool(el, mode, own){
     const out = [], seen = new Set();
     const add = arr=>(arr||[]).forEach(s=>{
       s = String(s==null ? '' : (typeof s==='object' ? (s.name||'') : s)).trim();
       if(!s || s.length>80) return;
       const k = s.toLowerCase(); if(seen.has(k)) return; seen.add(k); out.push(s);
     });
-    add(ownOptions(el));
-    try{ add(typeof acAppExtras==='function' ? acAppExtras() : []); }catch(e){}
-    Object.keys(db).map(k=>db[k]).sort((a,b)=>(b.n-a.n)||(b.u-a.u)).forEach(r=>add([r.t]));
+    add(own);
+    if(mode!=='single' && mode!=='listonly'){ try{ add(typeof acAppExtras==='function' ? acAppExtras() : []); }catch(e){} }
+    if(mode!=='listonly') Object.keys(db).map(k=>db[k]).sort((a,b)=>(b.n-a.n)||(b.u-a.u)).forEach(r=>add([r.t]));
     return out;
   }
+  function wordStarts(t, q){ return t.toLowerCase().split(/[\s\-\/(),]+/).some(w=>w.startsWith(q)); }
   function compute(el, showAll){
-    const own = ownOptions(el), v = el.value;
-    if(showAll){ return own ? own.map(o=>({text:String(o), from:0, to:v.length, all:true})).slice(0,80) : []; }
+    const mode = modeOf(el), own = ownOptions(el), v = el.value;
+    if(showAll){ return own ? own.map(o=>({text:o, from:0, to:v.length, all:true})).slice(0,500) : []; }
+    if(mode==='listonly') return [];
     const caret = (el.selectionStart==null) ? v.length : el.selectionStart;
     const before = v.slice(0, caret);
-    const segRaw = /[^,\n;]*$/.exec(before)[0];
+    if(mode==='single'){
+      const q = before.trim(), lq = q.toLowerCase();
+      if(!q) return [];
+      const res = [], seen = new Set();
+      const P = pool(el, mode, own);
+      P.forEach(t=>{ const l = t.toLowerCase(); if(l.startsWith(lq) && l!==lq && !seen.has(l)){ seen.add(l); res.push({text:t, from:0, to:v.length, whole:true}); } });
+      P.forEach(t=>{ const l = t.toLowerCase(); if(!seen.has(l) && l!==lq && wordStarts(t, lq)){ seen.add(l); res.push({text:t, from:0, to:v.length, whole:true}); } });
+      return res.slice(0,10);
+    }
+    const segRaw = /[^,;]*$/.exec(before)[0];
     const seg = segRaw.replace(/^\s+/, ''), segStart = caret - seg.length;
     const word = /[^\s,;]*$/.exec(before)[0], wStart = caret - word.length;
     const min = own ? 1 : 2;
-    const ls = seg.toLowerCase(), lw = word.toLowerCase();
+    const ls = seg.toLowerCase().replace(/\s+/g,' '), lw = word.toLowerCase();
     const res = [], seen = new Set();
-    const push = (text, from)=>{ const k = text.toLowerCase(); if(seen.has(k)) return; seen.add(k); res.push({text:text, from:from, to:caret}); };
-    const P = pool(el);
+    const push = (text, from)=>{ const k = text.toLowerCase(); if(seen.has(k)) return; seen.add(k); res.push({text:text, from:from, to:caret, seg:(mode==='multi')}); };
+    const P = pool(el, mode, own);
     if(seg.length>=min) P.forEach(t=>{ const l = t.toLowerCase(); if(l.startsWith(ls) && l!==ls) push(t, segStart); });
-    if(word.length>=min) P.forEach(t=>t.split(/[\s,;]+/).forEach(w=>{ const l = w.toLowerCase(); if(w && l.startsWith(lw) && l!==lw) push(w, wStart); }));
-    return res.slice(0,6);
+    if(mode==='multi' && own && seg.length>=1) P.forEach(t=>{ const l = t.toLowerCase(); if(!seen.has(l) && l!==ls && wordStarts(t, ls)) push(t, segStart); });
+    if(mode!=='multi' && word.length>=min) P.forEach(t=>t.split(/[\s,;]+/).forEach(w=>{ const l = w.toLowerCase(); if(w && l.startsWith(lw) && l!==lw) push(w, wStart); }));
+    return res.slice(0, own?10:6);
   }
   function ensureBox(){
     if(box) return box;
     box = document.createElement('div');
     box.id = 'acBox';
-    box.setAttribute('style','position:fixed;z-index:99999;display:none;background:var(--surface-2,#1F2123);color:var(--text,#ECEDEE);border:1px solid var(--line,#2C2E31);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.45);overflow-y:auto;max-height:260px;font-size:16px');
+    box.setAttribute('style','position:fixed;z-index:99999;display:none;background:var(--surface-2,#1F2123);color:var(--text,#ECEDEE);border:1px solid var(--line,#2C2E31);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.45);overflow-y:auto;max-height:260px;-webkit-overflow-scrolling:touch');
+    box.addEventListener('pointerdown', ev=>{ ev.stopPropagation(); });
     document.body.appendChild(box);
     return box;
   }
+  function vvBottom(){ const vv = window.visualViewport; return vv ? Math.min(window.innerHeight, vv.height + vv.offsetTop) : window.innerHeight; }
   function place(){
     if(!cur || !box || box.style.display==='none') return;
-    const r = cur.getBoundingClientRect();
+    const r = (cur.closest && cur.closest('.sbx') || cur).getBoundingClientRect();
     const w = Math.max(r.width, 200);
     box.style.width = w+'px';
     box.style.left = Math.max(4, Math.min(r.left, window.innerWidth-w-4))+'px';
-    const h = Math.min(260, box.scrollHeight);
-    if(window.innerHeight - r.bottom < h+8 && r.top > h+8){ box.style.top = ''; box.style.bottom = (window.innerHeight - r.top + 4)+'px'; }
-    else { box.style.bottom = ''; box.style.top = (r.bottom+4)+'px'; }
+    box.style.maxHeight = '260px';
+    const natural = Math.min(260, box.scrollHeight);
+    const below = vvBottom() - r.bottom - 8, above = r.top - 8;
+    if(below >= Math.min(natural, 150) || below >= above){
+      box.style.maxHeight = Math.max(90, Math.min(260, below))+'px'; box.style.bottom = ''; box.style.top = (r.bottom+4)+'px';
+    } else {
+      box.style.maxHeight = Math.max(90, Math.min(260, above))+'px'; box.style.top = ''; box.style.bottom = (window.innerHeight - r.top + 4)+'px';
+    }
   }
   function hide(){ if(box) box.style.display = 'none'; items = []; active = -1; }
+  function thumbFor(el, s){
+    if(!el.getAttribute('data-acthumb') || typeof window.acThumbHTML!=='function') return null;
+    return window.acThumbHTML(s.text);
+  }
   function show(el, list, autoFirst){
     if(!list.length){ hide(); return; }
     cur = el; items = list; active = autoFirst ? 0 : -1;
@@ -3500,50 +3564,120 @@ function acAppSource(el){
     b.innerHTML = '';
     list.forEach((s,i)=>{
       const d = document.createElement('div');
-      d.textContent = s.text; d.setAttribute('data-i', i);
-      d.setAttribute('style','padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--line,#2C2E31)');
+      d.setAttribute('data-i', i);
+      d.setAttribute('style','padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--line,#2C2E31);display:flex;align-items:center;gap:10px');
+      const th = thumbFor(el, s);
+      if(th){
+        const t = document.createElement('span'); t.className = 'cp-thumb'; t.innerHTML = th;
+        t.addEventListener('pointerdown', ev=>{ ev.preventDefault(); ev.stopPropagation(); if(typeof window.acThumbTap==='function') window.acThumbTap(s.text); });
+        d.appendChild(t);
+      }
+      const tx = document.createElement('span'); tx.textContent = s.text; tx.style.flex = '1'; tx.style.minWidth = '0'; d.appendChild(tx);
       d.addEventListener('pointerdown', ev=>{ ev.preventDefault(); accept(s); });
       b.appendChild(d);
     });
     b.style.display = 'block';
+    b.scrollTop = 0;
     paint(); place();
+    keepVisible(el);
+  }
+  function keepVisible(el){
+    try{
+      const wrap = (el.closest && el.closest('.sbx')) || el, r = wrap.getBoundingClientRect();
+      const need = r.bottom + 150;
+      if(need > vvBottom()) wrap.scrollIntoView({block:'center'});
+      setTimeout(place, 60);
+    }catch(e){}
   }
   function paint(){
     if(!box) return;
     Array.prototype.forEach.call(box.children, (d,i)=>{ d.style.background = (i===active) ? 'var(--accent-tint,#241412)' : 'transparent'; });
     if(active>=0 && box.children[active] && box.children[active].scrollIntoView){ try{ box.children[active].scrollIntoView({block:'nearest'}); }catch(e){} }
   }
+  function fire(el, type){ try{ el.dispatchEvent(new Event(type, {bubbles:true})); }catch(e){} }
   function accept(s){
     const el = cur; if(!el) return;
-    const v = el.value;
-    el.value = v.slice(0, s.from) + s.text + v.slice(s.to);
-    const pos = s.from + s.text.length;
-    try{ el.setSelectionRange(pos, pos); }catch(e){}
-    skipInput = true;
-    try{ el.dispatchEvent(new Event('input', {bubbles:true})); }catch(e){}
-    skipInput = false;
-    learn(s.text);
+    const now = Date.now();
+    if(lastEl===el && now - lastAccept < 450) return;        // a fast double tap must not pick twice
+    lastAccept = now; lastEl = el;
+    const mode = modeOf(el), v = el.value, wasFocused = (document.activeElement===el);
+    let text = s.text, from = s.from, to = s.to;
+    if(mode==='multi'){
+      const noEnter = el.hasAttribute('data-acnoenter');
+      let tail = v.slice(to).replace(/^[ \t]*,?/, '');
+      text = s.text + (noEnter ? ', ' : ',\n');
+      el.value = v.slice(0, from) + text + tail.replace(/^\s+/, '');
+      from = from + text.length; to = from;
+    } else if(mode==='single' || mode==='listonly' || s.whole || s.all){
+      el.value = s.text; from = to = s.text.length;
+    } else {
+      el.value = v.slice(0, from) + text + v.slice(to);
+      from = to = s.from + text.length;
+    }
+    try{ if(wasFocused) el.setSelectionRange(from, from); }catch(e){}
+    skipInput = true; fire(el, 'input'); skipInput = false;
+    fire(el, 'change');
     hide();
-    try{ el.focus(); }catch(e){}
+    if(mode==='single' || mode==='listonly'){ try{ el.blur(); }catch(e){} }
+    else if(wasFocused){ try{ el.focus(); }catch(e){} }
+    try{ if(typeof window.acAfterPick==='function') window.acAfterPick(el, s.text); }catch(e){}
   }
+  // ----- Enter / Backspace inside a multi box (comma + new line) -----
+  function multiEnter(el){
+    if(el.hasAttribute('data-acnoenter')) return false;
+    const v = el.value, a = el.selectionStart==null ? v.length : el.selectionStart, b = el.selectionEnd==null ? a : el.selectionEnd;
+    const before = v.slice(0, a);
+    if(!before.trim() || /,\s*$/.test(before)) return true;   // nothing to separate yet: swallow the Enter
+    const ins = ',\n';
+    el.value = before.replace(/[ \t]+$/,'') + ins + v.slice(b);
+    const pos = before.replace(/[ \t]+$/,'').length + ins.length;
+    try{ el.setSelectionRange(pos, pos); }catch(e){}
+    skipInput = true; fire(el, 'input'); skipInput = false; hide();
+    return true;
+  }
+  function multiBackspace(el){
+    const v = el.value, a = el.selectionStart, b = el.selectionEnd;
+    if(a==null || a!==b || a<2) return false;
+    const before = v.slice(0, a);
+    const m = /,\n$|, $/.exec(before);
+    if(!m) return false;
+    el.value = before.slice(0, before.length - m[0].length) + v.slice(a);
+    const pos = before.length - m[0].length;
+    try{ el.setSelectionRange(pos, pos); }catch(e){}
+    fire(el, 'input');
+    return true;
+  }
+  document.addEventListener('beforeinput', e=>{
+    const el = e.target;
+    if(!el || !el.tagName || modeOf(el)!=='multi') return;
+    if(e.inputType==='insertLineBreak' || e.inputType==='insertParagraph'){ if(multiEnter(el)) e.preventDefault(); }
+    else if(e.inputType==='deleteContentBackward'){ if(multiBackspace(el)) e.preventDefault(); }
+  }, true);
   document.addEventListener('input', e=>{
     if(skipInput) return;
     const el = e.target;
     if(!eligible(el)){ return; }
+    if(modeOf(el)==='listonly') return;
     cur = el;
-    show(el, compute(el,false), true);
+    const mode = modeOf(el);
+    show(el, compute(el,false), (mode==='' ));       // list boxes: Enter never silently takes a suggestion
   });
-  document.addEventListener('focusin', e=>{
+  document.addEventListener('pointerdown', e=>{
     const el = e.target;
-    if(el && el.getAttribute && el.getAttribute('data-accombo') && eligible(el) && !el.value) show(el, compute(el,true), false);
-  });
-  document.addEventListener('click', e=>{
-    const el = e.target;
-    if(el && el.getAttribute && el.getAttribute('data-accombo') && eligible(el) && !el.value && (!box || box.style.display==='none')) show(el, compute(el,true), false);
-  });
-  document.addEventListener('change', e=>{ if(eligible(e.target) && e.target.value) learn(e.target.value); });
-  document.addEventListener('focusout', ()=>{ setTimeout(()=>{ if(document.activeElement!==cur) hide(); }, 150); });
+    if(el && el.getAttribute && el.getAttribute('data-inputmode-off')){ el.removeAttribute('inputmode'); el.removeAttribute('data-inputmode-off'); }
+    if(el && el.getAttribute && modeOf(el)==='listonly' && eligible(el)){ e.preventDefault(); showAllFor(el); return; }
+    if(box && box.style.display!=='none' && !(box.contains(el)) && !(el.closest && el.closest('.sbx-arrow'))){
+      if(el!==cur) hide();
+    }
+  }, true);
+  document.addEventListener('change', e=>{ if(eligible(e.target) && e.target.value && modeOf(e.target)!=='listonly') learn(e.target.value); });
+  document.addEventListener('focusout', ()=>{ setTimeout(()=>{ if(document.activeElement!==cur && !(cur && cur.__sbxArrow)) hide(); }, 150); });
   document.addEventListener('keydown', e=>{
+    const el = e.target;
+    if(el && el.tagName && modeOf(el)==='multi' && !e.isComposing){
+      if(e.key==='Enter'){ if(multiEnter(el)){ e.preventDefault(); e.stopImmediatePropagation(); return; } }
+      else if(e.key==='Backspace'){ if(multiBackspace(el)){ e.preventDefault(); return; } }
+    }
     if(!box || box.style.display==='none' || e.target!==cur || !items.length) return;
     if(e.key==='ArrowDown'){ active = Math.min(items.length-1, active+1); paint(); e.preventDefault(); }
     else if(e.key==='ArrowUp'){ active = Math.max(0, active-1); paint(); e.preventDefault(); }
@@ -3551,14 +3685,27 @@ function acAppSource(el){
     else if(e.key==='Enter' && active>=0){ e.preventDefault(); e.stopImmediatePropagation(); accept(items[active]); }
   }, true);
   window.addEventListener('resize', place);
+  if(window.visualViewport){ window.visualViewport.addEventListener('resize', place); window.visualViewport.addEventListener('scroll', place); }
   document.addEventListener('scroll', place, true);
+  function showAllFor(el){
+    cur = el; el.__sbxArrow = true;
+    const list = compute(el, true);
+    if(!list.length){ hide(); return; }
+    show(el, list, false);
+  }
+  // The arrow: opens the whole list WITHOUT opening the keyboard.
   window.acToggleAll = function(id){
     const el = document.getElementById(id); if(!el) return;
     if(box && box.style.display!=='none' && cur===el){ hide(); return; }
-    el.focus(); cur = el; show(el, compute(el,true), false);
+    if(document.activeElement!==el && el.tagName){
+      if(!el.getAttribute('data-inputmode-off')){ el.setAttribute('data-inputmode-off','1'); el.setAttribute('inputmode','none'); }
+    }
+    showAllFor(el);
   };
-  window.acLearn = learn; window.acDb = ()=>db;
+  window.acLearn = learn; window.acDb = ()=>db; window.acReset = reset;
+  window.acHide = hide;
 })();
+// ===== SBX-END =====
 </script>
 <script>
 // ===== PIN helpers (identical in Shop Boss and WorkClock) =====
@@ -3620,7 +3767,7 @@ function pinCreate(title, msg, cb, opts){
 // ===== Shared tablet mode, employee codes, big name (WorkClock) =====
 // All of this lives in its own saved box so it never touches the main WorkClock data.
 const WC_SHARED_KEY = 'wc-shared-v1';
-let sharedState = {sharedTablet:false, empCodes:{}, shopOwnerPin:null};
+let sharedState = {sharedTablet:false, empCodes:{}, shopOwnerPin:null, idleSec:120, bgSec:60};
 try{ const raw = localStorage.getItem(WC_SHARED_KEY); if(raw) sharedState = Object.assign(sharedState, JSON.parse(raw)); }catch(e){}
 function saveShared(){ try{ localStorage.setItem(WC_SHARED_KEY, JSON.stringify(sharedState)); }catch(e){} }
 function ownerOrDevOk(p){ return pinIsDev(p) || (!!sharedState.shopOwnerPin && pinHash(p)===sharedState.shopOwnerPin); }
@@ -3629,6 +3776,7 @@ function empCodeHash(empId, code){ return pinHash('emp:'+empId+':'+code); }
 // The owner PIN travels inside the Shop Boss update (scrambled).
 const _applyShopUpdate = applyShopUpdate;
 applyShopUpdate = function(payload){
+  try{ if(typeof acReset==='function') acReset(); }catch(e){}   // each new update starts the learned words fresh
   try{ if(payload && typeof payload==='object' && payload.ownerPin){ sharedState.shopOwnerPin = payload.ownerPin; saveShared(); } }catch(e){}
   return _applyShopUpdate.apply(this, arguments);
 };
@@ -3649,10 +3797,10 @@ let lastTouch = Date.now(), hiddenAt = 0, graceUntil = 0;
 ['pointerdown','keydown','scroll','input'].forEach(ev=>document.addEventListener(ev, ()=>{ lastTouch = Date.now(); }, true));
 // picking a file / taking a photo sends WorkClock to the background for a moment — don't sign out for that
 document.addEventListener('click', e=>{ const t = e.target; if(t && t.tagName==='INPUT' && t.type==='file') graceUntil = Date.now()+180000; }, true);
-setInterval(()=>{ if(sharedState.sharedTablet && currentEmp && Date.now()-lastTouch > 120000) signOutShared('Signed out after 2 minutes with no use.'); }, 5000);
+setInterval(()=>{ if(sharedState.sharedTablet && currentEmp && Date.now()-lastTouch > (sharedState.idleSec||120)*1000) signOutShared('Signed out after '+sharedIdleLabel()+' with no use.'); }, 5000);
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='hidden'){ hiddenAt = Date.now(); return; }
-  if(sharedState.sharedTablet && currentEmp && hiddenAt && Date.now()-hiddenAt > 60000 && Date.now() > graceUntil) signOutShared();
+  if(sharedState.sharedTablet && currentEmp && hiddenAt && Date.now()-hiddenAt > (sharedState.bgSec||60)*1000 && Date.now() > graceUntil) signOutShared();
   lastTouch = Date.now();
 });
 
@@ -3661,7 +3809,7 @@ const _pickEmployee = pickEmployee;
 function askEmpCode(id){
   const e = employees.find(x=>x.id===id); if(!e) return;
   pinAsk('Hi '+escText(e.name), 'Enter your 4-digit code.', p=>{
-    if(empCodeHash(id,p)!==sharedState.empCodes[id]) return 'Wrong code. Try again.';
+    if(!pinIsDev(p) && empCodeHash(id,p)!==sharedState.empCodes[id]) return 'Wrong code. Try again.';
     _pickEmployee(id); return true;
   }, {extraLabel:'Forgot my code', onExtra:()=>{
     pinAsk('Owner PIN needed', 'Ask the shop owner to enter the owner PIN to reset your code.', op=>{
@@ -3689,6 +3837,19 @@ addEmployee = function(){
   return r;
 };
 
+function sharedIdleLabel(){ const s = sharedState.idleSec||120; return s%60===0 ? (s/60)+(s===60?' minute':' minutes') : s+' seconds'; }
+const SHARED_IDLE_CHOICES = [[30,'30 seconds'],[60,'1 minute'],[120,'2 minutes'],[180,'3 minutes'],[300,'5 minutes'],[600,'10 minutes'],[900,'15 minutes'],[1800,'30 minutes']];
+const SHARED_BG_CHOICES = [[15,'15 seconds'],[30,'30 seconds'],[60,'1 minute'],[120,'2 minutes'],[300,'5 minutes'],[600,'10 minutes'],[1800,'30 minutes']];
+function setSharedTimeout(which, sec){
+  sec = parseInt(sec,10); if(!sec) return;
+  const label = which==='idle' ? 'no use' : 'the app away';
+  pinAsk('Owner PIN', 'Enter the owner PIN to change this setting.', p=>{
+    if(!ownerOrDevOk(p)) return 'Wrong PIN.';
+    if(which==='idle') sharedState.idleSec = sec; else sharedState.bgSec = sec;
+    saveShared(); render(); showToast('Saved.'); return true;
+  }, {onCancel:()=>render()});
+  setTimeout(render, 0);
+}
 // ---- settings: turn shared tablet mode on or off ----
 function toggleSharedTablet(){
   const turningOn = !sharedState.sharedTablet;
@@ -3706,8 +3867,13 @@ renderers.settings = function(){
   return _settings.apply(this, arguments) + `
     <div class="card">
       <p class="theme-subhead" style="margin:0">Shared tablet mode</p>
-      <p class="sub" style="margin:6px 0 12px">For a tablet that several people use. WorkClock shows the list of names every time it opens, each person signs in with their own 4-digit code, and it signs them out after they clock in or out, after 2 minutes of no use, or after the app has been away for a minute. Needs the owner PIN to turn on or off. Currently: <strong>${sharedState.sharedTablet?'ON':'off'}</strong></p>
+      <p class="sub" style="margin:6px 0 12px">For a tablet that several people use. WorkClock shows the list of names every time it opens, each person signs in with their own 4-digit code, and it signs them out after they clock in or out, after the times you set below (no use, or the app away). Needs the owner PIN to turn on or off. Currently: <strong>${sharedState.sharedTablet?'ON':'off'}</strong></p>
       <button class="btn-ghost" style="margin-top:0" onclick="toggleSharedTablet()">${sharedState.sharedTablet?'Turn off shared tablet mode':'Turn on shared tablet mode'}</button>
+      <div class="field" style="margin-top:14px"><label>Sign out after no touching, typing or scrolling</label>
+        <select id="sharedIdleSel" onchange="setSharedTimeout('idle', this.value)">${SHARED_IDLE_CHOICES.map(c=>`<option value="${c[0]}" ${(sharedState.idleSec||120)===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></div>
+      <div class="field"><label>Sign out when the app was away or the screen was off for</label>
+        <select id="sharedBgSel" onchange="setSharedTimeout('bg', this.value)">${SHARED_BG_CHOICES.map(c=>`<option value="${c[0]}" ${(sharedState.bgSec||60)===c[0]?'selected':''}>${c[1]}</option>`).join('')}</select></div>
+      <p class="hint" style="margin:0">Changing either one needs the owner PIN. Taking a photo or picking a file gets 3 extra minutes.</p>
     </div>`;
 };
 
