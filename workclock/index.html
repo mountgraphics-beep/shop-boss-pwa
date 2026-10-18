@@ -3600,6 +3600,8 @@ function acAppSource(el){
     const now = Date.now();
     if(lastEl===el && now - lastAccept < 450) return;        // a fast double tap must not pick twice
     lastAccept = now; lastEl = el;
+    // The finger is still down: once the list closes, the tap's own click would land on whatever sits under it (a Start button, say). Swallow that one click.
+    (function(){ const h = ev=>{ ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); document.removeEventListener('click', h, true); }; document.addEventListener('click', h, true); setTimeout(()=>document.removeEventListener('click', h, true), 600); })();
     const mode = modeOf(el), v = el.value, wasFocused = (document.activeElement===el);
     let text = s.text, from = s.from, to = s.to;
     if(mode==='multi'){
