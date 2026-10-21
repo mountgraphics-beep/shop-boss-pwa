@@ -355,7 +355,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.32';
+const APP_VERSION = 'v0.33';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -409,7 +409,8 @@ let fmTmplName = '';
 let shopLibrary = [];          // every word on every Shop Boss list, for autocomplete
 let deviceId = '';              // this phone/tablet's own label, so Shop Boss can tell two devices apart
 let shopTodos = [];            // [{carName, jobs:[{id,text}]}] — what's next, from Shop Boss
-let todoDone = [];             // job ids this employee already did (saved on this device)
+let todoDoneMap = {};          // employee id -> job ids that employee already did (each person keeps their own)
+Object.defineProperty(window,'todoDone',{configurable:true,get(){ const k=currentEmp||'_'; return todoDoneMap[k] || (todoDoneMap[k]=[]); },set(v){ if(Array.isArray(v)&&v.length===0) todoDoneMap={}; else todoDoneMap[currentEmp||'_']=v; }});
 let shopShowNotes = true;      // Shop Boss decides whether the Notes box shows
 let shopCars = [];            // {id, name, thumbDataUrl}
 let shopBossEmployees = [];   // {id, name} — Shop Boss's own employee records, for matching by ID instead of fuzzy name text
@@ -426,6 +427,7 @@ let employeeNotes = [];       // {id, text, empId, receivedAt, dismissed} — a 
 let stack = [{type:'who'}];
 let timerHandle = null;
 let pendingConfirm = null;
+const savedScreens = {};         // employee id -> the screen, typed text and photo they left when the tablet signed them out
 
 const TASK_PRESETS = ['Diagnosis','Oil change','Brake work','Bodywork / filler','Paint','Electrical','Engine work','Interior','Test drive','Parts pickup','Cleanup / detail'];
 // Once Shop Boss has sent its own work-types list, that's what drives the picker instead of the
@@ -561,7 +563,7 @@ function wcPersistWarn(e){
   try{ alert('WorkClock could not save everything on this device: its storage is full (photos take the most room).\n\nSend your work to the shop now, and remove photos that were already sent.'); }catch(x){}
 }
 function persist(){
-  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, actives: activesMap, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){ wcPersistWarn(e); }
+  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDoneMap, employees, dayClocks, entries, actives: activesMap, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){ wcPersistWarn(e); }
 }
 function loadPersisted(){
   try{
@@ -598,7 +600,8 @@ function loadPersisted(){
     if(typeof d.shopShowNotes==='boolean') shopShowNotes = d.shopShowNotes;
     if(typeof d.deviceId==='string') deviceId = d.deviceId;
     if(Array.isArray(d.shopTodos)) shopTodos = d.shopTodos;
-    if(Array.isArray(d.todoDone)) todoDone = d.todoDone;
+    if(d.todoDoneMap && typeof d.todoDoneMap==='object') todoDoneMap = d.todoDoneMap;
+    else if(Array.isArray(d.todoDone)){ todoDoneMap = {}; (Array.isArray(d.employees)?d.employees:[]).forEach(e=>{ todoDoneMap[e.id]=d.todoDone.slice(); }); }
     if(Array.isArray(d.employeeNotes)){ employeeNotes.length=0; employeeNotes.push(...d.employeeNotes); }
     return true;
   }catch(e){ return false; }
@@ -797,7 +800,36 @@ function linkEmployeeTo(empId, sbId){
   persist(); showToast('Linked to '+se.name+'.');
   stack = [{type:'home'}]; render();
 }
-function pickEmployee(id){ currentEmp=id; homeClockExpanded=false; homeTaskExpanded=false; stack=[{type:'home'}]; render(); }
+function pickEmployee(id){ currentEmp=id; homeClockExpanded=false; homeTaskExpanded=false; stack=[{type:'home'}]; pendingPhoto=null; pendingAttachTarget=null; render(); resumeSavedScreen(id); }
+function snapshotScreen(){
+  const app = document.getElementById('app'); const fields = [];
+  if(app) app.querySelectorAll('input,textarea,select').forEach(el=>{
+    if(el.type==='file'||el.type==='button'||el.type==='submit') return;
+    const cell = el.closest('[data-fid]'); const fid = cell ? cell.getAttribute('data-fid') : '';
+    const same = cell ? [...cell.querySelectorAll('input,textarea,select')] : [...app.querySelectorAll('input,textarea,select')];
+    fields.push({fid, idx: same.indexOf(el), v: el.value, c: !!el.checked, t: el.type});
+  });
+  const photos = {}; Object.keys(fmxPhotoStore).forEach(k=>{ photos[k] = fmxPhotoStore[k].slice(); });
+  return {stack: JSON.parse(JSON.stringify(stack)), fields, photos, pendingPhoto, pendingAttachTarget};
+}
+function resumeSavedScreen(id){
+  const sv = savedScreens[id]; delete savedScreens[id]; if(!sv) return;
+  pendingPhoto = sv.pendingPhoto || null; pendingAttachTarget = sv.pendingAttachTarget || null;
+  if(!sv.stack || sv.stack.length<2) return;
+  stack = sv.stack; Object.keys(fmxPhotoStore).forEach(k=>{ delete fmxPhotoStore[k]; }); Object.keys(sv.photos||{}).forEach(k=>{ fmxPhotoStore[k] = sv.photos[k]; });
+  render();
+  const app = document.getElementById('app'); if(!app) return;
+  const all = [...app.querySelectorAll('input,textarea,select')].filter(el=>!(el.type==='file'||el.type==='button'||el.type==='submit'));
+  sv.fields.forEach((f,n)=>{
+    let el = null;
+    if(f.fid){ const cell = app.querySelector('[data-fid="'+f.fid+'"]'); if(cell){ const same=[...cell.querySelectorAll('input,textarea,select')]; el = same[f.idx]||null; } }
+    else el = all[n] || null;
+    if(!el) return;
+    if(el.type==='checkbox'||el.type==='radio') el.checked = f.c; else el.value = f.v;
+    try{ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+  });
+  Object.keys(sv.photos||{}).forEach(k=>{ try{ fmxRefreshPhotos(k); }catch(e){} });
+}
 
 // ---- fixing a name entered wrong on the "Who's clocking in?" screen — rename is the safe fix
 // (nothing about that person's history moves), delete is for a profile that was never really used. ----
@@ -4339,6 +4371,9 @@ applyShopUpdate = function(payload){
 // ---- signing out of the shared tablet ----
 function signOutShared(msg){
   if(!sharedState.sharedTablet || !currentEmp) return;
+  savedScreens[currentEmp] = snapshotScreen();
+  pendingPhoto = null; pendingAttachTarget = null;
+  Object.keys(fmxPhotoStore).forEach(k=>{ delete fmxPhotoStore[k]; });
   currentEmp = null; homeClockExpanded = false; homeTaskExpanded = false;
   stack = [{type:'who'}];
   const o = document.getElementById('pinOverlay'); if(o) o.remove();
