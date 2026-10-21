@@ -37,8 +37,8 @@
   .emp-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#222;flex:none;vertical-align:middle;font-weight:700;color:var(--muted)}
   .emp-av img{width:100%;height:100%;object-fit:cover;display:block}
   header .who{margin-left:auto;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer}
-  main{max-width:480px;margin:0 auto;padding:24px 20px 90px;min-height:calc(100% - 56px)}
-  footer{max-width:480px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:12px;text-align:center}
+  main{max-width:550px;margin:0 auto;padding:24px 20px 90px;min-height:calc(100% - 56px)}
+  footer{max-width:550px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:12px;text-align:center}
   h2.title{font-family:var(--display);font-size:26px;font-weight:600;margin:0 0 4px}
   p.sub{color:var(--muted);font-size:14.5px;margin:0 0 26px;line-height:1.5}
   .chips{display:flex;flex-wrap:wrap;gap:10px}
@@ -162,6 +162,7 @@
   .fmx-rowx > .fm-cell{box-sizing:border-box;padding-left:8px;padding-right:8px;flex-wrap:nowrap}
   .fmx-rowx > .fm-cell:first-child{padding-left:0}
   .fmx-rowx > .fm-cell:last-child{padding-right:0}
+  .fm-form[data-fmx-div="0"] .fm-row{border-bottom:none}
   .fmx-al-center{text-align:center}.fmx-al-right{text-align:right}
   .fmx-al-center input[type=text],.fmx-al-center input[type=number],.fmx-al-center textarea{text-align:center}
   .fmx-al-right input[type=text],.fmx-al-right input[type=number],.fmx-al-right textarea{text-align:right}
@@ -177,8 +178,10 @@
   .fmx-req > .field > label::after,.fmx-req > .fb-field > label::after{content:' *';color:var(--accent);font-weight:700}
   .fmx-req .fm-ct span::after{content:' *';color:var(--accent);font-weight:700}
   .fmx-missing{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
-  .fmx-look input[type=text],.fmx-look input[type=number],.fmx-look input[type=date],.fmx-look select,.fmx-look textarea{border-radius:var(--fmx-r,8px)!important;border-width:var(--fmx-bw,1px)!important;background:var(--fmx-bg,var(--surface-2))!important;font-size:var(--fmx-fs,15px)!important;font-weight:var(--fmx-fw,400)!important}
-  .fmx-look label{font-size:var(--fmx-fs,13px);font-weight:var(--fmx-fw,600)}
+  .fmx-look input[type=text],.fmx-look input[type=number],.fmx-look input[type=date],.fmx-look select,.fmx-look textarea{border-radius:var(--fmx-r,8px)!important;border-width:var(--fmx-bw,1px)!important;border-color:var(--fmx-bc,var(--line))!important;background:var(--fmx-bg,var(--surface-2))!important;font-size:var(--fmx-fs,15px)!important;font-weight:var(--fmx-fw,400)!important;color:var(--fmx-fc,var(--text))!important;font-family:var(--fmx-ff,inherit)!important}
+  .fmx-look label,.fmx-look .fm-ct,.fmx-look .fmx-label,.fmx-look .fm-notetext{font-size:var(--fmx-fs,13px);font-weight:var(--fmx-fw,600);color:var(--fmx-fc,inherit);font-family:var(--fmx-ff,inherit)}
+  .fmx-look .fm-ct{font-size:var(--fmx-fs,16px);font-weight:var(--fmx-fw,400)}
+  .fmx-pf button{border-color:var(--fmx-bc,var(--line))}
   .fmx-pf{display:flex;gap:8px;flex-wrap:wrap}
   .fmx-pf button{flex:1 1 70px;min-height:44px;border:2px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--fmx-r,10px);font:700 16px var(--sans);cursor:pointer}
   .fmx-pf button.on[data-v="Pass"]{background:#2EA85B;border-color:#2EA85B;color:#fff}
@@ -218,6 +221,16 @@
     .fmx-pb{border:none;break-after:page;margin:0}.fmx-pb::after{display:none}
     .fmx-photo-btns,.fmx-tx{display:none!important}
   }
+
+  .fmx-tbl{margin-top:4px}.fmx-tscroll{overflow-x:auto}.fmx-tbl table{border-collapse:separate;border-spacing:4px 4px;width:100%}
+  .fmx-tbl th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:0 2px}.fmx-tbl td{padding:0}.fmx-tbl td input{width:100%!important;min-width:74px;box-sizing:border-box}
+  .fmx-addrow{margin-top:4px;background:none;border:1px dashed var(--line);color:var(--muted);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
+  .fm-form[data-fth~="bg"]{background:var(--fth-bg);padding:14px;border-radius:12px}
+  .fm-form[data-fth~="in"] input[type=text],.fm-form[data-fth~="in"] input[type=number],.fm-form[data-fth~="in"] input[type=date],.fm-form[data-fth~="in"] select,.fm-form[data-fth~="in"] textarea{background:var(--fth-in)}
+  .fm-form[data-fth~="tx"] input[type=text],.fm-form[data-fth~="tx"] input[type=number],.fm-form[data-fth~="tx"] input[type=date],.fm-form[data-fth~="tx"] select,.fm-form[data-fth~="tx"] textarea{color:var(--fth-tx)}
+  .fm-form[data-fth~="lb"] .fm-cell:not(.fmx-look) label{color:var(--fth-lb)}
+  .fm-form[data-fth~="ls"] .fm-cell:not(.fmx-look) label{font-size:var(--fth-ls)}
+  .fm-form[data-fth~="lw"] .fm-cell:not(.fmx-look) label{font-weight:700}
   /* FMX-CSS-END */
   .cp-btn{width:100%;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--text);font:inherit;text-align:left;cursor:pointer}
   .cp-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -303,7 +316,7 @@
   .day-group{margin-bottom:16px}
   .day-group-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:9px 2px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px;color:var(--text)}
   .day-group-head:active{color:var(--accent)}
-  .toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:448px;margin:0 auto;background:var(--surface-2);border:1px solid var(--accent);color:var(--text);border-radius:10px;padding:13px 16px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);z-index:50}
+  .toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:518px;margin:0 auto;background:var(--surface-2);border:1px solid var(--accent);color:var(--text);border-radius:10px;padding:13px 16px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);z-index:50}
   .toast.err{border-color:#E05A5A}
   .share-btn{background:none;color:var(--accent);border-color:var(--accent-dim)}
   .print-only{display:none}
@@ -342,7 +355,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.31';
+const APP_VERSION = 'v0.32';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -358,7 +371,15 @@ document.title = 'WorkClock ' + APP_VERSION;
 let employees = [];               // {id, name}
 let dayClocks = [];               // {id, empId, date, clockedInAt, clockedOutAt|null}
 let entries = [];                 // {id, empId, empName, car, task, desc, consumables, date, hours, startedAt, endedAt, weekId, submitted}
-let active = null;                // {empId, car, task, startedAt} — the one running TASK clock, if any
+// Running TASKS: one per employee, so several people can work on different cars at once on a shared tablet.
+// `active` always means the running task of whoever is signed in right now (null if they have none).
+let activesMap = {};              // employee id -> {id, empId, car, task, startedAt, ...}
+const actKey = ()=> currentEmp || '_';
+Object.defineProperty(window, 'active', {
+  configurable: true,
+  get(){ return activesMap[actKey()] || null; },
+  set(v){ if(v) activesMap[actKey()] = v; else delete activesMap[actKey()]; }
+});
 let currentEmp = null;            // id of whoever has the app in front of them right now
 let documents = [];               // {id, name, scope:'general'|'employee', empId, empName, fileName, mime, dataUrl, note, receivedAt} — BLANK forms Shop Boss sends in a weekly update
 let completedDocs = [];            // {id, templateId, templateName, car, empId, date, weekId, fileName, dataUrl, submitted, completedAt} — a FILLED-OUT copy of one of the above
@@ -540,7 +561,7 @@ function wcPersistWarn(e){
   try{ alert('WorkClock could not save everything on this device: its storage is full (photos take the most room).\n\nSend your work to the shop now, and remove photos that were already sent.'); }catch(x){}
 }
 function persist(){
-  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, active, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){ wcPersistWarn(e); }
+  try{ localStorage.setItem(WC_KEY, JSON.stringify({deviceId, shopTodos, todoDone, employees, dayClocks, entries, actives: activesMap, currentEmp, documents, completedDocs, photos, photoRequests, employeeNotes, lastUpdateAt, backupFolderConfigured, backupFolderName, submittedFolderName, darrenEmail, weekStartDay, weekEndDay, shopPhotos, shopCars, shopBossEmployees, shopConsumables, shopWorkTypes, shopTaskMode, shopNotesHelper, shopPickLists, shopLibrary, shopShowNotes})); }catch(e){ wcPersistWarn(e); }
 }
 function loadPersisted(){
   try{
@@ -554,7 +575,9 @@ function loadPersisted(){
     if(Array.isArray(d.completedDocs)){ completedDocs.length=0; completedDocs.push(...d.completedDocs); }
     if(Array.isArray(d.photos)){ photos.length=0; photos.push(...d.photos); }
     if(Array.isArray(d.photoRequests)){ photoRequests.length=0; photoRequests.push(...d.photoRequests); }
-    active = d.active || null;
+    activesMap = {};
+    if(d.actives && typeof d.actives==='object'){ Object.keys(d.actives).forEach(k=>{ if(d.actives[k]) activesMap[k] = d.actives[k]; }); }
+    else if(d.active){ activesMap[d.active.empId || '_'] = d.active; }   // saved by an older version: one running task
     currentEmp = d.currentEmp || null;
     lastUpdateAt = d.lastUpdateAt || null;
     backupFolderConfigured = !!d.backupFolderConfigured;
@@ -609,7 +632,7 @@ function doRestore(payload){
   if(Array.isArray(d.completedDocs)){ completedDocs.length=0; completedDocs.push(...d.completedDocs); }
   if(Array.isArray(d.photos)){ photos.length=0; photos.push(...d.photos); }
   if(Array.isArray(d.photoRequests)){ photoRequests.length=0; photoRequests.push(...d.photoRequests); }
-  active = null;
+  activesMap = {};
   currentEmp = null;
   stack = [{type:'who'}];
   showToast('Backup restored.');
@@ -1917,6 +1940,7 @@ function applyShopUpdate(payload){
         // field definitions ride along so this renders actual fillable inputs instead of just an
         // "attach a scanned file" placeholder.
         fields: Array.isArray(d.fields) ? d.fields : null,
+        print: (d.print && typeof d.print==='object') ? d.print : null,
         receivedAt: Date.now()
       });
       added++;
@@ -2162,13 +2186,71 @@ const FMX_NEW_TYPES = {
   image:{icon:'🖼', label:'Image / logo'},
   line:{icon:'―', label:'Line'},
   label:{icon:'T', label:'Text label'},
-  pagebreak:{icon:'⏎', label:'Page break (print)'}
+  pagebreak:{icon:'⏎', label:'Page break (print)'},
+  table:{icon:'▦', label:'Input table'},
+  calc:{icon:'∑', label:'Calculation'}
 };
 (function(){ try{ if(typeof FB_FIELD_TYPES!=='undefined') Object.keys(FMX_NEW_TYPES).forEach(k=>{ if(!FB_FIELD_TYPES[k]) FB_FIELD_TYPES[k] = {icon:FMX_NEW_TYPES[k].icon, label:FMX_NEW_TYPES[k].label, hasOptions:false, allowAutoFill:false, hidden:true}; }); }catch(e){} })();
 const FMX_STATIC = ['blank','note','endsec','heading','formheader','image','line','label','pagebreak'];
 function fmxIsStatic(t){ return FMX_STATIC.indexOf(t)>=0; }
-const FMX_SPACE_TYPES = ['text','number','date','checkbox','checkexp','yesno','dropdown','radio','passfail','units','signature'];
+const FMX_SPACE_TYPES = ['table','calc','text','number','date','checkbox','checkexp','yesno','dropdown','radio','passfail','units','signature'];
 const fmxPhotoStore = {};   // field id -> [dataUrl, ...] while a form is open
+const FMX_FONTS = {serif:"Georgia,'Times New Roman',serif", mono:"'Courier New',monospace", condensed:"Oswald,'Arial Narrow',sans-serif", sans:"system-ui,'Segoe UI',Arial,sans-serif"};
+const FMX_STD = {'Arial':"Arial,Helvetica,sans-serif",'Verdana':"Verdana,Geneva,sans-serif",'Tahoma':"Tahoma,Geneva,sans-serif",'Trebuchet MS':"'Trebuchet MS',Helvetica,sans-serif",'Impact':"Impact,'Arial Black',sans-serif",'Times New Roman':"'Times New Roman',Times,serif",'Georgia':"Georgia,'Times New Roman',serif",'Palatino':"Palatino,'Palatino Linotype','Book Antiqua',serif",'Courier New':"'Courier New',Courier,monospace",'Comic Sans MS':"'Comic Sans MS','Comic Sans',cursive"};
+function fmxFont(v){
+  if(!v) return '';
+  if(FMX_FONTS[v]) return FMX_FONTS[v];
+  if(String(v).indexOf('css:')===0){ const n = String(v).slice(4).replace(/[^A-Za-z0-9 _\-]/g,'').trim(); if(!n) return ''; return FMX_STD[n] || ('"'+n+'",sans-serif'); }
+  return '';
+}
+// fonts that travel inside a form file: [{family,dataUrl}] in print.fonts
+function fmxApplyFonts(pr){
+  try{
+    const list = (pr && Array.isArray(pr.fonts)) ? pr.fonts : []; let css = '';
+    list.forEach(f=>{ const n = String((f&&f.family)||'').replace(/[^A-Za-z0-9 _\-]/g,'').trim(); const u = String((f&&f.dataUrl)||''); if(n && /^data:(font|application)\/[a-z0-9.+\-]+;base64,[A-Za-z0-9+\/=]+$/i.test(u)) css += '@font-face{font-family:"'+n+'";src:url('+u+');font-display:swap}\n'; });
+    let el = document.getElementById('fmx-fonts');
+    if(!css){ if(el) el.textContent = ''; return; }
+    if(!el){ el = document.createElement('style'); el.id = 'fmx-fonts'; document.head.appendChild(el); }
+    if(el.textContent !== css) el.textContent = css;
+  }catch(e){}
+}
+function fmxPadSt(f){ let s=''; const g = v=>v!=null && v!=='' && isFinite(parseFloat(v)) && parseFloat(v)>=0; if(g(f.pt)) s+='padding-top:'+fmxN(f.pt,0)+'px;'; if(g(f.pb)) s+='padding-bottom:'+fmxN(f.pb,0)+'px;'; if(g(f.pl)) s+='padding-left:'+fmxN(f.pl,0)+'px;'; if(g(f.pr)) s+='padding-right:'+fmxN(f.pr,0)+'px;'; return s; }
+function fmxVAlign(f){ return (f.valign==='middle'||f.vmid) ? 'align-self:center;' : (f.valign==='bottom' ? 'align-self:flex-end;' : ''); }
+function fmxRichClean(html){
+  try{
+    const src = document.createElement('div'); src.innerHTML = String(html||'');
+    const okFam = v=>/^[\w ,'"\-]+$/.test(v);
+    const walk = (n)=>{
+      let out = '';
+      n.childNodes.forEach(c=>{
+        if(c.nodeType===3){ out += fmxE(c.nodeValue); return; }
+        if(c.nodeType!==1) return;
+        const t = c.tagName.toLowerCase();
+        if(t==='br'){ out += '<br>'; return; }
+        const inner = walk(c);
+        if(t==='b'||t==='strong') out += '<b>'+inner+'</b>';
+        else if(t==='i'||t==='em') out += '<i>'+inner+'</i>';
+        else if(t==='div'||t==='p') out += '<div>'+inner+'</div>';
+        else if(t==='span'){
+          let st = ''; const s = c.style;
+          const fs = parseFloat(s.fontSize); if(isFinite(fs) && fs>=6 && fs<=240) st += 'font-size:'+fs+'px;';
+          if(/^(bold|700|800|900)$/.test(s.fontWeight)) st += 'font-weight:700;'; else if(/^(normal|400)$/.test(s.fontWeight)) st += 'font-weight:400;';
+          if(s.fontStyle==='italic') st += 'font-style:italic;'; else if(s.fontStyle==='normal') st += 'font-style:normal;';
+          const col = fmxColor(s.getPropertyValue('color')); if(col) st += 'color:'+col+';'; else { const m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(s.color||''); if(m) st += 'color:#'+[m[1],m[2],m[3]].map(x=>('0'+(+x).toString(16)).slice(-2)).join('')+';'; }
+          const ff = (s.fontFamily||'').trim(); if(ff && okFam(ff)) st += 'font-family:'+ff+';';
+          out += st ? '<span style="'+st.replace(/"/g,'')+'">'+inner+'</span>' : inner;
+        } else out += inner;
+      });
+      return out;
+    };
+    return walk(src);
+  }catch(e){ return fmxE(html); }
+}
+function fmxNoteHTML(f){
+  const sz = fmxN(f.size,15), body = f.rich ? fmxRichClean(f.rich) : fmxE(f.label||'').replace(/\n/g,'<br>');
+  const L = f.look || {};
+  return '<div class="fm-notetext'+(f.hl?' hl':'')+'" style="'+(fmxN(f.lh,0)>0?'line-height:'+fmxN(f.lh,0)+';':'')+'font-size:'+sz+'px;font-weight:'+(f.bold?700:400)+';'+(f.italic?'font-style:italic;':'')+(fmxFont(L.font)?'font-family:'+fmxFont(L.font)+';':'')+(fmxColor(L.color)?'color:'+fmxColor(L.color)+';':'')+'">'+body+'</div>';
+}
 function fmxN(v,d){ const n = parseFloat(v); return isFinite(n) ? n : d; }
 function fmxColor(c){ return /^#[0-9a-fA-F]{3,8}$/.test(String(c||'')) ? c : ''; }
 function fmxE(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2177,7 +2259,9 @@ function fmxPhotos(a){ const v = a && a.value; return Array.isArray(v) ? v.filte
 function fmxCellAttrs(f, lay){
   let st = '', cls = '';
   const w = fmxN(f.w,0);
-  if(lay){ if(w>0){ st += 'flex:0 0 '+w+'%;max-width:'+w+'%;'; if(w<50) cls += ' fmx-small'; } else st += 'flex:1 1 0;'; }
+  if(lay){ if(w>0){ st += 'flex:0 0 '+w+'%;max-width:'+w+'%;'; if(w<50 && f.type!=='image' && !f.keep) cls += ' fmx-small'; } else st += 'flex:1 1 0;'; }
+  st += fmxVAlign(f);
+  { const ps = fmxPadSt(f); if(ps) st += 'box-sizing:border-box;'+ps; }
   if(f.align==='center' || f.align==='right') cls += ' fmx-al-'+f.align;
   const L = f.look || {};
   let hasLook = false;
@@ -2186,6 +2270,9 @@ function fmxCellAttrs(f, lay){
   else if(L.thick){ st += '--fmx-bw:'+fmxN(L.thick,1)+'px;'; hasLook = true; }
   if(fmxColor(L.fill)){ st += '--fmx-bg:'+fmxColor(L.fill)+';'; hasLook = true; }
   if(L.size){ st += '--fmx-fs:'+fmxN(L.size,15)+'px;'; hasLook = true; }
+  if(fmxColor(L.outlineColor)){ st += '--fmx-bc:'+fmxColor(L.outlineColor)+';'; hasLook = true; }
+  if(fmxColor(L.color)){ st += '--fmx-fc:'+fmxColor(L.color)+';'; hasLook = true; }
+  if(fmxFont(L.font)){ st += '--fmx-ff:'+fmxFont(L.font)+';'; hasLook = true; }
   if(L.bold){ st += '--fmx-fw:700;'; hasLook = true; }
   if(hasLook) cls += ' fmx-look';
   const h = fmxN(f.h,0);
@@ -2196,12 +2283,25 @@ function fmxCellAttrs(f, lay){
 function fmxLineHTML(f){
   const w = fmxN(f.w,0), th = fmxN(f.thick,2), pad = fmxN(f.pad,4);
   const al = f.align==='center' ? 'margin-left:auto;margin-right:auto;' : (f.align==='right' ? 'margin-left:auto;' : '');
-  return '<div class="fmx-lnw"><div class="fmx-line" style="border-top-width:'+th+'px;margin-top:'+pad+'px;margin-bottom:'+pad+'px;'+(w>0&&w<100?'width:'+w+'%;':'')+al+'"></div></div>';
+  return '<div class="fmx-lnw"'+(f.id?' data-fid="'+fmxE(f.id)+'"':'')+'><div class="fmx-line" style="border-top-width:'+th+'px;margin-top:'+pad+'px;margin-bottom:'+pad+'px;'+(w>0&&w<100?'width:'+w+'%;':'')+al+'"></div></div>';
 }
 function fmxRowStyle(r){
   if(!r.every(f=>fmxN(f.w,0)>0)) return '';
   const a = r[0].align; return a==='center' ? 'justify-content:center;' : (a==='right' ? 'justify-content:flex-end;' : '');
 }
+// form-level look: lines between items on/off (maker forms say so; older forms keep their lines)
+function fmxThemeAttrs(t){
+  if(!t || typeof t!=='object') return '';
+  let flags = [], st = '';
+  if(fmxColor(t.bg)){ flags.push('bg'); st += '--fth-bg:'+fmxColor(t.bg)+';'; }
+  if(fmxColor(t.input)){ flags.push('in'); st += '--fth-in:'+fmxColor(t.input)+';'; }
+  if(fmxColor(t.text)){ flags.push('tx'); st += '--fth-tx:'+fmxColor(t.text)+';'; }
+  if(fmxColor(t.label)){ flags.push('lb'); st += '--fth-lb:'+fmxColor(t.label)+';'; }
+  if(fmxN(t.labelSize,0)>0){ flags.push('ls'); st += '--fth-ls:'+Math.min(40,fmxN(t.labelSize,14))+'px;'; }
+  if(t.labelBold){ flags.push('lw'); }
+  return flags.length ? ' data-fth="'+flags.join(' ')+'" style="'+st+'"' : '';
+}
+function fmxFormAttrs(layout){ fmxApplyFonts(layout); return ' data-fmx-fill="1"'+(layout && layout.dividers===false ? ' data-fmx-div="0"' : '')+fmxThemeAttrs(layout && layout.theme); }
 // ---- full-screen look at one picture ----
 function fmxOpenImg(src){
   const ov = document.createElement('div'); ov.className = 'fmx-ov';
@@ -2241,6 +2341,34 @@ function fmxGotPhotos(evt, fieldId){
     rd.readAsDataURL(file);
   });
 }
+function fmxTableCols(f){ const c = Array.isArray(f.cols) ? f.cols.map(x=>String(x||'').trim()).filter(Boolean) : []; return (c.length ? c : ['Item','Qty']).slice(0,8); }
+function fmxTableAdd(btn){
+  try{
+    const box = btn.closest('.fmx-tbl'), body = box.querySelector('tbody'); if(!body || body.rows.length>=60) return;
+    const tr = body.rows[body.rows.length-1].cloneNode(true); tr.querySelectorAll('input').forEach(i=>{ i.value = ''; }); body.appendChild(tr);
+    const first = tr.querySelector('input'); if(first) first.focus();
+  }catch(e){}
+}
+function fmxCalcAll(){
+  try{
+    document.querySelectorAll('[data-fmx-calc]').forEach(el=>{
+      let c; try{ c = JSON.parse(el.getAttribute('data-fmx-calc')); }catch(e){ return; }
+      const pfx = el.getAttribute('data-pfx') || 'ff-';
+      const vals = (c.ids||[]).map(id=>{ const s = document.getElementById(pfx+id); if(!s) return null; const n = parseFloat(String(s.value).replace(/[^0-9.\-]/g,'')); return isFinite(n) ? n : null; }).filter(v=>v!=null);
+      let r = null;
+      if(vals.length){
+        if(c.op==='product') r = vals.reduce((a,b)=>a*b,1);
+        else if(c.op==='diff') r = vals.slice(1).reduce((a,b)=>a-b, vals[0]);
+        else if(c.op==='avg') r = vals.reduce((a,b)=>a+b,0)/vals.length;
+        else r = vals.reduce((a,b)=>a+b,0);
+      }
+      const dec = Math.max(0, Math.min(6, parseInt(c.dec,10)||0));
+      const out = r==null ? '' : (c.pre||'')+Number(r).toFixed(dec)+(c.suf||'');
+      if(el.value!==out) el.value = out;
+    });
+  }catch(e){}
+}
+try{ if(typeof document!=='undefined'){ document.addEventListener('input', fmxCalcAll); document.addEventListener('change', fmxCalcAll); } }catch(e){}
 function fmxRemovePhoto(fieldId, i){ const a = fmxPhotoStore[fieldId]; if(a){ a.splice(i,1); fmxRefreshPhotos(fieldId); } }
 // ---- Pass / Fail / N/A ----
 function fmxPf(btn){
@@ -2277,10 +2405,21 @@ function fmxCell(f, mode, pfx){
     case 'units':
       return '<div class="field"><label>'+label+'</label><div class="fmx-un"><input type="number" inputmode="decimal" id="'+fid+'" data-unit="'+fmxE(f.unit||'')+'"><span class="fmx-unit">'+fmxE(f.unit||'')+'</span></div></div>';
     case 'image':
-      return f.src ? '<img class="fmx-img" alt="" src="'+f.src+'" style="'+(fmxN(f.iw,0)?'width:'+fmxN(f.iw,0)+'px;':'')+(fmxN(f.ih,0)?'height:'+fmxN(f.ih,0)+'px;object-fit:contain;':'')+'">' : '<div class="fmx-label" style="color:var(--muted)">(image missing)</div>';
-    case 'line': return fmxLineHTML(Object.assign({}, f, {w:0, align:null}));
+      return f.src ? '<img class="fmx-img" alt="" src="'+f.src+'" style="'+(fmxN(f.iw,0)?'width:'+fmxN(f.iw,0)+'px;':(fmxN(f.w,0)>0?'width:100%;':''))+(fmxN(f.ih,0)?'height:'+fmxN(f.ih,0)+'px;object-fit:contain;':'')+'">' : '<div class="fmx-label" style="color:var(--muted)">(image missing)</div>';
+    case 'line': return fmxLineHTML(Object.assign({}, f, {w:0, align:null, id:null}));
     case 'label':
-      return '<div class="fmx-label" style="font-size:'+fmxN(f.size,16)+'px;'+(f.bold?'font-weight:700;':'')+(h>0?'min-height:'+h+'px;':'')+'">'+fmxE(f.label||'')+'</div>';
+      if(f.fit && !/\n/.test(String(f.label||''))){ const n = Math.max(1, String(f.label||'').length); return '<div style="container-type:inline-size;width:100%"><div class="fmx-label" style="white-space:nowrap;line-height:1.15;font-size:min(400px,'+(100/((f.bold?0.64:0.6)*n)).toFixed(2)+'cqw);'+(f.bold?'font-weight:700;':'')+(f.italic?'font-style:italic;':'')+'">'+fmxE(f.label||'')+'</div></div>'; }
+      return '<div class="fmx-label" style="'+(f.nowrap?'white-space:nowrap;':'')+(fmxN(f.lh,0)>0?'line-height:'+fmxN(f.lh,0)+';':'')+'font-size:'+fmxN(f.size,16)+'px;'+(f.bold?'font-weight:700;':'font-weight:400;')+(f.italic?'font-style:italic;':'')+(h>0?'min-height:'+h+'px;':'')+'">'+fmxE(f.label||'')+'</div>';
+    case 'note': return (f.rich || f.lh || f.size || f.bold || f.italic || (f.look && (f.look.font||f.look.color))) ? fmxNoteHTML(f) : null;
+    case 'table': {
+      const cols = fmxTableCols(f), nr = Math.max(1, Math.min(40, Math.round(fmxN(f.rows,3))));
+      const row = '<tr>'+cols.map(()=>'<td><input type="text" autocomplete="off"></td>').join('')+'</tr>';
+      return '<div class="field"><label>'+label+'</label><div class="fmx-tbl" id="'+fid+'" data-table="1"><div class="fmx-tscroll"><table><thead><tr>'+cols.map(c=>'<th>'+fmxE(c)+'</th>').join('')+'</tr></thead><tbody>'+new Array(nr+1).join(row)+'</tbody></table></div><button type="button" class="fmx-addrow" onclick="fmxTableAdd(this)">+ Add a row</button></div></div>';
+    }
+    case 'calc': {
+      const cfg = {op:f.calcOp||'sum', ids:Array.isArray(f.calcIds)?f.calcIds:[], dec:f.calcDec||0, pre:f.calcPre||'', suf:f.calcSuf||''};
+      return '<div class="field"><label>'+label+'</label><input type="text" id="'+fid+'" readonly data-fmx-calc="'+fmxE(JSON.stringify(cfg))+'" data-pfx="'+fmxE(pfx)+'" placeholder="Calculated for you" style="color:var(--muted)"></div>';
+    }
     case 'pagebreak': return '<div class="fmx-pb"></div>';
     case 'photo': return fmxPhotoFieldHTML(f, fid, label);
     case 'longtext': if(h>0) return '<div class="field"><label>'+label+'</label><textarea id="'+fid+'" style="height:'+h+'px;min-height:'+h+'px"></textarea></div>'; return null;
@@ -2298,6 +2437,12 @@ function fmxReadAnswer(f, pfx){
   if(f.type==='passfail') return {label:lab, type:'passfail', value: el ? (el.getAttribute('data-val')||'') : ''};
   if(f.type==='units'){ const v = el ? String(el.value||'').trim() : ''; return {label:lab, type:'units', value: v ? v+(f.unit?' '+f.unit:'') : ''}; }
   if(f.type==='photo') return {label:lab, type:'photo', value: (fmxPhotoStore[f.id]||[]).slice()};
+  if(f.type==='calc'){ fmxCalcAll(); return {label:lab, type:'calc', value: el ? String(el.value||'') : ''}; }
+  if(f.type==='table'){
+    const cols = fmxTableCols(f);
+    const rows = el ? Array.prototype.map.call(el.querySelectorAll('tbody tr'), tr=>Array.prototype.map.call(tr.querySelectorAll('input'), i=>String(i.value||'').trim())).filter(r=>r.some(Boolean)) : [];
+    return {label:lab, type:'table', value: rows.map(r=>r.map((v,i)=>v ? (cols[i]?cols[i]+': ':'')+v : '').filter(Boolean).join('; ')).join('  |  '), cols, rows};
+  }
   return null;
 }
 // Required fields that are still empty -> list of {id,label}. Checks the on-screen controls.
@@ -2309,6 +2454,7 @@ function fmxMissing(fields, pfx){
     const el = document.getElementById(pfx+f.id); let ok;
     if(f.type==='photo') ok = (fmxPhotoStore[f.id]||[]).length>0;
     else if(f.type==='passfail') ok = !!(el && el.getAttribute('data-val'));
+    else if(f.type==='table') ok = !!(el && Array.prototype.some.call(el.querySelectorAll('input'), i=>String(i.value||'').trim()));
     else if(f.type==='radio') ok = !!document.querySelector('input[name="ffr-'+f.id+'"]:checked');
     else if(f.type==='checkbox' || f.type==='checkexp') ok = !!(el && el.checked);
     else ok = !!(el && String(el.value||'').trim());
@@ -2343,30 +2489,34 @@ function fmxSetPP(m, btn){
 }
 // ---- the paper sheet (print / PDF): the same code draws it in Shop Boss and in the Form maker ----
 function fmxPaperHTML(f, o){
-  o = o || {};
+  o = o || {}; fmxApplyFonts(f && f.print);
   const E = fmxE, line = (h)=>'<div style="border-bottom:1px solid #000;height:'+(h||26)+'px"></div>';
   const box = ()=>'<span style="display:inline-block;width:16px;height:16px;border:1.5px solid #000;border-radius:2px;vertical-align:-3px;margin-right:8px;flex:none"></span>';
-  const lab = (t, fd)=>'<div style="font-size:'+(fd&&fd.look&&fd.look.size?Math.max(9,fmxN(fd.look.size,15)-2.5):12.5)+'px;font-weight:'+(fd&&fd.look&&fd.look.bold?800:700)+';margin-bottom:2px;color:#000">'+E(t||'')+'</div>';
+  const lab = (t, fd)=>'<div style="font-size:'+(fd&&fd.look&&fd.look.size?Math.max(9,fmxN(fd.look.size,15)-2.5):12.5)+'px;font-weight:'+(fd&&fd.look&&fd.look.bold?800:700)+';margin-bottom:2px;color:inherit">'+E(t||'')+'</div>';
   const opts = o.opts || (fd=>fd.options||[]);
   const pp = o.pp || 'thumb';
-  const entry = (fd, inner)=>{ const hh = fmxN(fd.h,0); const extra = (hh>0 && FMX_SPACE_TYPES.indexOf(fd.type)>=0) ? hh/2 : 0; return '<div style="margin:'+(7+extra)+'px 0;color:#000;break-inside:avoid">'+inner+'</div>'; };
-  const boxed = (fd, hgt)=>{ const L = fd.look||{}; const bw = L.outline===false ? 0 : fmxN(L.thick,1.5); return '<div style="border:'+bw+'px solid #000;border-radius:'+fmxN(L.radius,0)+'px;height:'+hgt+'px;'+(fmxColor(L.fill)?'background:'+fmxColor(L.fill)+';':'')+'"></div>'; };
-  const hasLook = fd=>{ const L = fd.look||{}; return L.radius!=null&&L.radius!=='' || L.outline===false || L.thick || fmxColor(L.fill); };
+  const lk = fd=>{ const L = (fd&&fd.look)||{}; return (fmxColor(L.color)?'color:'+fmxColor(L.color)+';':'')+(fmxFont(L.font)?'font-family:'+fmxFont(L.font)+';':''); };
+  const entry = (fd, inner)=>{ const hh = fmxN(fd.h,0); const extra = (hh>0 && FMX_SPACE_TYPES.indexOf(fd.type)>=0) ? hh/2 : 0; return '<div style="margin:'+(7+extra)+'px 0;color:#000;'+lk(fd)+'break-inside:avoid">'+inner+'</div>'; };
+  const boxed = (fd, hgt)=>{ const L = fd.look||{}; const bw = L.outline===false ? 0 : fmxN(L.thick,1.5); return '<div style="border:'+bw+'px solid '+(fmxColor(L.outlineColor)||'#000')+';border-radius:'+fmxN(L.radius,0)+'px;height:'+hgt+'px;'+(fmxColor(L.fill)?'background:'+fmxColor(L.fill)+';':'')+'"></div>'; };
+  const hasLook = fd=>{ const L = fd.look||{}; return L.radius!=null&&L.radius!=='' || L.outline===false || L.thick || fmxColor(L.fill) || fmxColor(L.outlineColor); };
   const entryLine = fd=> hasLook(fd) ? boxed(fd, 30) : line(26);
   const sample = (fd)=>{ const n = fmxN(fd.sampleCount,1); let s = ''; for(let i=0;i<n;i++) s += '<div style="width:70px;height:70px;background:#ddd;border:1px solid #999;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#666;margin:0 6px 6px 0">photo</div>'; return s; };
   const cell = (fd)=>{
     const t = fd.type, label = fd.label || '';
     if(t==='blank' || t==='endsec') return '<div style="height:'+(fmxN(fd.h,0)>0?fmxN(fd.h,0):14)+'px"></div>';
-    if(t==='note') return '<div style="font-size:12.5px;color:#333;margin:4px 0">'+E(label)+'</div>';
+    if(t==='note'){ const L = fd.look||{}; return '<div style="'+(fmxN(fd.lh,0)>0?'line-height:'+fmxN(fd.lh,0)+';':'')+'font-size:'+fmxN(fd.size,12.5)+'px;color:'+(fmxColor(L.color)||'#333')+';margin:4px 0;font-weight:'+(fd.bold?700:400)+';'+(fd.italic?'font-style:italic;':'')+(fmxFont(L.font)?'font-family:'+fmxFont(L.font)+';':'')+'">'+(fd.rich ? fmxRichClean(fd.rich) : E(label))+'</div>'; }
     if(t==='heading') return String(label).trim() ? '<div style="font-size:16px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #000;margin:14px 0 6px;padding-bottom:2px;color:#000">'+E(label)+'</div>' : '<div style="border-bottom:1px solid #000;margin:8px 0"></div>';
     if(t==='formheader') return '';
     if(t==='line'){ const w = fmxN(fd.w,0); return '<div style="border-top:'+fmxN(fd.thick,2)+'px solid #000;margin:'+fmxN(fd.pad,4)+'px 0"></div>'; }
-    if(t==='label') return '<div style="font-size:'+fmxN(fd.size,16)+'px;'+(fd.bold?'font-weight:700;':'')+'white-space:pre-wrap;color:#000;margin:2px 0;text-align:'+(fd.align||'left')+'">'+E(label)+'</div>';
+    if(t==='label' && fd.fit && !/\n/.test(String(label))) return '<div style="container-type:inline-size;width:100%"><div style="white-space:nowrap;line-height:1.15;font-size:min(400px,'+(100/((fd.bold?0.64:0.6)*Math.max(1,String(label).length))).toFixed(2)+'cqw);'+(fd.bold?'font-weight:700;':'')+(fd.italic?'font-style:italic;':'')+'color:'+(fmxColor((fd.look||{}).color)||'#000')+';'+lk(fd)+'margin:2px 0;text-align:'+(fd.align||'left')+'">'+E(label)+'</div></div>';
+    if(t==='label') return '<div style="'+(fd.nowrap?'white-space:nowrap;':'')+(fmxN(fd.lh,0)>0?'line-height:'+fmxN(fd.lh,0)+';':'')+'font-size:'+fmxN(fd.size,16)+'px;'+(fd.bold?'font-weight:700;':'')+(fd.italic?'font-style:italic;':'')+(fd.nowrap?'':'white-space:pre-wrap;')+'color:'+(fmxColor((fd.look||{}).color)||'#000')+';'+lk(fd)+'margin:2px 0;text-align:'+(fd.align||'left')+'">'+E(label)+'</div>';
     if(t==='pagebreak') return '<div style="break-after:page;height:0"></div>';
-    if(t==='image') return fd.src ? '<div style="text-align:'+(fd.align||'left')+'"><img src="'+fd.src+'" alt="" style="'+(fmxN(fd.iw,0)?'width:'+fmxN(fd.iw,0)+'px;':'')+(fmxN(fd.ih,0)?'height:'+fmxN(fd.ih,0)+'px;object-fit:contain;':'')+'max-width:100%"></div>' : '';
+    if(t==='image') return fd.src ? '<div style="text-align:'+(fd.align||'left')+'"><img src="'+fd.src+'" alt="" style="'+(fmxN(fd.iw,0)?'width:'+fmxN(fd.iw,0)+'px;':(fmxN(fd.w,0)>0?'width:100%;':''))+(fmxN(fd.ih,0)?'height:'+fmxN(fd.ih,0)+'px;object-fit:contain;':'')+'max-width:100%"></div>' : '';
     if(t==='checkbox') return '<div style="display:flex;align-items:flex-start;font-size:14px;margin:'+(7+(fmxN(fd.h,0)/2))+'px 0;color:#000;break-inside:avoid">'+box()+'<span>'+E(label)+'</span></div>';
     if(t==='checkexp') return entry(fd, '<div style="display:flex;align-items:flex-start;font-size:14px">'+box()+'<span>'+E(label)+'</span></div><div style="margin-left:24px;font-size:11.5px;color:#444">Note:</div><div style="margin-left:24px">'+line(22)+'</div>');
     if(t==='yesno') return entry(fd, lab(label,fd)+'<div style="font-size:14px">'+box()+'Yes &nbsp;&nbsp;&nbsp; '+box()+'No</div>');
+    if(t==='table'){ const cols = fmxTableCols(fd), nr = Math.max(1, Math.min(40, Math.round(fmxN(fd.rows,3)))); return entry(fd, lab(label,fd)+'<table style="width:100%;border-collapse:collapse;margin-top:4px"><tr>'+cols.map(c=>'<th style="border:1px solid #444;padding:3px 6px;font-size:12px;text-align:left;background:#eee">'+E(c)+'</th>').join('')+'</tr>'+new Array(nr+1).join('<tr>'+cols.map(()=>'<td style="border:1px solid #444;height:24px">&nbsp;</td>').join('')+'</tr>')+'</table>'); }
+    if(t==='calc') return entry(fd, lab(label,fd)+'<div style="border-bottom:1px solid #444;height:22px;font-size:12px;color:#666">calculated</div>');
     if(t==='passfail') return entry(fd, lab(label,fd)+'<div style="font-size:14px">'+box()+'Pass &nbsp;&nbsp; '+box()+'Fail &nbsp;&nbsp; '+box()+'N/A</div>');
     if(t==='units') return entry(fd, lab(label,fd)+'<div style="display:flex;align-items:flex-end;gap:8px"><div style="flex:1">'+entryLine(fd)+'</div><div style="font-size:14px;padding-bottom:3px">'+E(fd.unit||'')+'</div></div>');
     if(t==='radio' || t==='dropdown'){ const op = opts(fd); return entry(fd, lab(label,fd)+(op.length?op.map(x=>'<div style="font-size:14px;margin:2px 0">'+box()+E(x)+'</div>').join(''):entryLine(fd))); }
@@ -2377,7 +2527,7 @@ function fmxPaperHTML(f, o){
       return entry(fd, lab(label,fd)+'<div style="border:1.5px solid #000;height:'+hh+'px;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px">Photo</div>');
     }
     if(t==='signature') return '<div style="margin:12px 0 7px;color:#000;break-inside:avoid">'+lab(label,fd)+'<div style="display:flex;gap:18px;align-items:flex-end"><div style="flex:1">'+line(34)+'</div><div style="flex:0 0 28%"><div style="font-size:11px;color:#444">Date</div>'+line(22)+'</div></div></div>';
-    if(t==='date' && fd.autoDate && fd.autoDate!=='open') return entry(fd, lab(label,fd)+'<div style="font-size:12px;color:#666">'+(fd.autoDate==='datetime'?'date and time':'date')+' — filled in when the form is started</div>'+line(20));
+    if(t==='date' && fd.autoDate && fd.autoDate!=='open' && !fd.paperLine) return entry(fd, lab(label,fd)+'<div style="font-size:12px;color:#666">'+(fd.autoDate==='datetime'?'date and time':'date')+' — filled in when the form is started</div>'+line(20));
     return entry(fd, lab(label,fd)+entryLine(fd));
   };
   const hdr = f.fields.find(x=>x.type==='formheader');
@@ -2385,21 +2535,34 @@ function fmxPaperHTML(f, o){
   const items = hdr ? (Array.isArray(hdr.items)?hdr.items:['car','date']) : [];
   const rows = (o.fbRows || fbRows)(f.fields.filter(x=>x.type!=='formheader'));
   const PR = f.print || {};
+  const modern = ('autoHead' in PR);
+  const nameTxt = String(f.name||'').trim();
+  const showTitle = modern ? (PR.showTitle!==false && !!nameTxt) : true;
+  const wantDate = hdr ? items.indexOf('date')>=0 : (modern ? !!PR.autoHead : true);
+  const wantCar = hdr ? items.indexOf('car')>=0 : (modern ? !!PR.autoHead : true);
   const rowHTML = r=>{
     const lay = r.some(fd=>fmxN(fd.w,0)>0);
-    if(r.length===1 && !lay) return cell(r[0]);
+    if(r.length===1 && !lay){ const ps = fmxPadSt(r[0]); return ps ? '<div style="'+ps+'">'+cell(r[0])+'</div>' : cell(r[0]); }
     if(!lay) return '<div style="display:flex;gap:18px">'+r.map(fd=>'<div style="flex:1;min-width:0">'+cell(fd)+'</div>').join('')+'</div>';
     const rs = fmxRowStyle(r);
-    return '<div style="display:flex;'+rs+'">'+r.map(fd=>{ const w = fmxN(fd.w,0); const al = fd.align||'left'; return '<div style="'+(w>0?'flex:0 0 '+w+'%;max-width:'+w+'%;':'flex:1 1 0;')+'min-width:0;box-sizing:border-box;padding:0 8px;text-align:'+al+'">'+cell(fd)+'</div>'; }).join('')+'</div>';
+    return '<div style="display:flex;'+rs+'">'+r.map(fd=>{ const w = fmxN(fd.w,0); const al = fd.align||'left'; return '<div style="'+(w>0?'flex:0 0 '+w+'%;max-width:'+w+'%;':'flex:1 1 0;')+'min-width:0;box-sizing:border-box;padding:0 8px;text-align:'+al+';'+fmxVAlign(fd)+fmxPadSt(fd)+'">'+cell(fd)+'</div>'; }).join('')+'</div>';
   };
+  // pictures at the very top of the form (a logo) print above the title
+  let lead = 0; while(lead<rows.length && rows[lead].every(fd=>fd.type==='image')) lead++;
+  const topRows = modern ? rows.slice(0,lead) : [], restRows = modern ? rows.slice(lead) : rows;
+  const titleRow = (showTitle || wantDate) ? '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><div style="font-size:24px;font-weight:700">'+(showTitle ? E(nameTxt||'(untitled form)') : '')+'</div>'+(wantDate?'<div style="font-size:13px;white-space:nowrap">Date: ______________</div>':'')+'</div>' : '';
+  const subTxt = modern ? String(PR.subtitle||'').trim() : '';
+  const subRow = subTxt ? '<div style="font-size:14px;color:#333;margin:2px 0 4px">'+E(subTxt)+'</div>' : '';
+  const anyHead = !!(titleRow || subRow || wantCar || hdrLines.length);
   return '<div style="background:#fff;color:#000;border-radius:10px;padding:18px" class="bf-sheet">'
     +(PR.pageNumbers ? '<style>@media print{@page{@bottom-center{content:"Page " counter(page) " of " counter(pages);font-size:10pt}}}</style>' : '')
     +(PR.header ? '<div style="font-size:11px;color:#444;text-align:center;border-bottom:1px solid #999;margin-bottom:8px;padding-bottom:3px">'+E(PR.header)+'</div>' : '')
-    +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><div style="font-size:24px;font-weight:700">'+E(f.name||'(untitled form)')+'</div>'+(!hdr||items.indexOf('date')>=0?'<div style="font-size:13px;white-space:nowrap">Date: ______________</div>':'')+'</div>'
-    +(!hdr||items.indexOf('car')>=0?'<div style="margin:10px 0 4px">'+lab('Car')+line(28)+'</div>':'')
+    +topRows.map(rowHTML).join('')
+    +((titleRow||subRow) && fmxColor(PR.bannerColor) ? '<div style="background:'+fmxColor(PR.bannerColor)+';color:'+(fmxColor(PR.bannerText)||'#fff')+';padding:14px 16px;border-radius:6px;margin-bottom:8px">'+titleRow+subRow+'</div>' : titleRow+subRow)
+    +(wantCar?'<div style="margin:10px 0 4px">'+lab('Car')+line(28)+'</div>':'')
     +(hdrLines.length?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 18px">'+hdrLines.map(l=>'<div style="margin:6px 0">'+lab(l.label)+line(24)+'</div>').join('')+'</div>':'')
-    +'<div style="margin:10px 0"><div style="border-bottom:2px solid #000"></div></div>'
-    +rows.map(rowHTML).join('')
+    +(anyHead?'<div style="margin:10px 0"><div style="border-bottom:2px solid #000"></div></div>':'')
+    +restRows.map(rowHTML).join('')
     +(PR.footer ? '<div style="font-size:11px;color:#444;text-align:center;border-top:1px solid #999;margin-top:12px;padding-top:3px">'+E(PR.footer)+'</div>' : '')
     +'</div>';
 }
@@ -2412,6 +2575,48 @@ function fmxParseFormFile(text){
   return {name: String(j.name||'').trim() || 'Imported form', fields, print: j.print||null, count: fields.length};
 }
 // ===== FMX-END =====
+
+// ---- contact autofill: a text box marked with an autofill kind (name, phone, email, address) tells the phone it may offer saved details ----
+function fmxApplyAutofill(root){
+  try{
+    (root||document).querySelectorAll('[data-fmx-ac] input').forEach(i=>{
+      const c = i.closest('[data-fmx-ac]').getAttribute('data-fmx-ac');
+      if(!/^(name|tel|email|street-address|postal-code|organization)$/.test(c) || i.getAttribute('data-fmx-acd')===c) return;
+      if(i.type!=='text' && i.type!=='tel' && i.type!=='email') return;
+      i.setAttribute('autocomplete', c); i.setAttribute('name', c); i.setAttribute('data-fmx-acd', c);
+      if(c==='tel') i.setAttribute('inputmode','tel'); if(c==='email') i.setAttribute('inputmode','email');
+    });
+  }catch(e){}
+}
+try{ if(typeof MutationObserver!=='undefined' && typeof document!=='undefined'){ new MutationObserver(()=>fmxApplyAutofill(document)).observe(document.documentElement,{childList:true,subtree:true}); } }catch(e){}
+
+// ---- contact autofill: a text box marked with an autofill kind (name, phone, email, address) tells the phone it may offer saved details ----
+function fmxApplyAutofill(root){
+  try{
+    (root||document).querySelectorAll('[data-fmx-ac] input').forEach(i=>{
+      const c = i.closest('[data-fmx-ac]').getAttribute('data-fmx-ac');
+      if(!/^(name|tel|email|street-address|postal-code|organization)$/.test(c) || i.getAttribute('data-fmx-acd')===c) return;
+      if(i.type!=='text' && i.type!=='tel' && i.type!=='email') return;
+      i.setAttribute('autocomplete', c); i.setAttribute('name', c); i.setAttribute('data-fmx-acd', c);
+      if(c==='tel') i.setAttribute('inputmode','tel'); if(c==='email') i.setAttribute('inputmode','email');
+    });
+  }catch(e){}
+}
+try{ if(typeof MutationObserver!=='undefined' && typeof document!=='undefined'){ new MutationObserver(()=>fmxApplyAutofill(document)).observe(document.documentElement,{childList:true,subtree:true}); } }catch(e){}
+
+// ---- contact autofill: a text box marked with an autofill kind (name, phone, email, address) tells the phone it may offer saved details ----
+function fmxApplyAutofill(root){
+  try{
+    (root||document).querySelectorAll('[data-fmx-ac] input').forEach(i=>{
+      const c = i.closest('[data-fmx-ac]').getAttribute('data-fmx-ac');
+      if(!/^(name|tel|email|street-address|postal-code|organization)$/.test(c) || i.getAttribute('data-fmx-acd')===c) return;
+      if(i.type!=='text' && i.type!=='tel' && i.type!=='email') return;
+      i.setAttribute('autocomplete', c); i.setAttribute('name', c); i.setAttribute('data-fmx-acd', c);
+      if(c==='tel') i.setAttribute('inputmode','tel'); if(c==='email') i.setAttribute('inputmode','email');
+    });
+  }catch(e){}
+}
+try{ if(typeof MutationObserver!=='undefined' && typeof document!=='undefined'){ new MutationObserver(()=>fmxApplyAutofill(document)).observe(document.documentElement,{childList:true,subtree:true}); } }catch(e){}
 function fmEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 const FM_HDR_AUTO = [['yearmake','Year / make'],['vin','VIN'],['ownername','Owner'],['ownerphone','Phone']];
 const FM_HDR_TYPED = [['email','Email'],['address','Address']];
@@ -2464,13 +2669,13 @@ function fmBadgeHTML(un, total){
 }
 function fmRowHTML(r, cellFn){
   const f0 = r[0];
-  if(f0 && f0.type==='heading' && !fmNamedHeading(f0) && r.length===1) return '<div class="fm-line"></div>';
-  if(r.every(f=>f.type==='blank')){ const px = Math.max.apply(null, r.map(fmBlankPx)); return '<div class="fm-row fm-row-blank"><div class="fm-cell fm-blank" style="height:'+px+'px"></div></div>'; }
-  if(r.length===1 && r[0].type==='formheader') return '<div class="fm-row fm-row-blank"><div class="fm-cell" style="padding:8px 0 0">'+cellFn(r[0])+'</div></div>';
+  if(f0 && f0.type==='heading' && !fmNamedHeading(f0) && r.length===1) return '<div class="fm-line" data-fid="'+fmEsc(f0.id)+'"></div>';
+  if(r.every(f=>f.type==='blank')){ const px = Math.max.apply(null, r.map(fmBlankPx)); return '<div class="fm-row fm-row-blank"><div class="fm-cell fm-blank" data-fid="'+fmEsc(r[0].id)+'" style="height:'+px+'px"></div></div>'; }
+  if(r.length===1 && r[0].type==='formheader') return '<div class="fm-row fm-row-blank"><div class="fm-cell" data-fid="'+fmEsc(r[0].id)+'" style="padding:8px 0 0">'+cellFn(r[0])+'</div></div>';
   if(r.length===1 && f0.type==='line' && !(parseFloat(f0.w)>0)) return fmxLineHTML(f0);
-  if(r.length===1 && f0.type==='pagebreak') return '<div class="fmx-pb"></div>';
+  if(r.length===1 && f0.type==='pagebreak') return '<div class="fmx-pb" data-fid="'+fmEsc(f0.id)+'"></div>';
   const lay = r.some(f=>parseFloat(f.w)>0), rs = fmxRowStyle(r);
-  return '<div class="fm-row'+(lay?' fmx-rowx':'')+'"'+(rs?' style="'+rs+'"':'')+'>'+r.map(f=>{ const a = fmxCellAttrs(f, lay); return '<div class="fm-cell'+(f.type==='blank'?' fm-blank':'')+a.cls+'"'+(a.st?' style="'+a.st+'"':'')+'>'+cellFn(f)+'</div>'; }).join('')+'</div>';
+  return '<div class="fm-row'+(lay?' fmx-rowx':'')+'"'+(rs?' style="'+rs+'"':'')+'>'+r.map(f=>{ const a = fmxCellAttrs(f, lay); return '<div class="fm-cell'+(f.type==='blank'?' fm-blank':'')+a.cls+'" data-fid="'+fmEsc(f.id)+'"'+(f.ac?' data-fmx-ac="'+fmEsc(f.ac)+'"':'')+(a.st?' style="'+a.st+'"':'')+'>'+cellFn(f)+'</div>'; }).join('')+'</div>';
 }
 function fmFormHTML(fields, rowsFn, cellFn, attrs){
   let firstSec = true;
@@ -2478,7 +2683,7 @@ function fmFormHTML(fields, rowsFn, cellFn, attrs){
     if(b.kind==='rows') return b.rows.map(r=>fmRowHTML(r, cellFn)).join('');
     const total = b.rows.reduce((n,r)=>n+r.filter(fmIsCheck).length, 0);
     const open = firstSec; firstSec = false;
-    return '<div class="fm-sec'+(open?' open':'')+'"><button type="button" class="fm-sec-head" onclick="fmToggleSection(this)"><span class="fm-title">'+fmEsc(b.head.label)+'</span>'+fmBadgeHTML(total,total)+'<span class="fm-chev">▸</span></button><div class="fm-body">'+b.rows.map(r=>fmRowHTML(r, cellFn)).join('')+'</div></div>';
+    return '<div class="fm-sec'+(open?' open':'')+'"><button type="button" class="fm-sec-head" data-fid="'+fmEsc(b.head.id)+'" onclick="fmToggleSection(this)"><span class="fm-title">'+fmEsc(b.head.label)+'</span>'+fmBadgeHTML(total,total)+'<span class="fm-chev">▸</span></button><div class="fm-body">'+b.rows.map(r=>fmRowHTML(r, cellFn)).join('')+'</div></div>';
   }).join('')+'</div>';
 }
 function fmCheckHTML(o){
@@ -3634,7 +3839,7 @@ const renderers = {
         <input type="text" id="carInput" list="carList" value="${(tmpl.car||'').replace(/"/g,'&quot;')}" placeholder="Leave blank if this isn't tied to a car" ${tmpl.car?'readonly':''}>
         <datalist id="carList">${knownCars().map(c=>`<option value="${c}">`).join('')}</datalist>
       </div>`}
-      ${fmFormHTML(tmpl.fields, fbFillRows, f=>fbFillFieldHTML(f, empName, tmpl.car||''), ' data-fmx-fill="1"')}
+      ${fmFormHTML(tmpl.fields, fbFillRows, f=>fbFillFieldHTML(f, empName, tmpl.car||''), fmxFormAttrs(tmpl.print))}
       ${flagFieldHTML('flagInput', null)}
       <button class="btn-primary" onclick="submitStructuredForm('${tmpl.id}')">Save form</button>
     <p class="hint" style="text-align:center;margin:6px 0 0">Goes to the shop with your next send.</p>
