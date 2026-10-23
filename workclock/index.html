@@ -338,6 +338,46 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
+<style id="appSplashCss">
+#appSplash{position:fixed;inset:0;z-index:2147483647;background:#17181a;color:#d9dadd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;animation:appSplashGone 0.01s 25s forwards}
+#appSplash svg{width:min(86vw,420px);height:auto;display:block}
+#appSplash .t{font-size:18px;font-weight:600;letter-spacing:.3px}
+#appSplash .s{font-size:13px;opacity:.65}
+@keyframes appSplashGone{to{opacity:0;visibility:hidden}}
+@keyframes appZ{0%{opacity:0;transform:translate(0,6px)}25%{opacity:1}100%{opacity:0;transform:translate(10px,-26px)}}
+@keyframes appBreathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.07)}}
+#appSplash .z{animation:appZ 2.4s ease-out infinite;font-weight:700;fill:#cfd3da}
+#appSplash .z2{animation-delay:.8s}#appSplash .z3{animation-delay:1.6s}
+#appSplash .br{transform-box:fill-box;transform-origin:50% 100%;animation:appBreathe 2.4s ease-in-out infinite}
+</style>
+<div id="appSplash" aria-hidden="true"><svg viewBox="40 56 250 124" role="img" aria-label="Loading">
+<rect x="0" y="168" width="320" height="32" fill="#34373c"/>
+<rect x="0" y="168" width="320" height="3" fill="#4a4e55"/>
+<rect x="104" y="128" width="112" height="40" fill="#0d0e10"/>
+<rect x="116" y="150" width="14" height="18" fill="#7b7f86"/><rect x="202" y="150" width="6" height="18" fill="#7b7f86"/>
+<g>
+ <rect x="150" y="150" width="62" height="17" rx="7" fill="#2f3b52"/>
+ <g class="br"><rect x="128" y="146" width="46" height="21" rx="9" fill="#9fd3cf"/></g>
+ <path d="M136 150 q-10 -6 -10 -14" stroke="#e0b088" stroke-width="6" fill="none" stroke-linecap="round" opacity="0"/>
+ <circle cx="124" cy="157" r="11" fill="#e0b088"/>
+ <path d="M112 156 a12 12 0 0 1 24 -2 l-2 0 q-10 -6 -20 2 z" fill="#1c2540"/>
+ <path d="M114 153 q-8 1 -9 4 q6 -1 11 -1 z" fill="#1c2540"/>
+ <rect x="117" y="155" width="16" height="6" rx="3" fill="#0f1116"/>
+ <circle cx="121" cy="164" r="0.9" fill="#8a6a50"/><circle cx="125" cy="165" r="0.9" fill="#8a6a50"/><circle cx="129" cy="164" r="0.9" fill="#8a6a50"/>
+ <ellipse cx="124" cy="165.5" rx="2" ry="1.4" fill="#7a4a3a"/>
+ <path d="M136 152 q8 -8 16 -4 l-2 8 z" fill="#e0b088"/>
+</g>
+<path d="M44 128 C44 102 64 84 98 78 C122 54 196 52 220 76 C258 82 284 98 284 128 Z" fill="#5da9c9"/>
+<path d="M104 80 C124 62 186 61 206 80 Z" fill="#b8e3f2"/>
+<rect x="154" y="62" width="4" height="18" fill="#5da9c9"/>
+<path d="M44 128 L284 128 L284 134 L44 134 Z" fill="#3d7f9a"/>
+<circle cx="86" cy="148" r="22" fill="#15161a"/><circle cx="86" cy="148" r="10" fill="#9aa0a8"/>
+<circle cx="240" cy="148" r="22" fill="#15161a"/><circle cx="240" cy="148" r="10" fill="#9aa0a8"/>
+<path d="M60 128 a26 26 0 0 1 52 0" fill="#5da9c9"/><path d="M214 128 a26 26 0 0 1 52 0" fill="#5da9c9"/>
+<text class="z" x="96" y="124" font-size="12">z</text><text class="z z2" x="90" y="118" font-size="15">Z</text><text class="z z3" x="84" y="112" font-size="18">Z</text>
+</svg><div class="t">WorkClock</div><div class="s">Loading… (Dylan is napping)</div></div>
+
+
 
 <header>
   <span class="logo-wrap" onclick="goHome()" title="Home">
@@ -355,7 +395,7 @@
 // Bump this with every shipped change — shows in the header badge and the browser tab title
 // (which is what a manual "Save As" download defaults its filename to), so there's always one
 // place that says what version is actually running.
-const APP_VERSION = 'v0.33';
+const APP_VERSION = 'v0.34';
 document.title = 'WorkClock ' + APP_VERSION;
 (function(){ try{ var b=document.getElementById('appVersionBadge'); if(b) b.textContent=APP_VERSION; }catch(e){} })();
 // ---------------------------------------------------------------------------
@@ -1547,6 +1587,10 @@ function myAllUnsubmittedPhotos(){ return photos.filter(p=>p.empId===currentEmp 
 function myUnsubmittedClocks(){ return dayClocks.filter(c=>c.empId===currentEmp && !c.submitted); }
 // Everything this person has not sent yet, across every week. A work week with a clock time that
 // has not gone out yet is sent whole (its already-sent entries too), so the file is always a full week.
+function unsentBreakdown(){
+  const n = [[myAllUnsubmittedEntries().length,'task','tasks'],[myAllUnsubmittedDocs().length,'form','forms'],[myAllUnsubmittedPhotos().length,'photo','photos'],[myUnsubmittedClocks().length,'clock-in/out record','clock-in/out records']];
+  return n.filter(x=>x[0]>0).map(x=>x[0]+' '+(x[0]===1?x[1]:x[2])).join(', ');
+}
 function myUnsentWork(){
   const entriesNew = myAllUnsubmittedEntries(), docs = myAllUnsubmittedDocs(), phs = myAllUnsubmittedPhotos(), clocks = myUnsubmittedClocks();
   const clockWids = [...new Set(clocks.map(c=>weekIdFor(c.date)))];
@@ -3635,7 +3679,8 @@ const renderers = {
       <button class="tab-btn ${mode==='periods'?'active':''}" onclick="navReplace({type:'history',mode:'periods'})">Work periods</button>
     </div>
     ${missing.length ? `<p class="sub" style="color:var(--warn);margin:-6px 0 14px">⚠ Nothing logged yet for ${missing.map(fmtDate).join(', ')} — forgot to clock in?</p>` : ''}
-    <button class="btn-primary" style="margin-bottom:20px" onclick="submitWeek()">Submit all unsent work to Shop Boss${pending?' ('+pending+')':''}</button>
+    <button class="btn-primary" style="margin-bottom:${pending?'6px':'20px'}" onclick="submitWeek()">Submit all unsent work to Shop Boss${pending?' ('+pending+')':''}</button>
+    ${pending?`<p class="hint" style="margin:0 0 20px;text-align:center">Waiting to send: ${unsentBreakdown()}</p>`:''}
     ${mode==='calendar' ? buildCalendarHTML(year, month, curWeekId) : renderWorkPeriods()}
     ${shareBtn()}
     <button class="btn-ghost" style="margin-top:10px" onclick="goBack()">Back</button>`;
@@ -4191,10 +4236,23 @@ function acAppSource(el){
     let text = s.text, from = s.from, to = s.to;
     if(mode==='multi'){
       const noEnter = el.hasAttribute('data-acnoenter');
+      if(s.all){
+        // Picked from the full list (arrow): ADD to what is already in the box, never replace it.
+        const sep = noEnter ? ', ' : ',\n';
+        let base = v.replace(/[\s,]+$/, '');
+        const lastCut = Math.max(base.lastIndexOf(','), base.lastIndexOf('\n'));
+        const lastSeg = base.slice(lastCut+1).trim();
+        // a half-typed start of this same item is finished, not repeated
+        if(lastSeg && s.text.toLowerCase().startsWith(lastSeg.toLowerCase())) base = lastCut>=0 ? base.slice(0, lastCut+1).replace(/[ \t]+$/,'') : '';
+        const lead = base ? (/,$/.test(base) ? (noEnter ? ' ' : '\n') : sep) : '';
+        el.value = base + lead + s.text + sep;
+        from = to = el.value.length;
+      } else {
       let tail = v.slice(to).replace(/^[ \t]*,?/, '');
       text = s.text + (noEnter ? ', ' : ',\n');
       el.value = v.slice(0, from) + text + tail.replace(/^\s+/, '');
       from = from + text.length; to = from;
+      }
     } else if(mode==='single' || mode==='listonly' || s.whole || s.all){
       el.value = s.text; from = to = s.text.length;
     } else {
@@ -4875,8 +4933,9 @@ renderers.home = function(){
 };
 MB.start();
 
-if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
 </script>
 <!--MB-END-->
+<script id="appSplashOff">(function(){var s=document.getElementById("appSplash");if(!s)return;var go=function(){try{s.remove();var c=document.getElementById("appSplashCss");if(c)c.remove();}catch(e){}};try{requestAnimationFrame(function(){requestAnimationFrame(go);});}catch(e){go();}setTimeout(go,300);})();if('serviceWorker' in navigator){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+</script>
 </body>
 </html>
